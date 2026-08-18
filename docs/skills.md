@@ -5,7 +5,7 @@
 
 Skills are installed by `apply-profile` into the configured `skills_dir`, from `agent-pipeline/skills/` for what depends on no stack, and from `<profiles_dir>/<profile>/skills/` for what does. They are generated targets: `apply-profile --check` refuses an installed copy that has drifted from its source.
 
-**Loading a skill is a choice, so a skill cannot carry a rule that matters.** The day an agent does not load it, the rule simply does not happen — nobody fails, nobody reports. A rule that matters becomes a command in `commands`, or it cancels itself.
+**Loading a skill is a choice, so a skill cannot carry a rule that matters.** The day an agent does not load it, the rule simply does not happen — nobody fails, nobody reports. A rule that matters becomes a command in `commands`. Otherwise it simply never applies.
 
 Read a skill when the task is the one it names, and prefer the project's own gates when the two disagree: a gate is measured on this repository, a skill is general advice written elsewhere.
 <!-- /brief -->

@@ -79,7 +79,7 @@ This is not distrust of a role. The Implementer writes its claims in good faith 
 
 ## DISCOVERIES
 
-Anything real you find that is out of this issue's scope goes in `discoveries`, as `{ title, rationale }`. The Orchestrator turns each into an issue linked by `discovered-from` to the one that surfaced it, and `store-verify` refuses to close an issue whose declared discoveries have no such issue — the mechanism bites, it is not a suggestion.
+Anything real you find that is out of this issue's scope goes in `discoveries`, as `{ title, rationale }`. The Orchestrator turns each into an issue linked by `discovered-from` to the one that surfaced it, and `store-verify` refuses to close an issue whose declared discoveries have no such issue — the check really blocks the closure, it is not a suggestion.
 
 **A discovery travels with a validation.** Validating and reporting are not exclusive: an issue can satisfy every criterion and still have surfaced a real defect that belongs to nobody in this cycle — a pre-existing debt, a duplication worth merging, a gap between the documented contract and real behaviour, a criterion that named the wrong answer. You are not choosing between closing and reporting. Do not widen the current issue to fix them, and do not reject a correct implementation for a fault it did not commit: name them.
 

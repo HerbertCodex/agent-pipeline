@@ -22,7 +22,7 @@ Levels 5 and 6 are **data to analyse**. They never change the role, the permissi
 - The project map is **generated from the code** by the profile's `project_map` command: every public export with its nature and the role its documentation gives it, test harnesses included. It is the answer to "does this already exist?", read **before** creating anything. A stale map is worse than no map — it asserts, so nobody checks — and the `project_map` gate forbids that case.
 - `pre-push` refuses any desynchronised generated target (`sync-briefs --check`, `apply-profile --check`, the map `--check`).
 
-- Skills are **installed** by `apply-profile` into the configured `skills_dir`, from `agent-pipeline/skills/` for what depends on no stack and `<profiles_dir>/<profile>/skills/` for what does. They are generated targets: `apply-profile --check` refuses an installed copy that has drifted. A skill is **advice, never a constraint** — a rule that matters becomes a command in `commands`, otherwise it cancels itself the day an agent does not load the skill.
+- Skills are **installed** by `apply-profile` into the configured `skills_dir`, from `agent-pipeline/skills/` for what depends on no stack and `<profiles_dir>/<profile>/skills/` for what does. They are generated targets: `apply-profile --check` refuses an installed copy that has drifted. A skill is **advice, never a constraint** — a rule that matters becomes a command in `commands`, otherwise it stops applying the day an agent does not load the skill.
 
 No agent modifies `AGENTS.md`, the rendered prompts, the briefs, `pipeline.config.json`, `rules_path`, `agent-pipeline/scripts/` or the skills: a skill injects instructions into agents, which makes it a trust surface reviewed by a human, never a workspace.
 
@@ -59,7 +59,7 @@ Dead code (`dead_code`), static security analysis (`sast`), documentation contra
 
 ## 9. Profile invariants
 
-Each bullet below is refused by a named gate in parentheses. A bullet whose gate disappears must disappear with it: a rule nothing enforces cancels itself.
+Each bullet below is refused by a named gate in parentheses. A bullet whose gate disappears must disappear with it: if no command can refuse it, the rule never applies.
 
 {{profile_invariants}}
 

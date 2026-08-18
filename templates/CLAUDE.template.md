@@ -46,4 +46,4 @@ The quality gates live in `pipeline.config.json` under `commands`. Any rule nami
 
 ## The rule that cost the most to relearn
 
-**A rule nothing enforces cancels itself.** A prompt that asks to read a file "if it exists", a documented mechanism no script checks: nobody fails, nobody reports, and the rule never happens. If a rule matters, it has a gate or a validator behind it.
+**If no command can refuse it, a rule never applies.** A prompt that asks to read a file "if it exists", a documented mechanism no script checks: nobody fails, nobody reports, and the rule simply does not happen. If a rule matters, it has a gate or a validator behind it.

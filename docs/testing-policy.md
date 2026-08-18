@@ -39,7 +39,7 @@ Coverage measures what is **executed**, not what is **asserted**. A test that ca
 
 The threshold exists to catch a collapse, not to certify quality. Writing a test to move the number is the failure mode the metric invites, and it is worse than the gap it fills — it adds maintenance and proves nothing.
 
-Where the profile runs a mutation gate, that is the one that says whether the tests would bite. Where it does not, say so instead of letting a coverage figure imply it.
+Where the profile runs a mutation gate, that is the one that says whether the tests would actually catch a change in the code. Where it does not, say so instead of letting a coverage figure imply it.
 
 ## Red proof
 

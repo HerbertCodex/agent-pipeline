@@ -25,7 +25,7 @@ What the boundary used to guarantee is replaced by three things that do not depe
 - **the orchestrator replays it** against that commit, in a detached worktree. Red is observed, never declared;
 - **two separate commits**, `test:` then `feat:`, which QA diffs.
 
-A red proof that only fails at module load is weaker than one that fails on an assertion: it establishes that the tests came before the code, not that they would bite. Say which criteria are covered by which kind — QA replays the distinction.
+A red proof that only fails at module load is weaker than one that fails on an assertion: it establishes that the tests came before the code, not that they would catch a mistake. Say which criteria are covered by which kind — QA replays the distinction.
 
 ## A code fault goes back to the Implementer
 

@@ -4,6 +4,8 @@ This document addresses the agent configuring the pipeline in a repository that 
 
 It is not an introduction to the pipeline. For what it does and why, read `AGENTS.md` **after** rendering it, then `state-machine.md` and `quality-gates.md`.
 
+Throughout this document, **a gate** means a command that either passes or fails. If it fails, the work does not move on. Gates are named by key — `check`, `lint`, `test_unit` — in `pipeline.config.json`; the key stays the same across projects, the command behind it changes with the stack. That is what lets these documents point at a gate without knowing your tools.
+
 ## What you configure, and what you do not touch
 
 `agent-pipeline/scripts/` is **agnostic**: those scripts know no language, no framework, no package manager. They read the store, compute the schedule, validate handoffs. You do not touch them, and you introduce no stack dependency there — the same rule holds for `agent-pipeline/prompts/`, `agent-pipeline/docs/` and `agent-pipeline/templates/`.
@@ -33,7 +35,7 @@ Choose a short descriptive identifier: `api-fastapi`, `web-svelte`, `cli-go`. Wr
 
 A useful invariant forbids something precise that the language makes easy. "Write clean code" is not an invariant; "no `any`" and "no bare `except:`" are.
 
-For every bullet, ask: **which gate makes it fail?** If the answer is "none", either you add the gate at step 3 or you remove the bullet. A rule nothing enforces cancels itself — that is this pipeline's most expensive lesson, and it is relearned in every project.
+For every bullet, ask: **which gate makes it fail?** If the answer is "none", either you add the gate at step 3 or you remove the bullet. If no command can refuse it, the rule never applies — that is this pipeline's most expensive lesson, and it is relearned in every project.
 
 ### 2. Write `pipeline.config.json`
 
@@ -88,7 +90,7 @@ It counts the source files under `project_map.roots`, removes those `skip` exclu
 
 That check is what distinguishes an empty map from an up-to-date one. The `project_map` gate compares the map to its regeneration: it catches a **stale** map, never an **empty** one. Both go green when the generator collects nothing.
 
-Run it after every regeneration, and make it a gate of your configuration if you want it to bite on its own.
+Run it after every regeneration, and make it a gate of your configuration if you want it to block on its own.
 
 **If you decide not to port the map**, delete the inherited script instead of leaving it in place. A dead script bearing the name of a gate is worse than a missing one: the next agent will read its name in the config and believe it active.
 
@@ -114,7 +116,7 @@ node <your map script> --check
 
 All three must exit 0. These three `--check` are the generated targets: a repository where one of them drifts is working on a stale policy without knowing it.
 
-### 5. Prove that every gate bites
+### 5. Prove that every gate really refuses something
 
 **Do not settle for running the gates and seeing them green.** A green gate on a healthy repository proves nothing: it may be green because it measures nothing.
 
@@ -189,7 +191,7 @@ Report, do not invent: an unavailable command is escalated, never replaced by a 
 | parameter count | interface segregation |
 | nesting depth | KISS |
 
-**These are not SOLID.** They are measurable approximations of what SOLID protects: a two-hundred-line function almost always violates single responsibility, the converse is not true. An imperfect gate that bites beats a principle nobody checks — and without it, single responsibility cancels itself, the code being good only if the model is.
+**These are not SOLID.** They are measurable approximations of what SOLID protects: a two-hundred-line function almost always violates single responsibility, the converse is not true. An imperfect gate that really refuses something beats a principle nobody checks — and without it, single responsibility applies to nothing, the code being good only if the model is.
 
 **Open-closed and Liskov are not approximable** and stay in human review. Write that in the profile invariants rather than letting anyone believe they are covered.
 
