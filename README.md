@@ -102,7 +102,7 @@ flowchart LR
 | 🔍 QA | **rien du tout** | lecture seule, elle ne corrige jamais |
 | 🎛️ Orchestrateur | l'état d'avancement | ni code, ni tests |
 
-Pourquoi QA ne corrige rien : si celui qui vérifie peut aussi réparer, il répare au lieu de signaler, et vous ne saurez jamais combien de fois c'est arrivé.
+**Pourquoi QA ne répare rien ?** Parce que réparer va plus vite que signaler. Elle tombe sur un test qui ne teste rien : le corriger prend deux minutes, expliquer pourquoi il était creux en prend dix. Alors elle corrige. Le rapport dit « conforme », l'Implementer n'apprend rien, et le prochain test creux sera écrit exactement pareil.
 
 ---
 
