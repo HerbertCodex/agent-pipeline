@@ -46,7 +46,7 @@ describe("render-proposal: what it agrees to render", () => {
       decisions_for_operator: [{ id: "N1", question: "combien ?", product_recommendation: "cinq", alternatives: ["trois"] }],
     });
     assert.equal(status, 0, output);
-    assert.match(output, /tour 3/);
+    assert.match(output, /round 3/);
     assert.match(html, /Emprunter/);
     assert.match(html, /un exemplaire sorti ne se prete pas deux fois/);
     assert.match(html, /reservation/);
@@ -62,7 +62,7 @@ describe("render-proposal: what it agrees to render", () => {
     sandbox ??= createSandbox();
     const result = run(sandbox, "render-proposal.mjs", ["/absent.json", join(sandbox, "x.html")]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /illisible/);
+    assert.match(result.output, /unreadable/);
   });
 });
 
@@ -113,7 +113,7 @@ describe("render-proposal: the page says where the round stands", () => {
         { id: "N1", question: "combien de prets ?", product_recommendation: "cinq", alternatives: ["trois"] },
       ],
     });
-    assert.match(html, /1 question\(s\) ouverte\(s\)/);
+    assert.match(html, /1 open question\(s\)/);
     assert.match(html, /combien de prets \?/);
     assert.match(html, /duree portee a 21 jours/);
     assert.ok(

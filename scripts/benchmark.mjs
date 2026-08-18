@@ -92,7 +92,7 @@ function start(args) {
   };
   writeFileSync(PENDING, JSON.stringify(pending, null, 2));
 
-  console.log(`run ouvert : empreinte ${pending.fingerprint}, base ${pending.base_ref}`);
+  console.log(`run open: fingerprint ${pending.fingerprint}, base ${pending.base_ref}`);
   if (pending.branch === "main") {
     console.log(
       "ATTENTION: you are on main. The protocol asks for a throwaway branch from the starting tag.",
@@ -155,7 +155,7 @@ function finish() {
   writeFileSync(RUNS, existing + separator + JSON.stringify(run) + "\n");
   writeFileSync(PENDING, "");
 
-  console.log(`run ferme : ${run.minutes} min, ${run.issues} issue(s), ${run.cycles} cycle(s)`);
+  console.log(`run closed: ${run.minutes} min, ${run.issues} issue(s), ${run.cycles} cycle(s)`);
   if (run.fingerprint_start !== run.fingerprint_end) {
     console.log(
       "WARNING: the pipeline configuration changed DURING the run. This result measures no configuration in particular.",
@@ -178,7 +178,7 @@ function report() {
   }
 
   console.log("# Spec etalon — runs enregistres\n");
-  console.log("  empreinte     runs  min   issues  cycles  rejets  decouv.  echap.  criteres");
+  console.log("  fingerprint   runs  min   issues  cycles  rejects  found    echap.  criteres");
   for (const [key, list] of groups) {
     const avg = (pick) => Math.round((list.reduce((s, r) => s + pick(r), 0) / list.length) * 10) / 10;
     console.log(

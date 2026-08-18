@@ -38,6 +38,10 @@ Also refused: a proposal without `functional_scope`, a feature without a busines
 
 An empty `decisions_for_operator` is refused **unless** the proposal declares `scope_final: true`: the round where nothing is left to decide exists, and it is stated. A missing field remains an error in every case. Without that exit, a validator that always demands at least one question teaches agents to manufacture one — and a manufactured question costs an operator round for nothing.
 
+**A proposal proves it was rendered for review.** `spec_proposal` carries `review_page { path }`, and `validate-handoff` re-reads that file: it must exist, carry the digest `render-proposal` stamps into it, and that digest must match the one recomputed from the round, the functional scope, the submitted decisions and `scope_final`. A proposal nobody rendered, a page produced by something else, or a page rendered before the scope moved are all refused.
+
+Until 2026-08-18 the framework produced these pages and nothing required them: the review happened on the days someone remembered. That is the failure this document warns about everywhere else — a mechanism no command checks does not happen — and it was sitting in the framework's own review step.
+
 `spec_plan` carries `approved_proposal { path, digest_sha256, approved_at, round }`: a precise round is approved, not a conversation. The validator re-reads the file and recomputes its digest, so a plan derived from a proposal that does not exist, from an invented digest, or **from a proposal modified after approval** is refused. That last case is the one that matters — without it, one could have a fourteen-day loan approved and plan thirty.
 
 Nothing in the plan contradicts the approved scope. If the decomposition reveals that the scope does not hold, Product does not quietly adjust it: it returns to phase 1 with one more round saying what it found.

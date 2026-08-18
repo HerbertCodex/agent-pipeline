@@ -74,7 +74,7 @@ export function computeWave(records, rules, specId = null) {
     if (sibling != null) {
       waiting.push({
         id: record.id,
-        reason: `serialisee derriere ${sibling.id} de la meme vague sur ${sibling.pattern}`,
+        reason: `serialised behind ${sibling.id} of the same wave on ${sibling.pattern}`,
       });
       continue;
     }

@@ -38,9 +38,31 @@ function validate(overrides) {
   return run(sandbox, "validate-handoff.mjs", [path]);
 }
 
+/**
+ * Valide une proposition apres l'avoir rendue en page de relecture.
+ *
+ * Toute proposition doit desormais presenter la page que l'operateur a
+ * lue. Les cas qui verifient autre chose passent par ici pour satisfaire
+ * cette porte sans la contourner : declarer un faux chemin la rendrait
+ * decorative dans la moitie de la suite.
+ *
+ * @param overrides - champs de la proposition
+ * @returns le resultat de validate-handoff
+ */
+function validateReviewed(overrides) {
+  sandbox ??= createSandbox();
+  const handoff = { ...BASE, ...overrides };
+  const source = writeJson(sandbox, "reviewed.json", handoff);
+  const page = join(sandbox, "reviewed.html");
+  const rendered = run(sandbox, "render-proposal.mjs", [source, page]);
+  assert.equal(rendered.status, 0, rendered.output);
+  const path = writeJson(sandbox, "handoff.json", { ...handoff, review_page: { path: page } });
+  return run(sandbox, "validate-handoff.mjs", [path]);
+}
+
 describe("validate-handoff: a proposal submits choices", () => {
   test("accepts a complete proposal", () => {
-    const result = validate({ mode: "spec_proposal", round: 1, functional_scope: SCOPE, decisions_for_operator: [DECISION] });
+    const result = validateReviewed({ mode: "spec_proposal", round: 1, functional_scope: SCOPE, decisions_for_operator: [DECISION] });
     assert.equal(result.status, 0, result.output);
   });
 
@@ -98,7 +120,7 @@ describe("validate-handoff: a round says what it was asked", () => {
   });
 
   test("accepts a round 2 that says what changed", () => {
-    const result = validate({
+    const result = validateReviewed({
       mode: "spec_proposal",
       round: 2,
       functional_scope: SCOPE,
@@ -117,7 +139,7 @@ describe("validate-handoff: a round with no question declares it", () => {
   });
 
   test("accepts an empty list when scope_final is declared", () => {
-    const result = validate({
+    const result = validateReviewed({
       mode: "spec_proposal",
       round: 1,
       functional_scope: SCOPE,
@@ -274,5 +296,79 @@ describe("validate-handoff: transitions and red proof", () => {
     const result = run(sandbox, "validate-handoff.mjs", [path]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /rationale missing/);
+  });
+});
+
+describe("validate-handoff: a proposal proves it was rendered for review", () => {
+  /**
+   * Rend une proposition en page de relecture dans le bac a sable.
+   *
+   * @param handoff - proposition a rendre
+   * @param name - nom du fichier de sortie
+   * @returns le chemin de la page produite
+   */
+  function renderPage(handoff, name) {
+    const source = writeJson(sandbox, `${name}.json`, handoff);
+    const target = join(sandbox, `${name}.html`);
+    const result = run(sandbox, "render-proposal.mjs", [source, target]);
+    assert.equal(result.status, 0, result.output);
+    return target;
+  }
+
+  const PROPOSAL = {
+    mode: "spec_proposal",
+    agent: "product",
+    round: 1,
+    scope: { spec_id: "s-t1" },
+    basis: { record_hash: "h", pipeline_version: 1 },
+    context: { heading: "## Context for orchestrator", body: "x" },
+    functional_scope: {
+      features: [{ name: "Emprunter", user_value: "un membre repart avec un livre", rules: ["un exemplaire sorti ne se prete pas deux fois"] }],
+      out_of_scope: ["reservation"],
+    },
+    decisions_for_operator: [{ id: "N1", question: "combien de jours ?", product_recommendation: "quatorze", alternatives: ["trente"] }],
+  };
+
+  test("refuses a proposal that declares no review page", () => {
+    sandbox ??= createSandbox();
+    const path = writeJson(sandbox, "handoff.json", PROPOSAL);
+    const result = run(sandbox, "validate-handoff.mjs", [path]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /review_page/);
+    assert.match(
+      result.output,
+      /nobody read|personne/i,
+      "the refusal says why the page exists, not only that it is missing",
+    );
+  });
+
+  test("refuses a page rendered from a different scope", () => {
+    sandbox ??= createSandbox();
+    const stale = renderPage(PROPOSAL, "stale");
+    const moved = {
+      ...PROPOSAL,
+      functional_scope: { ...PROPOSAL.functional_scope, out_of_scope: ["reservation", "amendes"] },
+      review_page: { path: stale },
+    };
+    const path = writeJson(sandbox, "handoff.json", moved);
+    const result = run(sandbox, "validate-handoff.mjs", [path]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /review_page/);
+  });
+
+  test("refuses a review page that does not exist", () => {
+    sandbox ??= createSandbox();
+    const path = writeJson(sandbox, "handoff.json", { ...PROPOSAL, review_page: { path: join(sandbox, "ghost.html") } });
+    const result = run(sandbox, "validate-handoff.mjs", [path]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /review_page/);
+  });
+
+  test("accepts a proposal whose page was rendered from itself", () => {
+    sandbox ??= createSandbox();
+    const page = renderPage(PROPOSAL, "fresh");
+    const path = writeJson(sandbox, "handoff.json", { ...PROPOSAL, review_page: { path: page } });
+    const result = run(sandbox, "validate-handoff.mjs", [path]);
+    assert.doesNotMatch(result.output, /review_page/, "the gate must be satisfiable, or it gets disabled the next day");
   });
 });

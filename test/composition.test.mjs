@@ -1,5 +1,6 @@
 import { test, describe, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import { createSandbox, destroySandbox, writeJson, run } from "./harness.mjs";
 
 let sandbox = null;
@@ -15,7 +16,11 @@ const SCOPE = {
 const DECISION = { question: "combien ?", product_recommendation: "cinq", alternatives: ["trois"] };
 
 /**
- * Construit un tour de proposition et le soumet au validateur.
+ * Construit un tour de proposition, le rend, puis le soumet au validateur.
+ *
+ * Le rendu n'est pas un detail de mise en place : toute proposition doit
+ * presenter la page que l'operateur a lue. Declarer un faux chemin ferait
+ * passer cette suite en desactivant la porte qu'elle traverse.
  *
  * @param overrides - champs a fusionner dans le tour de base
  * @returns le resultat d'execution du validateur
@@ -34,7 +39,12 @@ function round(overrides) {
     decisions_for_operator: [DECISION],
     ...overrides,
   };
-  return run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", handoff)]);
+  const source = writeJson(sandbox, "source.json", handoff);
+  const page = join(sandbox, "page.html");
+  const rendered = run(sandbox, "render-proposal.mjs", [source, page]);
+  assert.equal(rendered.status, 0, rendered.output);
+  const submitted = { ...handoff, review_page: { path: page } };
+  return run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", submitted)]);
 }
 
 const ONE = { round_reviewed: 1, summary: "une reponse", decided: [{ id: "N1" }] };

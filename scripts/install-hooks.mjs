@@ -55,7 +55,7 @@ function renderHook(name, config) {
   }
 
   if (spec.generated) {
-    for (const check of GENERATED_CHECKS) lines.push(`echo "[${name}] cible generee"`, check, "");
+    for (const check of GENERATED_CHECKS) lines.push(`echo "[${name}] generated target"`, check, "");
     const projectMap = config.commands?.project_map;
     if (typeof projectMap === "string") lines.push(`echo "[${name}] project_map"`, projectMap, "");
   }

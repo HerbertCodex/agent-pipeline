@@ -1,5 +1,52 @@
 import { readFileSync, existsSync } from "node:fs";
 import { loadRules, pathAllowed, sha256, fail } from "./lib.mjs";
+import { reviewDigest } from "./render-proposal.mjs";
+
+/**
+ * Confronte une proposition a la page que l'operateur est cense avoir lue.
+ *
+ * Le cadre produisait ces pages sans que rien n'oblige a les produire :
+ * une habitude, donc une regle qui ne s'applique que les jours ou l'on y
+ * pense. Elle est desormais adossee a une commande qui echoue, comme
+ * `approved_proposal` l'est deja pour la phase 2.
+ *
+ * La page porte l'empreinte de ce qu'elle affiche ; on la recalcule ici
+ * depuis la proposition. Une page rendue depuis un perimetre plus ancien
+ * ne correspond donc plus, et une proposition que personne n'a rendue n'a
+ * rien a presenter.
+ *
+ * @param handoff - proposition soumise
+ * @param errors - liste d'erreurs a completer
+ */
+function checkReviewPage(handoff, errors) {
+  const page = handoff.review_page;
+  if (page == null || typeof page.path !== "string" || page.path.length === 0) {
+    errors.push(
+      "review_page.path missing: a proposal nobody rendered is a proposal nobody read. " +
+        "Run render-proposal.mjs, hand the page to the operator, then declare it here.",
+    );
+    return;
+  }
+  if (!existsSync(page.path)) {
+    errors.push(`review_page.path not found: ${page.path}`);
+    return;
+  }
+  const rendered = readFileSync(page.path, "utf8").match(/name="proposal-review-digest" content="([0-9a-f]{64})"/);
+  if (rendered == null) {
+    errors.push(
+      `review_page ${page.path} carries no review digest: it was not produced by render-proposal.mjs, ` +
+        "so nothing confronts it with this proposal.",
+    );
+    return;
+  }
+  const expected = reviewDigest(handoff);
+  if (rendered[1] !== expected) {
+    errors.push(
+      `review_page ${page.path} does not match this proposal: page ${rendered[1].slice(0, 8)}, ` +
+        `proposal ${expected.slice(0, 8)}. The scope moved after rendering — render it again and have it re-read.`,
+    );
+  }
+}
 
 /**
  * Valide un handoff d'agent contre la source machine des regles.
@@ -181,6 +228,7 @@ function main() {
   }
 
   if (handoff.mode === "spec_proposal") {
+    checkReviewPage(handoff, errors);
     if (!Number.isInteger(handoff.round) || handoff.round < 1) {
       errors.push("round missing or invalid: a proposal is counted in rounds, the first one is 1");
     }
@@ -318,7 +366,7 @@ function main() {
     for (const error of errors) console.error(`invalid: ${error}`);
     process.exit(1);
   }
-  console.log(`handoff valide (${agent}, ${handoff.mode}, outcome ${handoff.outcome})`);
+  console.log(`handoff valid (${agent}, ${handoff.mode}, outcome ${handoff.outcome})`);
 }
 
 main();

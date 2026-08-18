@@ -1,6 +1,32 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { fail } from "./lib.mjs";
+import { fail, sha256 } from "./lib.mjs";
 import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
+
+/**
+ * Empreinte de ce que la page montre a l'operateur.
+ *
+ * Elle porte le perimetre fonctionnel, les choix soumis et le tour — ce sur
+ * quoi l'operateur se prononce — et rien d'autre : un champ de forme qui
+ * bougerait sans changer la lecture ne doit pas invalider une relecture
+ * deja faite.
+ *
+ * Le calcul est le meme ici et dans `validate-handoff`. C'est ce qui permet
+ * a la porte de confronter la page a la proposition sans que l'une ait a
+ * connaitre l'autre, et sans qu'un document contienne sa propre empreinte.
+ *
+ * @param handoff - proposition rendue
+ * @returns l'empreinte hexadecimale du contenu soumis a relecture
+ */
+export function reviewDigest(handoff) {
+  return sha256(
+    JSON.stringify({
+      round: handoff.round ?? null,
+      functional_scope: handoff.functional_scope ?? null,
+      decisions_for_operator: handoff.decisions_for_operator ?? null,
+      scope_final: handoff.scope_final === true,
+    }),
+  );
+}
 
 /**
  * Rend une section de fonctionnalites avec leurs regles numerotees.
@@ -114,13 +140,13 @@ ${note ? `<p class="note">${esc(note)}</p>` : ""}</section>`;
  */
 function main() {
   const [source, target] = process.argv.slice(2);
-  if (!source || !target) fail("usage : render-proposal.mjs <proposition.json> <sortie.html>");
+  if (!source || !target) fail("usage: render-proposal.mjs <proposal.json> <output.html>");
 
   let handoff;
   try {
     handoff = JSON.parse(readFileSync(source, "utf8"));
   } catch (error) {
-    fail(`proposition illisible : ${error.message}`);
+    fail(`proposal unreadable: ${error.message}`);
   }
   if (handoff.mode !== "spec_proposal") {
     fail(`mode ${handoff.mode} : only a spec_proposal renders as a review page`);
@@ -133,16 +159,16 @@ function main() {
   const pledges =
     (handoff.design_commitments_carried_into_issues ?? []).length + (handoff.pr_commitments ?? []).length;
   const specId = handoff.scope?.spec_id ?? "spec";
-  const status = handoff.scope_final === true ? "scope settled" : `${open.length} question(s) ouverte(s)`;
+  const status = handoff.scope_final === true ? "scope settled" : `${open.length} open question(s)`;
   const title = handoff.title ?? `Scope ${specId}`;
 
   const counts = [
-    ["Fonctionnalites", features.length],
-    ["Regles", rules],
+    ["Features", features.length],
+    ["Rules", rules],
     ["Exclusions", (scope.out_of_scope ?? []).length],
-    ["Engagements", pledges],
-    ["Issues prevues", (handoff.decomposition_titles?.titles ?? []).length],
-    ["Questions ouvertes", open.length],
+    ["Commitments", pledges],
+    ["Issues planned", (handoff.decomposition_titles?.titles ?? []).length],
+    ["Open questions", open.length],
   ]
     .filter(([, value]) => value > 0 || value === 0)
     .map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${value}</dd></div>`)
@@ -152,35 +178,37 @@ function main() {
   const feedback = handoff.operator_feedback?.summary;
 
   const body = `<header class="masthead">
-<p class="eyebrow">Spec ${esc(specId)} · phase 1 · tour ${esc(handoff.round ?? "?")} · ${esc(status)}</p>
+<p class="eyebrow">Spec ${esc(specId)} &middot; phase 1 &middot; round ${esc(handoff.round ?? "?")} &middot; ${esc(status)}</p>
 <h1>${esc(title)}</h1>
 ${scope.intent ? `<p class="lede">${esc(scope.intent)}</p>` : ""}
 <dl class="stamp">${counts}${
     digest
-      ? `<div style="flex-basis:100%"><dt>Empreinte du document</dt><dd class="digest">${esc(digest)}</dd></div>`
+      ? `<div style="flex-basis:100%"><dt>Document digest</dt><dd class="digest">${esc(digest)}</dd></div>`
       : ""
   }</dl>
 <p class="verbatim">Text taken <strong>verbatim</strong> from the proposal, with no rewording: an obliging re-read would open a gap between what you read and what the digest freezes.</p>
-${feedback ? `<p class="note"><strong>Depuis le tour precedent.</strong> ${esc(feedback)}</p>` : ""}
+${feedback ? `<p class="note"><strong>Since the previous round.</strong> ${esc(feedback)}</p>` : ""}
 </header>
 ${renderDecisions(open)}
 ${renderFeatures(features)}
 ${renderExclusions(scope.out_of_scope)}
 ${renderPledges(handoff.design_commitments_carried_into_issues, "Design commitments", "Constraints carried into the issues and enforceable in review. These are not suggestions.")}
-${renderPledges(handoff.pr_commitments, "Ce que la PR dira", "Transparency commitments. The exposed surfaces are named, not softened.")}
+${renderPledges(handoff.pr_commitments, "What the PR will say", "Transparency commitments. The exposed surfaces are named, not softened.")}
 ${renderTitles(handoff.decomposition_titles)}
-<section><div class="sec-head"><h2>Ce que l'approbation engage</h2></div>
-<p class="note">Approuver ce document en fige le contenu. ${
-    digest ? `L'empreinte <code>${esc(digest.slice(0, 8))}…</code> binds phase 2: ` : "Phase 2 is bound to this document: "
-  }any decomposition derived f'un autre document, ou de celui-ci modifie apres coup, est refuse par <code>validate-handoff</code> avec un code de sortie non nul. <strong>Ce que ce document ne dit pas ne sera pas construit ; ce qu'il dit de travers sera construit de travers.</strong></p></section>
+<section><div class="sec-head"><h2>What approving commits you to</h2></div>
+<p class="note">Approving this document freezes its content. ${
+    digest ? `Digest <code>${esc(digest.slice(0, 8))}&hellip;</code> binds phase 2: ` : "Phase 2 is bound to this document: "
+  }any decomposition derived from another document, or from this one modified afterwards, is refused by <code>validate-handoff</code> with a non-zero exit code. <strong>What this document does not say will not be built; what it says wrongly will be built wrongly.</strong></p></section>
 `;
 
-  const page = shell(`Scope ${specId}`, body);
+  const page =
+    `<meta name="proposal-review-digest" content="${reviewDigest(handoff)}">\n` +
+    shell(`Scope ${specId}`, body);
   writeFileSync(target, page);
   console.log(
-    `written: ${target} (tour ${handoff.round}, ${features.length} fonctionnalites, ${rules} regles, ${open.length} question(s) ouverte(s))`,
+    `written: ${target} (round ${handoff.round}, ${features.length} features, ${rules} rules, ${open.length} open question(s))`,
   );
   console.log(SURFACE_HINT);
 }
 
-main();
+if (process.argv[1]?.endsWith("render-proposal.mjs")) main();

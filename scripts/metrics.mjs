@@ -91,7 +91,7 @@ function main() {
     return;
   }
 
-  console.log(`# Mesures — spec ${summary.spec}\n`);
+  console.log(`# Measurements - spec ${summary.spec}\n`);
   for (const [key, value] of Object.entries(summary)) {
     if (key === "spec") continue;
     console.log(`  ${key.padEnd(22)} ${value}`);
@@ -108,10 +108,10 @@ function main() {
     );
   }
 
-  console.log("\n## Echappees — defauts passes par QA, trouves plus tard\n");
+  console.log("\n## Escaped defects - passed QA, found later\n");
   if (escapes.length > 0) {
     for (const issue of escapes) {
-      console.log(`  ${issue.id} echappee de ${issue.escaped_from}`);
+      console.log(`  ${issue.id} escaped from ${issue.escaped_from}`);
     }
   } else if (discoveries.length === 0) {
     console.log(

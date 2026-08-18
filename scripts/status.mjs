@@ -154,7 +154,7 @@ function main() {
   }
   const escalated = columns.get("operator_escalation").length;
   const blocked = columns.get("blocked").length;
-  if (escalated + blocked > 0) console.log(`ATTENTION : ${blocked} blocked, ${escalated} escalade(s)`);
+  if (escalated + blocked > 0) console.log(`WARNING: ${blocked} blocked, ${escalated} escalation(s)`);
 
   if (process.argv.includes("--html")) {
     mkdirSync(config.store_dir, { recursive: true });

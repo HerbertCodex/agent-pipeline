@@ -69,7 +69,7 @@ function section(heading, blurb, entries, empty) {
  */
 function main() {
   const [target, proposalPath] = process.argv.slice(2);
-  if (!target) fail("usage : render-decisions.mjs <sortie.html> [proposition.json]");
+  if (!target) fail("usage: render-decisions.mjs <output.html> [proposal.json]");
 
   const config = loadConfig();
   const rules = loadRules();
@@ -119,7 +119,7 @@ function main() {
 
   const pending = [];
   if (proposalPath != null) {
-    if (!existsSync(proposalPath)) fail(`proposition not found: ${proposalPath}`);
+    if (!existsSync(proposalPath)) fail(`proposal not found: ${proposalPath}`);
     const proposal = JSON.parse(readFileSync(proposalPath, "utf8"));
     if (proposal.mode !== "spec_proposal") fail("the second argument must be a spec proposal");
     for (const decision of proposal.decisions_for_operator ?? []) {

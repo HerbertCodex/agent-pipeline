@@ -35,8 +35,30 @@ const FRENCH = [
   "verrou",
   "aux", "ainsi", "ces", "cela", "des", "donc", "et", "les", "ses", "une",
   "applique", "profil", "synchronise", "synchronises", "reussi", "termine",
+  "approbation", "illisible", "ouverte", "ouvertes", "precedente", "prevue",
+  "prevues", "valide", "motif", "mesures", "escalade", "escalades", "ferme", "valides", "rendu", "rendue", "amorce", "seme",
+  "cible", "echappee", "echappees", "empreinte", "fonctionnalite",
+  "fonctionnalites", "generee", "generees", "serialisee", "serialisees",
 ];
-const DETECT = new RegExp(`(?<![-\\w])(${FRENCH.join("|")})\\b(?![-\\w])`, "i");
+
+const WORDS = new RegExp(`(?<![-\\w])(${FRENCH.join("|")})\\b(?![-\\w])`, "i");
+
+/**
+ * Confronte une chaine aux mots outils francais.
+ *
+ * Ce qu'elle ne fait PAS : deviner. Les terminaisons ont ete essayees et
+ * retirees — `guarantee` et `questionnaire` sont anglais, et une porte qui
+ * refuse de l'anglais est desactivee le lendemain. La liste a donc une
+ * traine longue : chaque mot qui fuit s'ajoute apres coup, et c'est la
+ * limite assumee de ce controle.
+ *
+ * @param text - chaine a examiner
+ * @returns le fragment francais trouve, ou null
+ */
+function frenchIn(text) {
+  const word = text.match(WORDS);
+  return word == null ? null : word[1];
+}
 
 /**
  * Le mot francais ne compte pas s'il est suivi d'un trait d'union : `sans-serif`
@@ -88,8 +110,8 @@ describe("the framework speaks one language", () => {
     const offenders = [];
     for (const name of readdirSync(join(FRAMEWORK, "scripts")).filter((f) => f.endsWith(".mjs"))) {
       for (const line of userFacing(readFileSync(join(FRAMEWORK, "scripts", name), "utf8"))) {
-        const hit = line.match(DETECT);
-        if (hit != null) offenders.push(`${name} : « ${line.slice(0, 60)} » (${hit[1]})`);
+        const hit = frenchIn(line);
+        if (hit != null) offenders.push(`${name} : « ${line.slice(0, 60)} » (${hit})`);
       }
     }
     assert.deepEqual(
@@ -105,8 +127,8 @@ describe("the framework speaks one language", () => {
     for (const name of readdirSync(join(FRAMEWORK, "test")).filter((f) => f.endsWith(".mjs"))) {
       if (name === SELF) continue;
       for (const title of testTitles(readFileSync(join(FRAMEWORK, "test", name), "utf8"))) {
-        const hit = title.match(DETECT);
-        if (hit != null) offenders.push(`${name} : « ${title.slice(0, 60)} » (${hit[1]})`);
+        const hit = frenchIn(title);
+        if (hit != null) offenders.push(`${name} : « ${title.slice(0, 60)} » (${hit})`);
       }
     }
     assert.deepEqual(
@@ -137,8 +159,12 @@ describe("the framework speaks one language", () => {
       "the analysis must carry business_rules, even empty",
       "font-family:ui-sans-serif,system-ui,Roboto,sans-serif",
       "written: 3 files, 2 sections, gates green",
+      "see the questionnaire, then the committee guarantee for each employee",
+      "renders a page and counts the features it carries",
+      "3 named exclusions and 2 design engagements, per the proposition",
+      "a sortie against precedent, tranche by tranche, until cloture",
     ];
-    const wrong = english.filter((line) => DETECT.test(line));
+    const wrong = english.filter((line) => frenchIn(line) != null);
     assert.deepEqual(wrong, [], "un detecteur qui refuse de l'anglais rendrait la porte impossible a satisfaire");
   });
 });

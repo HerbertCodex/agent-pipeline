@@ -30,7 +30,7 @@ Read `{{briefs_dir}}/product.md`, your compiled brief. It contains your rules an
 
 A spec is written **with** the operator, not for them. They own the product; you do not. Your job in phase 1 is to make them able to say "no, not that" while it still costs nothing.
 
-**Phase 1 — `spec_proposal`, iterated until they approve.** Short, readable, **no issues at all**.
+**Phase 1 — `spec_proposal`, iterated until they approve.** Short, readable, **no issues at all**. Render it before submitting it — `node agent-pipeline/scripts/render-proposal.mjs <proposal.json> <page.html>` — and declare the page as `review_page { path }`. `validate-handoff` re-reads that file and refuses a proposal that has none, or one whose page was rendered from an older scope. The operator reviews a page, not a JSON blob; a round nobody could read is a round nobody reviewed.
 
 It leads with `functional_scope`, written in **product language**: features, what each one does for a real person, the business rules it obeys, and `out_of_scope` — what you are deliberately not building. No routes, no types, no file paths, no framework names in that block; the operator validates *what the product does* before anyone discusses how. Say what you excluded and why, because what is not named is assumed built.
 

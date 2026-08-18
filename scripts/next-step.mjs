@@ -169,7 +169,7 @@ function main() {
   console.log(`  issue    ${step.issue}${step.spec ? `  (${step.spec})` : ""}`);
   console.log(`  phase    ${step.phase}`);
   console.log(`  action   ${step.verb} ${step.actor}`);
-  console.log(`  motif    ${step.reason}`);
+  console.log(`  reason   ${step.reason}`);
   console.log(`  version  ${step.version}`);
   console.log(`\nafter the step, check it did not overflow:`);
   console.log(`  node agent-pipeline/scripts/next-step.mjs --assert-advanced ${step.issue} ${step.version}`);

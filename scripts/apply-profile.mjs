@@ -74,7 +74,7 @@ function projectBlock(text, name, source) {
   if (start === -1) fail(`${source}: bloc <!-- claude:${name} --> absent`);
   const from = start + open.length;
   const end = text.indexOf("\n<!-- /claude -->", from);
-  if (end === -1) fail(`${source}: claude block ${name} non ferme`);
+  if (end === -1) fail(`${source}: claude block ${name} not closed`);
   const body = text.slice(from, end).trim();
   if (body.length === 0) fail(`${source}: claude block ${name} empty`);
   return body;
