@@ -202,6 +202,20 @@ Three things stay with the human operator, in every profile: **installing a depe
 
 Report, do not invent: an unavailable command is escalated, never replaced by a substitute pretending to prove the real system.
 
+## Projects with screens declare their design system
+
+`apply-profile` refuses a `frontend`, `mobile` or `fullstack` project that has no `design_system` block. A back-end project is never asked: putting a question where there is no screen produces an empty key that people learn to skip, and a question people learn to skip ends up hiding the ones that matter.
+
+The reason is the architecture's reason, one level down. Tokens, primitives, product components and screens form an order that cannot be reversed afterwards: primitives written before tokens carry hardcoded values, and a finished mockup drawn before tokens invents a scale the code then copies. Left undeclared, the agent taking the first issue settles all of it alone — it needs a colour and a spacing to write anything — and every issue after inherits a decision nobody approved.
+
+```
+node agent-pipeline/scripts/render-design-system.mjs <output.html> <frontend|mobile|fullstack> [analysis.json]
+```
+
+The page lays out the four layers in the order they constrain each other, answers the "do we draw the mockup first?" question rather than dodging it, and weighs the three honest options for the primitives — a full component library, an unstyled one, or writing them yourself — with accessibility named as the criterion that decides. A library that handles neither focus nor the keyboard nor screen reader announcements is a set of styles, and the hard work is still ahead.
+
+Declare `{ tokens, primitives, decided_at }`. The core does not judge the system: `own` and a library name are equally valid answers. It requires **one** source of truth for the tokens, because two drift apart in silence and the drift is only found in a screenshot.
+
 ## The `duplication` gate, required of every profile
 
 Every prompt already demands a **reuse note** for any new component, module or helper, and that note is judged against the project map. Judged by a human, in review — which means judged when someone remembers to look. On a codebase with two hundred small components, nobody looks.

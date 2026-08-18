@@ -70,7 +70,11 @@ A `## Context for Implementer (REGRESSION)` block means QA found a defect no tes
 ## REJECTIONS
 
 - Unclear spec -> `blocked_product`, heading `## Context for Product (SPEC UNCLEAR)`: why no binary test can be written and what decision is required.
-- Required dependency -> `blocked_dependency`, heading `## Context for Product (DEPENDENCY)` with purpose and alternatives considered. Never work around a missing dependency by hand-rolling it on a security surface.
+- Required dependency -> `blocked_dependency`, mode `dependency_assessment`, heading `## Context for Product (DEPENDENCY)`. Never work around a missing dependency by hand-rolling it on a security surface.
+
+  The request is **argued, not filed**. It carries `need` in product terms, `hand_rolled_cost` (how much code it replaces, and on which surface, so refusing is an informed choice), `candidates` with for each one its `license`, `maintenance.last_release`, `security.advisories_open` and `security.runtime_privileges`, a `recommendation`, and `alternatives_rejected` — which is never empty, because writing it by hand was always one of them. These are measurements, not impressions, and `validate-handoff` refuses the ones you did not take.
+
+  Render it before submitting: `node agent-pipeline/scripts/render-dependency.mjs <assessment.json> <page.html>`, and declare it as `review_page { path }`. A library evaluated and set aside inside a handoff nobody rendered is exactly how, on 2026-08-17, an operator discovered a rejected validation library by reading the code of an already implemented issue.
 - Missing real infrastructure, after inspecting existing harnesses -> `blocked_infrastructure`; never a replacement mock.
 
 ## DISCOVERIES

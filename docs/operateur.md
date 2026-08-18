@@ -219,6 +219,8 @@ node agent-pipeline/scripts/store-verify.mjs     # store invariants
 node agent-pipeline/scripts/render-proposal.mjs <proposal.json> <out.html>   # review a spec before approving
 node agent-pipeline/scripts/render-decisions.mjs <out.html> [proposal.json]  # what awaits your decision
 node agent-pipeline/scripts/render-architecture.mjs <out.html> <type> [analysis.json]  # choose how to lay out the code
+node agent-pipeline/scripts/render-design-system.mjs <out.html> <type>       # for a project with screens
+node agent-pipeline/scripts/render-dependency.mjs <assessment.json> <out.html>  # weigh a package before installing it
 node agent-pipeline/scripts/architecture-drift.mjs <graph.json>              # when the layout no longer holds
 node agent-pipeline/scripts/preflight.mjs        # is every gate executable?
 node agent-pipeline/scripts/export-profile.mjs <dir>  # bundle this stack's gates for another project

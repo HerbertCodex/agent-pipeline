@@ -1,29 +1,38 @@
 import { readFileSync, existsSync } from "node:fs";
 import { loadRules, pathAllowed, sha256, fail } from "./lib.mjs";
 import { reviewDigest } from "./render-proposal.mjs";
+import { dependencyDigest } from "./render-dependency.mjs";
 
 /**
- * Confronte une proposition a la page que l'operateur est cense avoir lue.
+ * Confronte un document a la page que l'operateur est cense avoir lue.
  *
  * Le cadre produisait ces pages sans que rien n'oblige a les produire :
  * une habitude, donc une regle qui ne s'applique que les jours ou l'on y
- * pense. Elle est desormais adossee a une commande qui echoue, comme
+ * pense. Elle est adossee a une commande qui echoue, comme
  * `approved_proposal` l'est deja pour la phase 2.
  *
  * La page porte l'empreinte de ce qu'elle affiche ; on la recalcule ici
- * depuis la proposition. Une page rendue depuis un perimetre plus ancien
- * ne correspond donc plus, et une proposition que personne n'a rendue n'a
- * rien a presenter.
+ * depuis le document. Une page rendue depuis un contenu plus ancien ne
+ * correspond donc plus, et un document que personne n'a rendu n'a rien a
+ * presenter.
  *
- * @param handoff - proposition soumise
+ * Le mecanisme est partage entre les propositions de spec et les demandes
+ * de dependance parce que le probleme l'est : dans les deux cas un agent
+ * soumet un choix, et dans les deux cas le choix ne vaut que si quelqu'un
+ * a pu le lire.
+ *
+ * @param handoff - document soumis
  * @param errors - liste d'erreurs a completer
+ * @param digestOf - calcul d'empreinte propre au mode
+ * @param meta - nom de la balise portee par la page
+ * @param label - nom du document dans les messages
  */
-function checkReviewPage(handoff, errors) {
+function checkPage(handoff, errors, digestOf, meta, label) {
   const page = handoff.review_page;
   if (page == null || typeof page.path !== "string" || page.path.length === 0) {
     errors.push(
-      "review_page.path missing: a proposal nobody rendered is a proposal nobody read. " +
-        "Run render-proposal.mjs, hand the page to the operator, then declare it here.",
+      `review_page.path missing: nothing rendered this ${label} for the operator, so nobody read it. ` +
+        "Render it, hand the page over, then declare it here.",
     );
     return;
   }
@@ -31,21 +40,79 @@ function checkReviewPage(handoff, errors) {
     errors.push(`review_page.path not found: ${page.path}`);
     return;
   }
-  const rendered = readFileSync(page.path, "utf8").match(/name="proposal-review-digest" content="([0-9a-f]{64})"/);
+  const marker = new RegExp(`name="${meta}" content="([0-9a-f]{64})"`);
+  const rendered = readFileSync(page.path, "utf8").match(marker);
   if (rendered == null) {
     errors.push(
-      `review_page ${page.path} carries no review digest: it was not produced by render-proposal.mjs, ` +
-        "so nothing confronts it with this proposal.",
+      `review_page ${page.path} carries no review digest: it was not produced by the matching renderer, ` +
+        `so nothing confronts it with this ${label}.`,
     );
     return;
   }
-  const expected = reviewDigest(handoff);
+  const expected = digestOf(handoff);
   if (rendered[1] !== expected) {
     errors.push(
-      `review_page ${page.path} does not match this proposal: page ${rendered[1].slice(0, 8)}, ` +
-        `proposal ${expected.slice(0, 8)}. The scope moved after rendering — render it again and have it re-read.`,
+      `review_page ${page.path} does not match this ${label}: page ${rendered[1].slice(0, 8)}, ` +
+        `${label} ${expected.slice(0, 8)}. The content moved after rendering \u2014 render it again and have it re-read.`,
     );
   }
+}
+
+/**
+ * Confronte une demande de dependance a ce qu'elle doit prouver.
+ *
+ * Le prompt de l'implementer demande deja d'identifier la bibliotheque de
+ * reference et de dire pourquoi elle n'est pas utilisee. Rien ne le
+ * verifiait : sur ce depot, une bibliotheque de validation a ete evaluee
+ * puis ecartee a l'interieur d'un handoff, jamais soumise, et l'operateur
+ * l'a decouvert en lisant le code d'une issue deja implementee.
+ *
+ * Les champs exiges sont ceux qu'on ne peut pas remplir sans avoir
+ * regarde. Une licence, une date de derniere publication, un nombre
+ * d'avis de securite ouverts : ce sont des mesures, pas des impressions,
+ * et leur absence dit qu'on ne les a pas prises.
+ *
+ * @param handoff - demande soumise
+ * @param errors - liste d'erreurs a completer
+ */
+function checkDependencyAssessment(handoff, errors) {
+  if (typeof handoff.need !== "string" || handoff.need.trim().length === 0) {
+    errors.push("need missing: name the capability in product terms before naming a package");
+  }
+  if (typeof handoff.hand_rolled_cost !== "string" || handoff.hand_rolled_cost.trim().length === 0) {
+    errors.push(
+      "hand_rolled_cost missing: an operator cannot weigh a dependency without knowing what refusing it costs. " +
+        "Say how much code it replaces, and on which surface.",
+    );
+  }
+  const candidates = handoff.candidates;
+  if (!Array.isArray(candidates) || candidates.length === 0) {
+    errors.push("candidates empty: a dependency is argued against real alternatives, not requested by name");
+  } else {
+    candidates.forEach((candidate, index) => {
+      for (const field of ["name", "does", "license"]) {
+        if (typeof candidate?.[field] !== "string" || candidate[field].length === 0) {
+          errors.push(`candidates[${index}].${field} missing`);
+        }
+      }
+      if (candidate?.maintenance?.last_release == null) {
+        errors.push(`candidates[${index}].maintenance.last_release missing: a library that does the job and is unmaintained does not do the job`);
+      }
+      if (candidate?.security?.advisories_open == null) {
+        errors.push(`candidates[${index}].security.advisories_open missing: its advisories become yours the day you install it`);
+      }
+      if (!Array.isArray(candidate?.security?.runtime_privileges)) {
+        errors.push(`candidates[${index}].security.runtime_privileges missing: say what it reaches at runtime, network, disk or environment`);
+      }
+    });
+  }
+  if (!Array.isArray(handoff.alternatives_rejected) || handoff.alternatives_rejected.length === 0) {
+    errors.push(
+      "alternatives_rejected empty: something was always set aside, if only writing it by hand. " +
+        "A rejection taken in silence is what this mode exists to surface.",
+    );
+  }
+  checkPage(handoff, errors, dependencyDigest, "dependency-review-digest", "assessment");
 }
 
 /**
@@ -227,8 +294,12 @@ function main() {
     }
   }
 
+  if (handoff.mode === "dependency_assessment") {
+    checkDependencyAssessment(handoff, errors);
+  }
+
   if (handoff.mode === "spec_proposal") {
-    checkReviewPage(handoff, errors);
+    checkPage(handoff, errors, reviewDigest, "proposal-review-digest", "proposal");
     if (!Number.isInteger(handoff.round) || handoff.round < 1) {
       errors.push("round missing or invalid: a proposal is counted in rounds, the first one is 1");
     }

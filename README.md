@@ -189,6 +189,30 @@ node agent-pipeline/scripts/render-architecture.mjs archi.html backend
 
 Le framework **ne choisit pas à votre place**. Et il vous met en garde contre l'erreur la plus fréquente : prendre l'architecture la plus lourde par précaution, c'est payer une assurance qu'on n'utilisera peut-être jamais — prélevée sur chaque fichier écrit, pendant des années.
 
+### 🎨 Si le projet a des écrans
+
+```bash
+node agent-pipeline/scripts/render-design-system.mjs design.html frontend
+```
+
+La page pose **un ordre**, et l'ordre est tout son contenu : jetons → primitives → composants de produit → écrans.
+
+> 🎯 **« On fait la maquette d'abord ? »** Une maquette d'exploration, oui, tout de suite. LA maquette finie, non : dessinée avant les jetons, elle invente une échelle — des espacements choisis à l'œil, six gris presque identiques — et le code la recopie faute d'autre référence. Vous n'avez alors pas un design system, vous avez une maquette transcrite.
+
+Elle pèse aussi le choix qui revient partout — écrire ses primitives, prendre une bibliothèque sans style, prendre une bibliothèque complète — avec **l'accessibilité comme critère qui tranche**. Une bibliothèque qui ne gère ni le focus, ni le clavier, ni les annonces de lecteur d'écran n'est pas une bibliothèque de composants : c'est un jeu de styles.
+
+`apply-profile` refuse un projet frontend, mobile ou fullstack sans bloc `design_system`. Un back-end n'est jamais interrogé.
+
+### 📦 Avant d'installer quoi que ce soit
+
+Aucun agent n'installe. Il **argumente et s'arrête** :
+
+```bash
+node agent-pipeline/scripts/render-dependency.mjs evaluation.json page.html
+```
+
+La page porte, pour chaque candidat : licence, poids transitif, date de dernière publication, **avis de sécurité ouverts**, privilèges d'exécution — et ce que coûterait de l'écrire à la main, pour que refuser soit un choix informé. `validate-handoff` refuse une demande à qui il manque une de ces mesures : elles ne se remplissent pas sans avoir regardé.
+
 ### ♻️ Si un projet de la même stack tourne déjà
 
 Ne réécrivez pas ses portes. Exportez-les :
@@ -315,7 +339,7 @@ Le framework fournit le détecteur, sans aucune dépendance, pour qu'aucun proje
 | `docs/` | **en anglais** — les modèles suivent mieux l'anglais. `nouveau-profil.md` pour installer, `operateur.md` pour vous |
 | `templates/` | les fichiers de politique, le workflow CI |
 | `skills/` | conseils de code, indépendants de toute stack |
-| `test/` | **173 tests** sur le framework lui-même |
+| `test/` | **201 tests** sur le framework lui-même |
 
 **Prérequis** : Node, git, et le client de votre forge (`gh`, `glab`). Rien d'autre.
 

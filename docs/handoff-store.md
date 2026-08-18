@@ -20,7 +20,7 @@ Every sub-agent ends with a single JSON block between `AGENT_HANDOFF_START` and 
 }
 ```
 
-Modes: `spec_proposal` (Product submits its choices, no issues), `spec_plan` (Product proposes spec and issues), `issue_handoff` (issue transition), `pr_result` (Product reports the PR), `architecture_decision_proposal`. The context headings allowed per role, the phases each role may leave, and the QA fault routing all live in the `rules_path` file; `validate-handoff` refuses any other pairing, and there is nothing to decide.
+Modes: `spec_proposal` (Product submits its choices, no issues), `spec_plan` (Product proposes spec and issues), `issue_handoff` (issue transition), `dependency_assessment` (a role argues for a package it may not install), `pr_result` (Product reports the PR), `architecture_decision_proposal`. The context headings allowed per role, the phases each role may leave, and the QA fault routing all live in the `rules_path` file; `validate-handoff` refuses any other pairing, and there is nothing to decide.
 
 ## A spec goes through the operator, and the gate checks it
 
@@ -49,6 +49,14 @@ Nothing in the plan contradicts the approved scope. If the decomposition reveals
 **The bar is not ambiguity.** Product is competent, and a competent decision taken in silence is exactly what this mechanism exists to prevent: on 2026-08-17 a validation library was evaluated and rejected inside a handoff, never submitted, and the operator discovered it by reading the code of an already implemented issue. The question is not "is this ambiguous" but **"would the product owner be surprised to find this in a diff"**.
 
 A QA rejection carries a `fault` among `spec`, `test`, `dependency`, `code`, `infrastructure`; an approval carries none. A `fault: code` carries a `regression` block (`required`, then `criterion` or `reason`).
+
+## A dependency is argued, and the argument is rendered
+
+No agent installs anything. `dependency_assessment` is how one stops and makes its case: `need` in product terms, `hand_rolled_cost` — how much code the package replaces and on which surface, so that refusing is an informed choice rather than a reflex — `candidates` each carrying `license`, `maintenance.last_release`, `security.advisories_open` and `security.runtime_privileges`, a `recommendation`, and `alternatives_rejected`, never empty because writing it by hand was always one of them.
+
+Those fields are measurements. A licence, a last-release date, a count of open advisories cannot be filled in without having looked, and their absence says the looking did not happen — so `validate-handoff` refuses it.
+
+The assessment also declares `review_page { path }`, and the same digest confrontation applies as for a spec proposal: rendered by `render-dependency`, matching the content submitted. **The failure this closes is documented**: on 2026-08-17 a validation library was evaluated and rejected inside a handoff, never submitted, and the operator discovered it by reading the code of an already implemented issue. The rule existed in the prompts the whole time; nothing made it fail.
 
 ## What a handoff asserts, and what it proves
 

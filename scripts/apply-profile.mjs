@@ -252,6 +252,48 @@ function applySkills(config, checkMode) {
 }
 
 /**
+ * Refuse un projet a ecrans qui ne declare pas son design system.
+ *
+ * Le probleme est celui de l'architecture, un cran plus bas : jetons,
+ * primitives et composants forment un ordre qu'on ne remonte pas apres
+ * coup. L'agent de la premiere issue le tranchera de toute facon — il lui
+ * faut bien une couleur et un espacement — et tous les suivants en
+ * heriteront sans que personne ne l'ait valide.
+ *
+ * Le core ne juge pas le systeme retenu : ecrire ses primitives ou prendre
+ * une bibliotheque sont deux reponses defendables. Il exige qu'il y ait
+ * UNE source de verite pour les jetons, et que le sort des primitives soit
+ * dit. Un projet sans ecran n'est pas concerne : lui poser la question
+ * produirait une cle vide qu'on apprend a ignorer.
+ *
+ * @param config - configuration du projet hote
+ */
+function checkDesignSystem(config) {
+  if (!["frontend", "mobile", "fullstack"].includes(config.architecture?.project_type)) return;
+  const chosen = config.design_system;
+  if (chosen == null || typeof chosen !== "object") {
+    fail(
+      "design_system missing: this project has screens, so tokens, primitives and components form an " +
+        "order that cannot be reversed later. Left undeclared, the agent taking the first issue settles " +
+        "it alone and every issue after that inherits the decision. Run render-design-system.mjs, then " +
+        "declare { tokens, primitives, decided_at }.",
+    );
+  }
+  if (typeof chosen.tokens !== "string" || chosen.tokens.length === 0) {
+    fail(
+      "design_system.tokens missing: name the single source of truth for colours, spacing and type scale. " +
+        "Two sources drift apart in silence, and the drift is only found in a screenshot.",
+    );
+  }
+  if (typeof chosen.primitives !== "string" || chosen.primitives.length === 0) {
+    fail(
+      'design_system.primitives missing: say "own" or name the library. It is the layer where duplication ' +
+        "starts \u2014 an agent that finds no button writes one, then another.",
+    );
+  }
+}
+
+/**
  * Refuse un profil importe tant que ses seuils n'ont pas ete remesures.
  *
  * Un profil emporte des bornes calibrees sur le code d'un autre projet.
@@ -363,6 +405,7 @@ function main() {
   }
   checkArchitecture(config);
   checkCalibration(config);
+  checkDesignSystem(config);
   for (const role of Object.keys(config.file_policy)) {
     if (!ROLES.includes(role)) fail(`file_policy: role inconnu "${role}"`);
   }
