@@ -223,6 +223,7 @@ node agent-pipeline/scripts/render-design-system.mjs <out.html> <type>       # f
 node agent-pipeline/scripts/render-dependency.mjs <assessment.json> <out.html>  # weigh a package before installing it
 node agent-pipeline/scripts/architecture-drift.mjs <graph.json>              # when the layout no longer holds
 node agent-pipeline/scripts/preflight.mjs        # is every gate executable?
+node agent-pipeline/scripts/project-map.mjs      # the stack-agnostic map, when no profile ships one
 node agent-pipeline/scripts/export-profile.mjs <dir>  # bundle this stack's gates for another project
 node agent-pipeline/scripts/import-profile.mjs <dir>  # install one, then recalibrate its thresholds
 node agent-pipeline/scripts/status.mjs           # issues by column, overview

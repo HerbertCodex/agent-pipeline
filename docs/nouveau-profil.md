@@ -216,6 +216,18 @@ The page lays out the four layers in the order they constrain each other, answer
 
 Declare `{ tokens, primitives, decided_at }`. The core does not judge the system: `own` and a library name are equally valid answers. It requires **one** source of truth for the tokens, because two drift apart in silence and the drift is only found in a screenshot.
 
+## The project map, and the generator the framework ships
+
+`commands.project_map` is required, and the map it produces is what the reuse note is judged against. The generator, however, has to know something about your language, which the core does not.
+
+So the framework ships one that knows none: `agent-pipeline/scripts/project-map.mjs`. It recognises declarations by **pattern** across the shapes several ecosystems share — `export function`, `export class`, `pub fn`, `def`, `func`, `export const` — and reads the documentation line above each one. It walks the roots and extensions declared in the `project_map` block.
+
+**It is deliberately weaker than a real parser.** A re-export through an index, a name assembled at runtime, a class member and anything shaped differently are invisible to it. The map says so about itself rather than implying completeness, because a map trusted beyond its worth is worse than an obviously partial one.
+
+Point `commands.project_map` at a generator that parses your language the day you want roles, routes and types in the map. This repository's own profile does exactly that, and its map reads `CatalogController — controller — POST /books` where the shipped generator reads `CatalogController — class`.
+
+**The failure it guards against is not a missing map, it is an empty one.** A generator written for another stack walks a tree it does not recognise, produces a near-empty document, and `--check` then compares empty with empty and exits 0 — a green gate asserting nothing, worse than no gate since checking stops. Hence two refusals: no file found under the roots and extensions, and not one declaration recognised. Both name the setting to fix, because a reader who sees a bare failure concludes the framework is broken.
+
 ## The `duplication` gate, required of every profile
 
 Every prompt already demands a **reuse note** for any new component, module or helper, and that note is judged against the project map. Judged by a human, in review — which means judged when someone remembers to look. On a codebase with two hundred small components, nobody looks.

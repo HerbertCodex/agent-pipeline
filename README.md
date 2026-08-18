@@ -320,6 +320,22 @@ Le framework fournit le détecteur, sans aucune dépendance, pour qu'aucun proje
 
 > 💡 **Attendez-vous à ce qu'elle soit rouge au premier lancement**, et lisez avant de toucher au seuil. Sur ce dépôt elle a trouvé trois vraies copies dès le premier jour — dont tout l'amorçage e2e recopié dans trois suites, alors que la carte du projet annonçait ces harnais comme réutilisables.
 
+## 🗺️ La carte du projet, fournie sans connaître votre langage
+
+```console
+$ node agent-pipeline/scripts/project-map.mjs
+written: docs/project-map.md (23 file(s), 40 declaration(s))
+  5 file(s) with no recognised declaration — the map lists them and says so.
+```
+
+Elle répond à **« est-ce que ça existe déjà ? »** — la question que la note de réutilisation oblige à poser, et que la porte de duplication fait respecter.
+
+Le générateur reconnaît les déclarations **par motif**, sans analyser aucune syntaxe : , , , , . Il marche sur du React, du Python, du Go, du Rust.
+
+> ⚠️ **Il est volontairement plus faible qu'un vrai analyseur**, et la carte le dit d'elle-même. Pointez  sur un générateur qui parse votre langage le jour où vous voulez les rôles et les routes dedans.
+
+Ses deux refus sont le cœur : **aucun fichier trouvé**, et **aucune déclaration reconnue**. C'est exactement ce qu'une carte vide masque — un générateur écrit pour une autre stack rend un document quasi vide,  compare vide à vide, et sort en 0.
+
 ## 🔑 Trois décisions ne partent jamais à un agent
 
 | | Pourquoi |
@@ -339,7 +355,7 @@ Le framework fournit le détecteur, sans aucune dépendance, pour qu'aucun proje
 | `docs/` | **en anglais** — les modèles suivent mieux l'anglais. `nouveau-profil.md` pour installer, `operateur.md` pour vous |
 | `templates/` | les fichiers de politique, le workflow CI |
 | `skills/` | conseils de code, indépendants de toute stack |
-| `test/` | **202 tests** sur le framework lui-même |
+| `test/` | **215 tests** sur le framework lui-même |
 
 **Prérequis** : Node, git, et le client de votre forge (`gh`, `glab`). Rien d'autre.
 
