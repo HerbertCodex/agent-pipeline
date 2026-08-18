@@ -330,11 +330,11 @@ written: docs/project-map.md (23 file(s), 40 declaration(s))
 
 Elle répond à **« est-ce que ça existe déjà ? »** — la question que la note de réutilisation oblige à poser, et que la porte de duplication fait respecter.
 
-Le générateur reconnaît les déclarations **par motif**, sans analyser aucune syntaxe : , , , , . Il marche sur du React, du Python, du Go, du Rust.
+Le générateur reconnaît les déclarations **par motif**, sans analyser aucune syntaxe : `export function`, `export class`, `pub fn`, `def`, `func`. Il marche sur du React, du Python, du Go, du Rust.
 
-> ⚠️ **Il est volontairement plus faible qu'un vrai analyseur**, et la carte le dit d'elle-même. Pointez  sur un générateur qui parse votre langage le jour où vous voulez les rôles et les routes dedans.
+> ⚠️ **Il est volontairement plus faible qu'un vrai analyseur**, et la carte le dit d'elle-même. Pointez `commands.project_map` sur un générateur qui parse votre langage le jour où vous voulez les rôles et les routes dedans.
 
-Ses deux refus sont le cœur : **aucun fichier trouvé**, et **aucune déclaration reconnue**. C'est exactement ce qu'une carte vide masque — un générateur écrit pour une autre stack rend un document quasi vide,  compare vide à vide, et sort en 0.
+Ses deux refus sont le cœur : **aucun fichier trouvé**, et **aucune déclaration reconnue**. C'est exactement ce qu'une carte vide masque — un générateur écrit pour une autre stack rend un document quasi vide, `--check` compare vide à vide, et sort en 0.
 
 ## 🔑 Trois décisions ne partent jamais à un agent
 
