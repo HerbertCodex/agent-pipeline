@@ -26,7 +26,7 @@ import { fail } from "./lib.mjs";
  * trois modules, ce signal se declenche systematiquement et a tort — et un
  * detecteur qui crie sur un projet jeune apprend surtout a etre ignore.
  */
-const MATURITE = { modules: 4, fichiers: 20 };
+const MATURITE = { modules: 4, files: 20 };
 
 /**
  * Detecte les cycles de dependance entre modules.
@@ -59,7 +59,7 @@ export function drift(graph) {
   const names = Object.keys(modules);
   const signals = [];
   const total = names.reduce((sum, name) => sum + (modules[name].files ?? 0), 0);
-  const mature = names.length >= MATURITE.modules && total >= MATURITE.fichiers;
+  const mature = names.length >= MATURITE.modules && total >= MATURITE.files;
 
   for (const [name, node] of Object.entries(modules)) {
     const out = (node.imports ?? []).length;
@@ -67,8 +67,8 @@ export function drift(graph) {
       signals.push({
         level: "attention",
         signal: `Le module « ${name} » importe ${out} autres modules.`,
-        means: "Un module qui connait tout le monde est soit un orchestrateur deguise, soit le signe que le decoupage suit la technique et non le sujet.",
-        next: "Regardez s'il porte une responsabilite qui appartient ailleurs, avant d'envisager un autre rangement.",
+        means: "A module that knows everyone is either a disguised orchestrator, or a sign the split follows technology rather than subject.",
+        next: "Check whether it carries a responsibility that belongs elsewhere, before considering another layout.",
       });
     }
   }
@@ -76,9 +76,9 @@ export function drift(graph) {
   for (const [a, b] of cycles(modules)) {
     signals.push({
       level: "grave",
-      signal: `« ${a} » et « ${b} » s'importent mutuellement.`,
-      means: "Le decoupage est faux a cet endroit : ces deux modules n'en sont qu'un, ou il leur manque un troisieme qui porte ce qu'ils partagent.",
-      next: "Sortez ce qu'ils partagent dans un module a part. Ne resolvez pas le cycle par une reference differee : elle cache le probleme sans le traiter.",
+      signal: `&laquo; ${a} &raquo; and &laquo; ${b} &raquo; import each other.`,
+      means: "The split is wrong here: these two modules are really one, or a third is missing that would carry what they share.",
+      next: "Pull what they share into a separate module. Do not resolve the cycle with a deferred reference: it hides the problem without treating it.",
     });
   }
 
@@ -87,17 +87,17 @@ export function drift(graph) {
     if (users.length === 1) {
       signals.push({
         level: "menage",
-        signal: `« ${file} » est partage mais n'est utilise que par « ${users[0]} ».`,
-        means: "Un partage a un seul consommateur n'est pas un partage, c'est un fichier range trop loin de son usage.",
-        next: `Ramenez-le dans « ${users[0]} ». Il redeviendra partage le jour ou un second module en aura besoin.`,
+        signal: `« ${file} » is shared but used only by « ${users[0]} ».`,
+        means: "A shared file with a single consumer is not shared, it is a file filed too far from its use.",
+        next: `Move it back into « ${users[0]} ». It becomes shared again the day a second module needs it.`,
       });
     }
     if (users.length >= 3) {
       signals.push({
         level: "attention",
-        signal: `« ${file} » est utilise par ${users.length} modules.`,
-        means: "Un fichier que tout le monde importe est un point de contention : chaque issue qui le touche se serialise contre les autres.",
-        next: "Verifiez qu'il ne melange pas plusieurs responsabilites. S'il en melange, decoupez-le ; sinon c'est sain.",
+        signal: `« ${file} » is used by ${users.length} modules.`,
+        means: "A file everyone imports is a contention point: every issue touching it serialises against the others.",
+        next: "Check it does not mix several responsibilities. If it does, split it; otherwise it is healthy.",
       });
     }
   }
@@ -106,9 +106,9 @@ export function drift(graph) {
   if (mature && total > 0 && sharedSize / total > 0.3) {
     signals.push({
       level: "attention",
-      signal: `Le partage represente ${Math.round((sharedSize / total) * 100)} % des fichiers.`,
-      means: "Au-dela d'un tiers, le dossier partage n'est plus un socle : c'est le fourre-tout ou atterrit ce qu'on n'a pas su ranger.",
-      next: "Reprenez ses fichiers un par un et demandez qui les utilise vraiment.",
+      signal: `Shared files are ${Math.round((sharedSize / total) * 100)} % of all files.`,
+      means: "Beyond a third, the shared folder is no longer a foundation: it is the dumping ground for what nobody knew where to put.",
+      next: "Go through its files one by one and ask who really uses them.",
     });
   }
 
@@ -120,9 +120,9 @@ export function drift(graph) {
       const name = names.find((candidate) => (modules[candidate].files ?? 0) === biggest);
       signals.push({
         level: "attention",
-        signal: `« ${name} » est ${Math.round(biggest / median)} fois plus gros que le module median.`,
-        means: "Un module tres au-dessus des autres porte souvent plusieurs sujets, ou merite sa propre structure interne.",
-        next: "Durcissez CE module seul — c'est ce que permet le rangement par fonctionnalite. Ne changez pas l'architecture de tout le projet pour un dossier.",
+        signal: `&laquo; ${name} &raquo; is ${Math.round(biggest / median)} times bigger than the median module.`,
+        means: "A module far above the others often carries several subjects, or deserves its own internal structure.",
+        next: "Harden THAT module alone: that is what a per-feature layout allows. Do not change the whole project's architecture for one folder.",
       });
     }
   }
@@ -133,32 +133,32 @@ export function drift(graph) {
 function main() {
   const [path] = process.argv.slice(2);
   if (!path) fail("usage : architecture-drift.mjs <graphe.json>");
-  if (!existsSync(path)) fail(`graphe introuvable : ${path}`);
+  if (!existsSync(path)) fail(`graphe not found: ${path}`);
   const graph = JSON.parse(readFileSync(path, "utf8"));
-  if (graph.modules == null) fail("le graphe doit porter modules : { nom: { files, imports } }");
+  if (graph.modules == null) fail("the graph must carry modules: { name: { files, imports } }");
 
   const { signals, mature, modules, files, root } = drift(graph);
   if (root != null) {
-    console.log(`racine de composition exclue : « ${root} » importe legitimement tout le monde, c'est son role.\n`);
+    console.log(`composition root excluded: « ${root} » legitimately imports everyone, that is its job.\n`);
   }
   if (!mature) {
     console.log(
-      `projet jeune : ${modules} module(s), ${files} fichier(s). Les signaux de partage restent en veille ` +
-        `jusqu'a ${MATURITE.modules} modules et ${MATURITE.fichiers} fichiers.`,
+      `young project: ${modules} module(s), ${files} file(s). Sharing signals stay dormant ` +
+        `until ${MATURITE.modules} modules and ${MATURITE.files} files.`,
     );
-    console.log("Un partage a un seul consommateur n'est un signe que si le projet a eu l'occasion d'en avoir plusieurs.\n");
+    console.log("A shared folder with a single consumer only means something once the project could have had several.\n");
   }
   if (signals.length === 0) {
-    console.log("aucun signe de derive : le decoupage tient.");
+    console.log("no sign of drift: the split holds.");
   } else {
     for (const item of signals) {
       console.log(`[${item.level}] ${item.signal}\n         ${item.means}\n         -> ${item.next}`);
     }
   }
   console.log(
-    "\nnon detectable ici : deux modules qui appliquent la MEME regle metier avec un code different.",
+    "\nnot detectable here: two modules applying the SAME business rule with different code.",
   );
-  console.log("Un graphe d'imports ne voit pas le sens. Ce declencheur-la se constate en relisant, pas en calculant.");
+  console.log("An import graph does not see meaning. That trigger is found by reading, not by computing.");
 }
 
 if (process.argv[1]?.endsWith("architecture-drift.mjs")) main();

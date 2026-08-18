@@ -12,14 +12,14 @@ import { loadConfig, loadRules, readJsonl, sha256, sudocodeStatus, fail } from "
  */
 function validateState(state, rules) {
   for (const field of rules.state_required_fields) {
-    if (!(field in state)) throw new Error(`pipeline_state.${field} manquant`);
+    if (!(field in state)) throw new Error(`pipeline_state.${field} missing`);
   }
   const phase = rules.phases[state.phase];
   if (phase == null) throw new Error(`phase inconnue : ${state.phase}`);
   if (phase.owner !== state.owner) {
-    throw new Error(`proprietaire ${state.owner} invalide pour la phase ${state.phase} (attendu ${phase.owner})`);
+    throw new Error(`owner ${state.owner} invalid for phase ${state.phase} (expected ${phase.owner})`);
   }
-  if (!Number.isInteger(state.version) || state.version < 1) throw new Error("version invalide");
+  if (!Number.isInteger(state.version) || state.version < 1) throw new Error("invalid version");
 }
 
 /**
@@ -71,15 +71,15 @@ function main() {
   }
 
   const { kind, id } = request.target ?? {};
-  if (kind !== "issue" && kind !== "spec") fail("target.kind doit etre issue ou spec");
+  if (kind !== "issue" && kind !== "spec") fail("target.kind must be issue or spec");
   const path = join(config.store_dir, `${kind}s.jsonl`);
   const entries = readJsonl(path);
   const entry = entries.find((e) => e.record.id === id);
-  if (entry == null) fail(`record introuvable : ${id}`);
+  if (entry == null) fail(`record not found: ${id}`);
 
   const currentHash = sha256(entry.raw);
   if (request.expected_record_hash !== currentHash) {
-    fail(`verrou optimiste : hash attendu ${request.expected_record_hash}, hash courant ${currentHash}. Aucune ecriture.`);
+    fail(`optimistic lock: expected hash ${request.expected_record_hash}, current hash ${currentHash}. Nothing written.`);
   }
 
   const record = entry.record;
@@ -87,17 +87,17 @@ function main() {
     try {
       validateState(request.pipeline_state, rules);
     } catch (error) {
-      fail(`etat refuse : ${error.message}. Aucune ecriture.`);
+      fail(`state refused: ${error.message}. Nothing written.`);
     }
     const previous = record.pipeline_state;
     if (previous != null && request.pipeline_state.version !== previous.version + 1) {
-      fail(`version attendue ${previous.version + 1}, recue ${request.pipeline_state.version}. Aucune ecriture.`);
+      fail(`expected version ${previous.version + 1}, received ${request.pipeline_state.version}. Nothing written.`);
     }
     const from = previous?.phase ?? null;
     const to = request.pipeline_state.phase;
     const amendment = from === to;
     if (from != null && !amendment && !(rules.transitions ?? []).includes(`${from}->${to}`)) {
-      fail(`transition ${from}->${to} absente de rules.json. Aucune ecriture.`);
+      fail(`transition ${from}->${to} absent from rules.json. Nothing written.`);
     }
     const at = request.pipeline_state.last_transition_at ?? new Date().toISOString();
     record.pipeline_state = request.pipeline_state;
@@ -113,14 +113,14 @@ function main() {
     if (to === "closed" && record.closed_at == null) record.closed_at = at;
   }
   if (request.acceptance_criteria != null) {
-    if (kind !== "issue") fail("acceptance_criteria ne s'applique qu'a une issue");
+    if (kind !== "issue") fail("acceptance_criteria only applies to an issue");
     const next = request.acceptance_criteria;
     if (!Array.isArray(next) || next.length === 0) {
-      fail("acceptance_criteria doit etre une liste non vide. Aucune ecriture.");
+      fail("acceptance_criteria must be a non-empty list. Nothing written.");
     }
     for (const [index, item] of next.entries()) {
       if (typeof item !== "string" || item.trim().length === 0) {
-        fail(`acceptance_criteria[${index}] doit etre une chaine non vide. Aucune ecriture.`);
+        fail(`acceptance_criteria[${index}] must be a non-empty string. Nothing written.`);
       }
     }
     record.acceptance_criteria = next;
@@ -129,14 +129,14 @@ function main() {
     }
   }
   if (request.claims_to_replay != null) {
-    if (kind !== "issue") fail("claims_to_replay ne s'applique qu'a une issue");
+    if (kind !== "issue") fail("claims_to_replay only applies to an issue");
     const claims = request.claims_to_replay;
     if (!Array.isArray(claims) || claims.length === 0) {
-      fail("claims_to_replay doit etre une liste non vide. Aucune ecriture.");
+      fail("claims_to_replay must be a non-empty list. Nothing written.");
     }
     for (const [index, item] of claims.entries()) {
       if (!item?.claim || !item?.how_to_replay) {
-        fail(`claims_to_replay[${index}] exige claim et how_to_replay. Aucune ecriture.`);
+        fail(`claims_to_replay[${index}] requires claim and how_to_replay. Nothing written.`);
       }
     }
     record.claims_to_replay = claims.map((item) => ({ claim: item.claim, how_to_replay: item.how_to_replay }));
@@ -145,16 +145,16 @@ function main() {
     }
   }
   if (request.claims_verdict != null) {
-    if (kind !== "issue") fail("claims_verdict ne s'applique qu'a une issue");
+    if (kind !== "issue") fail("claims_verdict only applies to an issue");
     const claims = record.claims_to_replay ?? [];
     if (request.claims_verdict.length !== claims.length) {
       fail(
-        `verdict de ${request.claims_verdict.length} entree(s) pour ${claims.length} affirmation(s). Aucune ecriture.`,
+        `verdict of ${request.claims_verdict.length} entry(ies) for ${claims.length} claim(s). Nothing written.`,
       );
     }
     for (const [index, item] of request.claims_verdict.entries()) {
       if (item?.replayed !== true || !item?.result) {
-        fail(`claims_verdict[${index}] : une affirmation se rejoue et porte son resultat. Aucune ecriture.`);
+        fail(`claims_verdict[${index}] : a claim is replayed and carries its result. Nothing written.`);
       }
     }
     record.claims_verdict = request.claims_verdict.map((item, index) => ({
@@ -166,20 +166,20 @@ function main() {
     }));
   }
   if (request.criteria_ledger != null) {
-    if (kind !== "issue") fail("criteria_ledger ne s'applique qu'a une issue");
+    if (kind !== "issue") fail("criteria_ledger only applies to an issue");
     const vocabulary = rules.criterion_status ?? {};
     const criteria = record.acceptance_criteria ?? [];
     if (request.criteria_ledger.length !== criteria.length) {
       fail(
-        `registre de ${request.criteria_ledger.length} entree(s) pour ${criteria.length} critere(s). Aucune ecriture.`,
+        `ledger of ${request.criteria_ledger.length} entry(ies) for ${criteria.length} criterion(s). Nothing written.`,
       );
     }
     for (const [index, item] of request.criteria_ledger.entries()) {
       if (!(vocabulary.values ?? []).includes(item.status)) {
-        fail(`critere ${index + 1} : statut inconnu ${item.status}. Aucune ecriture.`);
+        fail(`criterion ${index + 1} : unknown status ${item.status}. Nothing written.`);
       }
       if ((vocabulary.evidence_required_for ?? []).includes(item.status) && !item.evidence) {
-        fail(`critere ${index + 1} : ${item.status} exige une preuve. Aucune ecriture.`);
+        fail(`criterion ${index + 1} : ${item.status} requires evidence. Nothing written.`);
       }
     }
     record.criteria_ledger = request.criteria_ledger.map((item, index) => ({
@@ -190,7 +190,7 @@ function main() {
     }));
   }
   if (request.spec_state != null) {
-    if (kind !== "spec") fail("spec_state ne s'applique qu'a un record de spec");
+    if (kind !== "spec") fail("spec_state only applies to a spec record");
     const phases = ["draft", "active", "ready_for_pr", "pr_open", "merged"];
     const next = request.spec_state;
     if (!phases.includes(next.phase)) fail(`phase de spec inconnue : ${next.phase}`);
@@ -198,29 +198,29 @@ function main() {
     if (previous.phase != null) {
       const from = phases.indexOf(previous.phase);
       if (phases.indexOf(next.phase) < from) {
-        fail(`transition de spec interdite : ${previous.phase}->${next.phase}. Aucune ecriture.`);
+        fail(`spec transition forbidden : ${previous.phase}->${next.phase}. Nothing written.`);
       }
     }
     record.spec_state = { ...previous, ...next };
   }
   if (request.spec_fields != null) {
-    if (kind !== "spec") fail("spec_fields ne s'applique qu'a un record de spec");
+    if (kind !== "spec") fail("spec_fields only applies to a spec record");
     const reserved = ["id", "spec_state", "contexts", "transitions", "created_at", "status"];
     for (const key of Object.keys(request.spec_fields)) {
       if (reserved.includes(key)) {
-        fail(`spec_fields.${key} a son propre chemin d'ecriture. Aucune ecriture.`);
+        fail(`spec_fields.${key} has its own write path. Nothing written.`);
       }
     }
     Object.assign(record, request.spec_fields);
   }
   if (request.discoveries_declared != null) {
-    if (kind !== "issue") fail("discoveries_declared ne s'applique qu'a une issue");
+    if (kind !== "issue") fail("discoveries_declared only applies to an issue");
     if (!Array.isArray(request.discoveries_declared)) {
-      fail("discoveries_declared doit etre une liste. Aucune ecriture.");
+      fail("discoveries_declared must be a list. Nothing written.");
     }
     for (const [index, item] of request.discoveries_declared.entries()) {
       if (!item?.title || !item?.rationale) {
-        fail(`discoveries_declared[${index}] exige title et rationale. Aucune ecriture.`);
+        fail(`discoveries_declared[${index}] requires title and rationale. Nothing written.`);
       }
     }
     const merged = new Map(
@@ -240,7 +240,7 @@ function main() {
   if (request.set_status != null) record.status = request.set_status;
   if (request.append_context != null) {
     const { heading, body } = request.append_context;
-    if (!heading || !body) fail("append_context exige heading et body");
+    if (!heading || !body) fail("append_context requires heading and body");
     record.contexts = record.contexts ?? [];
     record.contexts.push({ heading, body, at: new Date().toISOString() });
   }
@@ -254,9 +254,9 @@ function main() {
     }
     return line;
   });
-  if (replaced !== 1) fail(`la ligne cible apparait ${replaced} fois, ecriture refusee`);
+  if (replaced !== 1) fail(`the target line appears ${replaced} times, write refused`);
   writeFileSync(path, output.join("\n"));
-  console.log(`ecrit : ${path} record ${id} (1 ligne remplacee)`);
+  console.log(`written: ${path} record ${id} (1 line remplacee)`);
 }
 
 /**
@@ -288,11 +288,11 @@ function create(request, config, rules) {
     discovered_from: discoveredFrom,
     escaped_from: escapedFrom,
   } = request.create_record;
-  if (kind !== "issue" && kind !== "spec") fail("create_record.kind doit etre issue ou spec");
-  if (!record?.id) fail("create_record.record.id manquant");
+  if (kind !== "issue" && kind !== "spec") fail("create_record.kind must be issue or spec");
+  if (!record?.id) fail("create_record.record.id missing");
   if (discoveredFrom != null) {
     const type = rules.discovery_relationship;
-    if (type == null) fail("discovery_relationship absent des regles");
+    if (type == null) fail("discovery_relationship absent from the rules");
     record.relationships = [
       ...(record.relationships ?? []),
       { from: record.id, from_type: kind, to: discoveredFrom, to_type: "issue", type },
@@ -306,7 +306,7 @@ function create(request, config, rules) {
     try {
       validateState(record.pipeline_state ?? {}, rules);
     } catch (error) {
-      fail(`etat refuse : ${error.message}. Aucune ecriture.`);
+      fail(`state refused: ${error.message}. Nothing written.`);
     }
   }
   const path = join(config.store_dir, `${kind}s.jsonl`);
@@ -320,7 +320,7 @@ function create(request, config, rules) {
   const existing = existsSync(path) ? readFileSync(path, "utf8") : "";
   const separator = existing.length === 0 || existing.endsWith("\n") ? "" : "\n";
   writeFileSync(path, existing + separator + JSON.stringify(record) + "\n");
-  console.log(`ecrit : ${path} record ${record.id} (1 ligne ajoutee)`);
+  console.log(`written: ${path} record ${record.id} (1 line ajoutee)`);
 }
 
 main();

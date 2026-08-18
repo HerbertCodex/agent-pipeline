@@ -47,8 +47,8 @@ function main() {
   const config = loadConfig();
   const map = config.project_map ?? {};
   const out = map.out;
-  if (typeof out !== "string") fail("project_map.out manquante dans la configuration");
-  if (!existsSync(out)) fail(`carte introuvable : ${out}. La regenerer avant de la verifier.`);
+  if (typeof out !== "string") fail("project_map.out missing from the configuration");
+  if (!existsSync(out)) fail(`carte not found: ${out}. Regenerate it before checking it.`);
 
   const roots = map.roots ?? ["src"];
   const skip = map.skip == null ? null : new RegExp(map.skip);
@@ -61,8 +61,8 @@ function main() {
 
   if (sources.length === 0) {
     fail(
-      `aucun fichier de source sous ${roots.join(", ")} : la carte ne peut rien couvrir. ` +
-        `Verifier project_map.roots et project_map.skip.`,
+      `no source file under ${roots.join(", ")} : the map can cover nothing. ` +
+        `Check project_map.roots and project_map.skip.`,
     );
   }
 
@@ -78,15 +78,15 @@ function main() {
   }
 
   if (missing.length > 0) {
-    console.error(`${out} ne cite pas ${missing.length} fichier(s) sur ${sources.length} :`);
+    console.error(`${out} does not cite ${missing.length} file(s) out of ${sources.length} :`);
     for (const path of missing) console.error(`  ${path}`);
     fail(
-      "Une carte qui ne cite pas le code ne repond pas a « est-ce que ca existe deja ? ». " +
-        "Verifier que le generateur collecte bien les fichiers de cette stack.",
+      "A map that does not cite the code cannot answer \u00ab does this already exist? \u00bb. " +
+        "Check the generator really collects the files of this stack.",
     );
   }
 
-  console.log(`${out} cite les ${sources.length} fichiers de ${roots.join(", ")}.`);
+  console.log(`${out} cites all ${sources.length} files of ${roots.join(", ")}.`);
 }
 
 main();

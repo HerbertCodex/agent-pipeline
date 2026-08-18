@@ -26,68 +26,68 @@ function withCommands(commands) {
   return sandbox;
 }
 
-describe("preflight : distinguer un outil absent d'un vrai constat", () => {
-  test("une porte verte est verte", () => {
+describe("preflight: telling a missing tool from a real finding", () => {
+  test("a green gate is green", () => {
     assert.equal(classify("k", "true").verdict, "verte");
   });
 
-  test("une porte qui refuse est classee refusante, pas indisponible", () => {
+  test("a gate that refuses is classed refusing, not unavailable", () => {
     const result = classify("k", "echo 'secret trouve a la ligne 12' ; exit 1");
     assert.equal(result.verdict, "refuse");
     assert.match(result.detail, /secret trouve/);
   });
 
-  test("un outil qui n'existe pas est classe indisponible", () => {
+  test("a tool that does not exist is classed unavailable", () => {
     const result = classify("k", "outil-qui-nexiste-vraiment-pas --version");
     assert.equal(result.verdict, "indisponible", "un binaire absent n'est pas un constat");
   });
 
-  test("un chemin de script inexistant est classe indisponible", () => {
+  test("a non-existent script path is classed unavailable", () => {
     assert.equal(classify("k", "node /absent/vraiment/pas-la.mjs").verdict, "indisponible");
   });
 });
 
-describe("preflight : ce qu'il rend a l'operateur", () => {
-  test("il sort en 0 et le dit quand tout est executable", () => {
+describe("preflight: what it returns to the operator", () => {
+  test("it exits 0 and says so when everything can run", () => {
     const root = withCommands({ check: "true", lint: "true" });
     const result = run(root, "preflight.mjs");
     assert.equal(result.status, 0);
-    assert.match(result.output, /toutes les portes declarees sont executables/);
-    assert.match(result.output, /jamais un outil manquant/);
+    assert.match(result.output, /every declared gate can run/);
+    assert.match(result.output, /never a missing tool/);
   });
 
-  test("il sort en 1 et nomme les portes injouables", () => {
+  test("it exits 1 and names the gates that cannot run", () => {
     const root = withCommands({ check: "true", secrets_scan: "outil-absent-xyz" });
     const result = run(root, "preflight.mjs");
     assert.notEqual(result.status, 0);
     assert.match(result.output, /secrets_scan/);
-    assert.match(result.output, /echouent au lieu de proteger/);
+    assert.match(result.output, /fail instead of protecting/);
   });
 
-  test("une porte qui refuse ne fait PAS echouer le controle", () => {
+  test("a gate that refuses does NOT fail the check", () => {
     const root = withCommands({ check: "true", lint: "exit 1" });
     const result = run(root, "preflight.mjs");
     assert.equal(result.status, 0, "preflight verifie l'executabilite, il ne rejoue pas les portes");
     assert.match(result.output, /refuse/);
   });
 
-  test("il propose les deux sorties honnetes, jamais de laisser rouge", () => {
+  test("it offers the two honest exits, never leaving a gate red", () => {
     const root = withCommands({ secrets_scan: "outil-absent-xyz" });
     const result = run(root, "preflight.mjs");
-    assert.match(result.output, /Installez l'outil, ou retirez la cle/);
+    assert.match(result.output, /Install the tool, or drop the key/);
   });
 
-  test("la forme machine liste les portes manquantes", () => {
+  test("the machine form lists the missing gates", () => {
     const root = withCommands({ check: "true", sast: "outil-absent-xyz" });
     const result = run(root, "preflight.mjs", ["--json"]);
     const parsed = JSON.parse(result.stdout);
     assert.deepEqual(parsed.missing, ["sast"]);
   });
 
-  test("refuse une configuration sans aucune commande", () => {
+  test("refuses a configuration with no command at all", () => {
     const root = withCommands({});
     const result = run(root, "preflight.mjs");
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /aucune commande declaree/);
+    assert.match(result.output, /no command declared/);
   });
 });

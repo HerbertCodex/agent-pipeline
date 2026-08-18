@@ -30,46 +30,46 @@ function render(type) {
   return { ...result, html };
 }
 
-describe("render-architecture : le type de projet filtre le catalogue", () => {
-  test("chaque type reconnu rend une page", () => {
+describe("render-architecture: the project type filters the catalogue", () => {
+  test("every recognised type renders a page", () => {
     for (const type of Object.keys(PROJECT_TYPES)) {
       const { status, html } = render(type);
       assert.equal(status, 0, `${type} devrait rendre`);
-      assert.match(html, /Comment ranger le code/);
+      assert.match(html, /How should this project's code be arranged/);
       destroySandbox(sandbox);
       sandbox = null;
     }
   });
 
-  test("une interface web ne se voit pas proposer l'hexagonale ni Clean", () => {
+  test("a web interface is not offered hexagonal or Clean", () => {
     const { html } = render("frontend");
-    const options = html.slice(html.indexOf("Le détail de chaque option"));
-    assert.doesNotMatch(options, /Hexagonale/, "l'hexagonale ne s'applique pas a un front");
+    const options = html.slice(html.indexOf("Each option in detail"));
+    assert.doesNotMatch(options, /Hexagonal/i, "hexagonal does not apply to a front end");
     assert.doesNotMatch(options, /Clean Architecture/);
-    assert.match(options, /Découpage en tranches/);
+    assert.match(options, /Feature-sliced|Decoupage/);
   });
 
-  test("un service back-end ne se voit pas proposer le decoupage en tranches", () => {
+  test("a back-end service is not offered feature-sliced", () => {
     const { html } = render("backend");
-    const options = html.slice(html.indexOf("Le détail de chaque option"));
-    assert.doesNotMatch(options, /Découpage en tranches/);
-    assert.match(options, /Hexagonale/);
+    const options = html.slice(html.indexOf("Each option in detail"));
+    assert.doesNotMatch(options, /Feature-sliced|Decoupage/);
+    assert.match(options, /Hexagonal/i);
   });
 
-  test("seul un depot full-stack recoit la question de la frontiere", () => {
-    assert.match(render("fullstack").html, /Ce qui passe entre le front et le back/);
+  test("only a full-stack repository gets the boundary question", () => {
+    assert.match(render("fullstack").html, /What crosses between the front and the back/);
     destroySandbox(sandbox);
     sandbox = null;
-    assert.doesNotMatch(render("backend").html, /Ce qui passe entre le front et le back/);
+    assert.doesNotMatch(render("backend").html, /What crosses between the front and the back/);
   });
 
-  test("refuse un type inconnu plutot que de tout rendre", () => {
+  test("refuses an unknown type instead of rendering everything", () => {
     const { status, output } = render("erlang");
     assert.notEqual(status, 0);
     assert.match(output, /type de projet inconnu/);
   });
 
-  test("refuse un appel sans type", () => {
+  test("refuses a call with no type", () => {
     sandbox ??= createSandbox();
     const result = run(sandbox, "render-architecture.mjs", [join(sandbox, "p.html")]);
     assert.notEqual(result.status, 0);
@@ -77,36 +77,36 @@ describe("render-architecture : le type de projet filtre le catalogue", () => {
   });
 });
 
-describe("render-architecture : la page dit ce que la porte appliquera", () => {
-  test("chaque option publie sa declaration de couches", () => {
+describe("render-architecture: the page states what the gate will enforce", () => {
+  test("every option publishes its layer declaration", () => {
     const { html } = render("backend");
-    assert.match(html, /Sens des dépendances/);
-    assert.match(html, /jamais l&#39;inverse|jamais l'inverse/);
+    assert.match(html, /Dependency direction/);
+    assert.match(html, /never the reverse/);
     assert.match(html, /À quoi ça ressemble/);
   });
 
-  test("chaque option nomme son cout, son gain et son mode d'echec", () => {
+  test("every option names its cost, its benefit and how it fails", () => {
     const { html } = render("backend");
-    for (const label of ["Coût", "Gain", "Piège"]) assert.match(html, new RegExp(label));
+    for (const label of ["Cost", "Buys", "Trap"]) assert.match(html, new RegExp(label));
     assert.match(html, /En résumé/);
   });
 
-  test("la page dit que le pipeline ne choisit pas a la place de l'operateur", () => {
+  test("the page states the pipeline does not choose for the operator", () => {
     const { html } = render("mobile");
-    assert.match(html, /ne choisit pas à votre place/);
-    assert.match(html, /opposable/);
+    assert.match(html, /does not choose for you/);
+    assert.match(html, /enforceable/);
   });
 });
 
-describe("architectures : le catalogue est coherent", () => {
-  test("chaque architecture declare des couches et un sens de dependance", () => {
+describe("architectures: the catalogue is coherent", () => {
+  test("every architecture declares layers and a dependency direction", () => {
     for (const entry of ARCHITECTURES) {
       assert.ok(Object.keys(entry.layers).length > 0, `${entry.id} sans couches`);
       assert.ok(Object.keys(entry.allowed).length > 0, `${entry.id} sans sens de dependance`);
     }
   });
 
-  test("aucune couche autorisee ne designe une couche qui n'existe pas", () => {
+  test("no allowed layer points at a layer that does not exist", () => {
     for (const entry of ARCHITECTURES) {
       const known = new Set(Object.keys(entry.layers));
       for (const [from, targets] of Object.entries(entry.allowed)) {
@@ -118,14 +118,14 @@ describe("architectures : le catalogue est coherent", () => {
     }
   });
 
-  test("chaque architecture a une couche terminale, sinon le graphe boucle", () => {
+  test("every architecture has a terminal layer, else the graph loops", () => {
     for (const entry of ARCHITECTURES) {
       const terminal = Object.entries(entry.allowed).filter(([, targets]) => targets.length === 0);
       assert.ok(terminal.length > 0, `${entry.id} : aucune couche ne depend de rien, le sens est circulaire`);
     }
   });
 
-  test("chaque architecture s'applique a au moins un type de projet connu", () => {
+  test("every architecture applies to at least one known project type", () => {
     for (const entry of ARCHITECTURES) {
       assert.ok(entry.applies.length > 0, `${entry.id} ne s'applique nulle part`);
       for (const type of entry.applies) {
@@ -135,23 +135,23 @@ describe("architectures : le catalogue est coherent", () => {
   });
 });
 
-describe("render-architecture : sans analyse, on pose les questions", () => {
-  test("le questionnaire remplace le conseil quand rien n'est fourni", () => {
+describe("render-architecture: with no analysis, it asks the questions", () => {
+  test("the questionnaire replaces the advice when nothing is supplied", () => {
     const { html, output } = render("backend");
     assert.match(output, /questionnaire/);
-    assert.match(html, /D'abord : de quoi parle ce projet/);
-    assert.match(html, /doit REFUSER quelque chose/);
+    assert.match(html, /First: what is this project about/);
+    assert.match(html, /must REFUSE something/);
     assert.doesNotMatch(html, /Notre conseil/);
   });
 
-  test("la question qui detecte le metier est nommee comme telle", () => {
+  test("the question that detects a domain is named as such", () => {
     const { html } = render("backend");
-    assert.match(html, /La question qui decide vraiment, c'est B3/);
-    assert.match(html, /n'a pas de metier : il a un schema/);
+    assert.match(html, /The question that really decides is B3/);
+    assert.match(html, /has no domain: it has a schema/);
   });
 });
 
-describe("render-architecture : avec une analyse, le conseil est fonde", () => {
+describe("render-architecture: with an analysis, the advice is grounded", () => {
   /**
    * Rend la page avec une analyse de projet donnee.
    *
@@ -191,67 +191,67 @@ describe("render-architecture : avec une analyse, le conseil est fonde", () => {
     expected_churn: "integrations",
   };
 
-  test("un projet sans regle metier se voit dire que Clean est excessif", () => {
+  test("a project with no business rule is told Clean is excessive", () => {
     const { html } = advise("backend", SANS_METIER);
-    assert.match(html, /Aucune regle metier reperee/);
-    assert.match(html, /les couches se rempliraient d'objets qui recopient des lignes/);
+    assert.match(html, /No business rule found/);
+    assert.match(html, /layers would fill with objects copying rows around/);
   });
 
-  test("un projet sans integration remplacable se voit dire que les ports sont une assurance inutile", () => {
+  test("a project with no replaceable integration is told ports are insurance it will not use", () => {
     const { html } = advise("backend", AVEC_METIER);
-    assert.match(html, /assurance dont vous n'encaisserez jamais l'interet/);
+    assert.match(html, /insurance you never claim/);
   });
 
-  test("un projet a plusieurs integrations remplacables se voit recommander l'hexagonale", () => {
+  test("a project with several replaceable integrations is recommended hexagonal", () => {
     const { html } = advise("backend", BEAUCOUP_D_INTEGRATIONS);
-    const conseil = html.slice(html.indexOf("Notre conseil"), html.indexOf("En un coup"));
-    const bloc = conseil.slice(conseil.indexOf("Hexagonale") - 200, conseil.indexOf("Hexagonale"));
-    assert.match(bloc, /Recommandé/);
+    const conseil = html.slice(html.indexOf("Our advice"), html.indexOf("At a glance"));
+    const bloc = conseil.slice(conseil.indexOf("Hexagonal") - 200, conseil.indexOf("Hexagonal"));
+    assert.match(bloc, /Recommended/);
   });
 
-  test("le conseil cite les regles metier reperees, il ne les resume pas", () => {
+  test("the advice quotes the business rules found, it does not summarise them", () => {
     const { html } = advise("backend", AVEC_METIER);
     assert.match(html, /un exemplaire sorti ne se prete pas deux fois/);
   });
 
-  test("refuse une analyse sans business_rules : l'absence se conclut, elle ne s'oublie pas", () => {
+  test("refuses an analysis with no business_rules: an absence is concluded, not forgotten", () => {
     const { status, output } = advise("backend", { integrations: [] });
     assert.notEqual(status, 0);
-    assert.match(output, /business_rules, meme vide/);
+    assert.match(output, /business_rules, even empty/);
   });
 
-  test("refuse une analyse introuvable", () => {
+  test("refuses an analysis that does not exist", () => {
     sandbox ??= createSandbox();
     const result = run(sandbox, "render-architecture.mjs", [join(sandbox, "p.html"), "backend", "/absent.json"]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /analyse introuvable/);
+    assert.match(result.output, /analysis not found/);
   });
 });
 
-describe("render-architecture : ce qui se passe quand le projet grossit", () => {
-  test("chaque option dit dans quoi elle grandit et ce qui declenche le changement", () => {
+describe("render-architecture: what happens as the project grows", () => {
+  test("every option says what it grows into and what triggers a change", () => {
     const { html } = render("backend");
-    assert.match(html, /Quand le projet grossira/);
-    assert.match(html, /Coût du changement/);
-    assert.match(html, /La même règle métier apparaît dans deux modules/);
+    assert.match(html, /As the project grows/);
+    assert.match(html, /Migration cost/);
+    assert.match(html, /The same business rule appears in two modules/);
   });
 
-  test("la page traite l'objection au lieu de l'ignorer", () => {
+  test("the page answers the objection instead of ignoring it", () => {
     const { html } = render("backend");
-    assert.match(html, /Et si je me trompe/);
-    assert.match(html, /Ne choisissez pas le plus lourd par précaution/);
-    assert.match(html, /Partir simple garde les options ouvertes/);
+    assert.match(html, /What if I get it wrong/);
+    assert.match(html, /Do not pick the heaviest option out of caution/);
+    assert.match(html, /Starting simple keeps the options open/);
   });
 
-  test("elle dit que la migration se mesure au lieu de s'explorer", () => {
+  test("it says migration is measured, not explored", () => {
     const { html } = render("backend");
-    assert.match(html, /la liste exacte/);
-    assert.match(html, /liste de tâches, pas une exploration/);
+    assert.match(html, /the exact list/);
+    assert.match(html, /task list, not an exploration/);
   });
 });
 
-describe("architectures : le catalogue dit comment il se quitte", () => {
-  test("chaque option porte un devenir, des declencheurs et un cout de changement", () => {
+describe("architectures: the catalogue says how each option is left", () => {
+  test("every option carries a future, triggers and a migration cost", () => {
     for (const entry of ARCHITECTURES) {
       assert.ok(entry.grows_into, `${entry.id} ne dit pas dans quoi il grandit`);
       assert.ok(entry.migration_triggers?.length > 0, `${entry.id} n'a aucun declencheur`);
@@ -259,12 +259,12 @@ describe("architectures : le catalogue dit comment il se quitte", () => {
     }
   });
 
-  test("les options lourdes annoncent qu'on n'en sort pas, les legeres qu'on en sort par morceaux", () => {
+  test("heavy options announce there is no way out, light ones that you leave piece by piece", () => {
     const lourdes = ARCHITECTURES.filter((e) => ["hexagonal", "clean", "onion"].includes(e.id));
     for (const entry of lourdes) {
-      assert.match(entry.migration_cost, /ne se fait pas|difficile à quitter|subit|vit avec/i, `${entry.id} minimise son cout de sortie`);
+      assert.match(entry.migration_cost, /no going back|hardest in the catalogue|endure|hard to leave/i, `${entry.id} downplays its exit cost`);
     }
     const legere = ARCHITECTURES.find((e) => e.id === "feature-modules");
-    assert.match(legere.migration_cost, /local|morceaux/i);
+    assert.match(legere.migration_cost, /local|piece by piece/i);
   });
 });

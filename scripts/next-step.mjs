@@ -46,7 +46,7 @@ function actionFor(record, rules) {
   const owner = rules.phases?.[phase]?.owner ?? "inconnu";
 
   if (phase === ESCALATION) {
-    return { verb: "escalade", actor: "operator", reason: "trois rejets de code, ou une faute que le pipeline ne sait pas router" };
+    return { verb: "escalade", actor: "operator", reason: "three code rejections, or a fault the pipeline cannot route" };
   }
   if (phase.startsWith("blocked_")) {
     return { verb: "debloquer", actor: owner, reason: `phase de blocage, tenue par ${owner}` };
@@ -58,7 +58,7 @@ function actionFor(record, rules) {
   return {
     verb: "redispatcher",
     actor: owner,
-    reason: `${owner} tient la phase depuis ${record.pipeline_state?.last_transition_at ?? "un instant inconnu"} ; le store ne distingue pas un role vivant d'un role mort`,
+    reason: `${owner} has held the phase since ${record.pipeline_state?.last_transition_at ?? "an unknown moment"}; the store cannot tell a live role from a dead one`,
   };
 }
 
@@ -81,19 +81,19 @@ function assertAdvanced(records, id, before) {
   if (record == null) fail(`issue inconnue : ${id}`);
 
   const after = record.pipeline_state?.version;
-  if (typeof after !== "number") fail(`${id} n'a pas de pipeline_state.version`);
+  if (typeof after !== "number") fail(`${id} has no pipeline_state.version`);
 
   const delta = after - before;
   if (delta === 1) {
-    console.log(`pas unique respecte : ${id} version ${before} -> ${after}.`);
+    console.log(`single step honoured : ${id} version ${before} -> ${after}.`);
     return;
   }
   if (delta === 0) {
-    fail(`${id} n'a pas avance : version toujours ${after}. Le pas n'a rien persiste.`);
+    fail(`${id} did not advance: still version ${after}. The step persisted nothing.`);
   }
   fail(
     `${id} a avance de ${delta} transitions (version ${before} -> ${after}). ` +
-      `Un pas en persiste exactement une : l'orchestrateur a enchaine dans la meme conversation.`,
+      `A step persists exactly one: the orchestrator chained them in the same conversation.`,
   );
 }
 
@@ -161,17 +161,17 @@ function main() {
   }
 
   if (step == null) {
-    console.log("aucun pas a executer : aucune issue ouverte et actionnable.");
+    console.log("no step to run: no open, actionable issue.");
     return;
   }
 
-  console.log("prochain pas, un seul :\n");
+  console.log("next step, exactly one:\n");
   console.log(`  issue    ${step.issue}${step.spec ? `  (${step.spec})` : ""}`);
   console.log(`  phase    ${step.phase}`);
   console.log(`  action   ${step.verb} ${step.actor}`);
   console.log(`  motif    ${step.reason}`);
   console.log(`  version  ${step.version}`);
-  console.log(`\napres le pas, verifier qu'il n'a pas deborde :`);
+  console.log(`\nafter the step, check it did not overflow:`);
   console.log(`  node agent-pipeline/scripts/next-step.mjs --assert-advanced ${step.issue} ${step.version}`);
 
   if (actionable.length > 1) {

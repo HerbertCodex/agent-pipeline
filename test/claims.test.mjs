@@ -54,25 +54,25 @@ function validate(handoff) {
   return run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", handoff)]);
 }
 
-describe("validate-handoff : un implementer enumere ce qu'il affirme", () => {
-  test("refuse un handoff porteur d'un commit sans claims_to_replay", () => {
+describe("validate-handoff: an implementer enumerates what it asserts", () => {
+  test("refuses a handoff carrying a commit with no claims_to_replay", () => {
     const result = validate(IMPL);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /claims_to_replay vide/);
+    assert.match(result.output, /claims_to_replay empty/);
   });
 
-  test("accepte un handoff qui enumere ses affirmations", () => {
+  test("accepts a handoff that enumerates its claims", () => {
     const result = validate({ ...IMPL, claims_to_replay: [CLAIM] });
     assert.equal(result.status, 0, result.output);
   });
 
-  test("refuse une affirmation sans mode de rejeu", () => {
+  test("refuses a claim with no way to replay it", () => {
     const result = validate({ ...IMPL, claims_to_replay: [{ claim: "j'ai tout verifie" }] });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /how_to_replay manquant/);
+    assert.match(result.output, /how_to_replay missing/);
   });
 
-  test("n'exige rien d'un handoff sans commit : il n'affirme aucune mesure", () => {
+  test("requires nothing of a handoff with no commit: it asserts no measurement", () => {
     const result = validate({
       ...IMPL,
       outcome: "blocked_product",
@@ -83,29 +83,29 @@ describe("validate-handoff : un implementer enumere ce qu'il affirme", () => {
   });
 });
 
-describe("validate-handoff : une cloture confronte au lieu de croire", () => {
-  test("refuse une cloture sans verdict sur les affirmations", () => {
+describe("validate-handoff: a closure confronts instead of believing", () => {
+  test("refuses a closure with no verdict on the claims", () => {
     const result = validate(QA_CLOSURE);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /claims_verdict vide/);
+    assert.match(result.output, /claims_verdict empty/);
   });
 
-  test("refuse une affirmation declaree mais non rejouee", () => {
+  test("refuses a claim declared but never replayed", () => {
     const result = validate({
       ...QA_CLOSURE,
       claims_verdict: [{ claim: CLAIM.claim, replayed: false, result: "cru sur parole" }],
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /non rejoue/);
+    assert.match(result.output, /not replayed/);
   });
 
-  test("refuse un rejeu sans resultat", () => {
+  test("refuses a replay with no result", () => {
     const result = validate({ ...QA_CLOSURE, claims_verdict: [{ claim: CLAIM.claim, replayed: true }] });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /result manquant/);
+    assert.match(result.output, /result missing/);
   });
 
-  test("accepte une cloture dont chaque affirmation est rejouee", () => {
+  test("accepts a closure where every claim was replayed", () => {
     const result = validate({
       ...QA_CLOSURE,
       claims_verdict: [{ claim: CLAIM.claim, replayed: true, result: "confirme : 8 fichiers, exit 0" }],
@@ -114,7 +114,7 @@ describe("validate-handoff : une cloture confronte au lieu de croire", () => {
   });
 });
 
-describe("store-update : le verdict se compte contre les affirmations", () => {
+describe("store-update: the verdict is counted against the claims", () => {
   /**
    * Prepare une issue portant deja des affirmations a rejouer.
    *
@@ -126,7 +126,7 @@ describe("store-update : le verdict se compte contre les affirmations", () => {
     return { root: sandbox, id: record.id, hash: recordHash(sandbox, "issues", record.id) };
   }
 
-  test("refuse un verdict dont la longueur ne correspond pas", () => {
+  test("refuses a verdict whose length does not match", () => {
     const { root, id, hash } = withClaims();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -135,10 +135,10 @@ describe("store-update : le verdict se compte contre les affirmations", () => {
     });
     const result = run(root, "store-update.mjs", [request]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /verdict de 1 entree\(s\) pour 2 affirmation\(s\)/);
+    assert.match(result.output, /verdict of 1 entry\(ies\) for 2 claim\(s\)/);
   });
 
-  test("refuse un verdict portant une affirmation non rejouee", () => {
+  test("refuses a verdict carrying an unreplayed claim", () => {
     const { root, id, hash } = withClaims();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -151,7 +151,7 @@ describe("store-update : le verdict se compte contre les affirmations", () => {
     assert.notEqual(run(root, "store-update.mjs", [request]).status, 0);
   });
 
-  test("persiste un verdict complet", () => {
+  test("persists a complete verdict", () => {
     const { root, id, hash } = withClaims();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -167,7 +167,7 @@ describe("store-update : le verdict se compte contre les affirmations", () => {
     assert.equal(after.claims_verdict[1].result, "8 tuees, 2 survivantes");
   });
 
-  test("reecrire les affirmations efface un verdict etabli contre les anciennes", () => {
+  test("rewriting the claims clears a verdict rendered on the old ones", () => {
     const { root, id, hash } = withClaims();
     const first = writeJson(root, "r1.json", {
       target: { kind: "issue", id },

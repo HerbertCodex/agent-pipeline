@@ -23,9 +23,9 @@ function arrows(chain) {
     })
     .join("");
   return `<div class="chain">${boxes}</div>
-<p class="chain-legend">se lit : « ${esc(chain[0])} peut utiliser ${esc(chain[1] ?? chain[0])}${
-    chain.length > 2 ? " et la suite" : ""
-  }, jamais l'inverse »</p>`;
+<p class="chain-legend">reads as: « ${esc(chain[0])} may use ${esc(chain[1] ?? chain[0])}${
+    chain.length > 2 ? " and so on" : ""
+  }, never the reverse &raquo;</p>`;
 }
 
 /**
@@ -51,23 +51,23 @@ function card(entry, index, example) {
 <pre class="tree">${entry.tree.map((line) => esc(line)).join("\n")}</pre>
 </div>
 <div>
-<p class="lbl">Sens des dépendances</p>
+<p class="lbl">Dependency direction</p>
 ${arrows(entry.chain)}
 </div>
 </div>
 
-<p class="lbl">Pour ${esc(example)} : ${entry.files_for_example.length} fichiers</p>
+<p class="lbl">For ${esc(example)}: ${entry.files_for_example.length} files</p>
 <ul class="files">${entry.files_for_example.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
 
 <ol class="rules">
-<li><span class="rid">Coût</span><p>${esc(entry.cost)}</p></li>
-<li><span class="rid">Gain</span><p>${esc(entry.buys)}</p></li>
-<li><span class="rid">Piège</span><p>${esc(entry.wrong_when)}</p></li>
+<li><span class="rid">Cost</span><p>${esc(entry.cost)}</p></li>
+<li><span class="rid">Buys</span><p>${esc(entry.buys)}</p></li>
+<li><span class="rid">Trap</span><p>${esc(entry.wrong_when)}</p></li>
 </ol>
-<p class="lbl">Quand le projet grossira</p>
+<p class="lbl">As the project grows</p>
 <p class="grow">${esc(entry.grows_into)}</p>
 <ul class="alts">${entry.migration_triggers.map((t) => `<li><span>${esc(t)}</span></li>`).join("")}</ul>
-<p class="cost-move"><strong>Coût du changement —</strong> ${esc(entry.migration_cost)}</p>
+<p class="cost-move"><strong>Migration cost &mdash;</strong> ${esc(entry.migration_cost)}</p>
 
 <p class="note"><strong>En résumé.</strong> ${esc(entry.verdict)}</p>
 </article>`;
@@ -92,7 +92,7 @@ function table(retained, example) {
     )
     .join("");
   return `<div class="tablewrap"><table>
-<thead><tr><th>Option</th><th>Fichiers pour ${esc(example)}</th><th>Quand c'est le bon choix</th></tr></thead>
+<thead><tr><th>Option</th><th>Files for ${esc(example)}</th><th>When it is the right call</th></tr></thead>
 <tbody>${rows}</tbody></table></div>`;
 }
 
@@ -114,10 +114,10 @@ function questionnaire() {
 <p class="reveals">Ce que la reponse revele — ${esc(item.reveals)}</p>
 </div>`,
   ).join("");
-  return `<section><div class="sec-head"><h2>D'abord : de quoi parle ce projet ?</h2>
-<p>Huit questions, en langue ordinaire. Repondez-y avant de regarder la moindre architecture — c'est ce qui transforme une recommandation generique en conseil argumente.</p></div>
+  return `<section><div class="sec-head"><h2>First: what is this project about?</h2>
+<p>Eight questions, in plain language. Answer them before looking at any architecture  &mdash; that is what turns a generic recommendation into reasoned advice.</p></div>
 <div class="features">${items}</div>
-<p class="note"><strong>La question qui decide vraiment, c'est B3.</strong> Un systeme qui ne refuse jamais rien pour une raison venue du monde reel n'a pas de metier : il a un schema. Et B4 verifie que les refus cites en sont bien — « ce champ est obligatoire » n'en est pas un.</p></section>`;
+<p class="note"><strong>The question that really decides is B3.</strong> A system that never refuses anything for a reason coming from the real world has no domain: it has a schema. And B4 checks that the refusals quoted really are refusals &mdash; &laquo; this field is required &raquo; is not one.</p></section>`;
 }
 
 /**
@@ -141,11 +141,11 @@ function recommendation(retained, analysis) {
     .join("");
   const rules = analysis.business_rules ?? [];
   const validations = analysis.validations ?? [];
-  return `<section><div class="sec-head"><h2>Ce que votre projet dit de lui-meme</h2>
+  return `<section><div class="sec-head"><h2>What your project says about itself</h2>
 <p>${esc(summarise(analysis))}</p></div>
-${rules.length > 0 ? `<p class="lbl">Regles metier reperees</p><ol class="rules">${rules.map((r, i) => `<li><span class="rid">R${i + 1}</span><p>${esc(r.rule)}${r.why_it_matters ? ` — <em>${esc(r.why_it_matters)}</em>` : ""}</p></li>`).join("")}</ol>` : '<p class="empty">Aucune regle metier reperee : ce produit enregistre et restitue.</p>'}
-${validations.length > 0 ? `<p class="lbl">Ce qui n'en est pas</p><ul class="files">${validations.map((v) => `<li>${esc(v)}</li>`).join("")}</ul>` : ""}
-<div class="sec-head" style="margin-top:1rem"><h2>Notre conseil, et pourquoi</h2>
+${rules.length > 0 ? `<p class="lbl">Regles metier reperees</p><ol class="rules">${rules.map((r, i) => `<li><span class="rid">R${i + 1}</span><p>${esc(r.rule)}${r.why_it_matters ? ` — <em>${esc(r.why_it_matters)}</em>` : ""}</p></li>`).join("")}</ol>` : '<p class="empty">No business rule found: this product stores and returns.</p>'}
+${validations.length > 0 ? `<p class="lbl">Ce qui n'is not</p><ul class="files">${validations.map((v) => `<li>${esc(v)}</li>`).join("")}</ul>` : ""}
+<div class="sec-head" style="margin-top:1rem"><h2>Our advice, and why</h2>
 <p>Fonde sur l'analyse ci-dessus, pas sur une preference generale. Le detail de chaque option reste plus bas.</p></div>
 <div class="features">${rows}</div></section>`;
 }
@@ -165,10 +165,10 @@ function main() {
 
   let analysis = null;
   if (analysisPath != null) {
-    if (!existsSync(analysisPath)) fail(`analyse introuvable : ${analysisPath}`);
+    if (!existsSync(analysisPath)) fail(`analysis not found: ${analysisPath}`);
     analysis = JSON.parse(readFileSync(analysisPath, "utf8"));
     if (!Array.isArray(analysis.business_rules)) {
-      fail("l'analyse doit porter business_rules, meme vide : dire qu'il n'y en a aucune est une conclusion, pas un oubli");
+      fail("the analysis must carry business_rules, even empty: saying there are none is a conclusion, not an omission");
     }
   }
 
@@ -186,47 +186,47 @@ function main() {
   const boundary =
     type !== "fullstack"
       ? ""
-      : `<section><div class="sec-head"><h2>Ce qui passe entre le front et le back</h2>
-<p>Sur un dépôt full-stack, cette question compte plus que la structure interne de chaque côté : c'est elle qui décide de ce qui casse quand un côté bouge.</p></div>
+      : `<section><div class="sec-head"><h2>What crosses between the front and the back</h2>
+<p>Sur un dépôt full-stack, cette question compte plus que la structure interne de chaque côté : c'is what decides what breaks when one side moves.</p></div>
 <ol class="pledges">${FULLSTACK_BOUNDARY.map(
           (item, index) => `<li><span class="rid">${pad(index)}</span><p><strong>${esc(item.option)}</strong><br>
 <em>Coût</em> — ${esc(item.cost)}<br><em>Gain</em> — ${esc(item.buys)}<br><em>Piège</em> — ${esc(item.wrong_when)}</p></li>`,
         ).join("")}</ol></section>`;
 
   const body = `<header class="masthead">
-<p class="eyebrow">Configuration · choix d'architecture · ${esc(project.label)}</p>
-<h1>Comment ranger le code de ce projet ?</h1>
+<p class="eyebrow">Configuration &middot; architecture choice &middot; ${esc(project.label)}</p>
+<h1>How should this project's code be arranged?</h1>
 <p class="lede">${esc(project.blurb)}</p>
-<p class="verbatim">Une architecture, c'est <strong>où l'on range les fichiers</strong> et <strong>qui a le droit d'appeler qui</strong>. Rien de plus. Les noms compliqués désignent des façons de répondre à ces deux questions.<br><br>Le pipeline <strong>ne choisit pas à votre place</strong> : la bonne réponse dépend de votre produit. Il explique, puis rend votre choix opposable — une fois déclaré, un fichier qui appelle ce qu'il ne devrait pas fait échouer une porte au lieu d'être signalé en revue.</p>
+<p class="verbatim">An architecture is <strong>where the files go</strong> and <strong>who is allowed to call whom</strong>. Nothing more. The complicated names are ways of answering those two questions.<br><br>The pipeline <strong>does not choose for you</strong>: the right answer depends on your product. It explains, then makes your choice enforceable &mdash; once declared, a file calling what it should not fails a gate instead of being flagged in review.</p>
 </header>
 
 ${analysis == null ? questionnaire() : recommendation(retained, analysis)}
 
-<section><div class="sec-head"><h2>En un coup d'œil</h2>
-<p>${retained.length} options pertinentes pour ce type de projet. Le détail est plus bas si vous hésitez entre deux lignes.</p></div>
+<section><div class="sec-head"><h2>At a glance</h2>
+<p>${retained.length} options relevant to this project type. The detail is further down if you hesitate between two rows.</p></div>
 ${table(retained, example)}</section>
 
-<section><div class="sec-head"><h2>Les quatre questions qui décident</h2>
-<p>Répondez-y avant de regarder les noms. Elles se répondent sans rien connaître à l'architecture, et elles éliminent la plupart des options.</p></div>
+<section><div class="sec-head"><h2>The four questions that decide</h2>
+<p>Answer them before looking at the names. They are answered without knowing any architecture, and they eliminate most of the options.</p></div>
 <div class="features">${axis}</div></section>
 
-<section><div class="sec-head"><h2>Le détail de chaque option</h2>
-<p>${retained.length} retenues sur ${ARCHITECTURES.length}. Les autres ne sont pas mauvaises : elles résolvent des problèmes que ce type de projet n'a pas.</p></div>
+<section><div class="sec-head"><h2>Each option in detail</h2>
+<p>${retained.length} retained out of ${ARCHITECTURES.length}. The others are not bad: they solve problems this project type does not have.</p></div>
 <div class="features">${retained.map((entry, index) => card(entry, index, example)).join("")}</div></section>
 
 ${boundary}
 
-<section><div class="sec-head"><h2>« Et si je me trompe ? »</h2>
-<p>C'est la bonne objection. Au début d'un projet, on ne sait pas encore tout — et pourtant il faut ranger les fichiers quelque part.</p></div>
-<p class="note"><strong>Ne choisissez pas le plus lourd par précaution.</strong> C'est l'erreur la plus courante : on paie tout de suite une assurance qu'on n'utilisera peut-être jamais, et le coût est prélevé sur chaque fichier écrit, pendant des années.<br><br>
-<strong>Ce qui décide, c'est une asymétrie.</strong> Partir simple garde les options ouvertes : on durcit un dossier le jour où il l'a mérité, sans toucher aux autres. Partir compliqué les ferme : personne ne retire des couches, on les subit. Un mauvais choix simple se corrige par morceaux ; un mauvais choix lourd, on vit avec.<br><br>
-<strong>Ici, changer d'avis se mesure.</strong> Votre architecture est déclarée dans la configuration et vérifiée par une porte. Le jour où vous changez la déclaration, la porte vous imprime <em>la liste exacte</em> des fichiers qui ne respectent plus la nouvelle règle. Une migration devient une liste de tâches, pas une exploration — et c'est la différence avec un projet où l'architecture ne vit que dans la tête des gens.</p></section>
+<section><div class="sec-head"><h2>&laquo; What if I get it wrong? &raquo;</h2>
+<p>That is the right objection. At the start of a project you do not know everything yet, and the files still have to go somewhere.</p></div>
+<p class="note"><strong>Do not pick the heaviest option out of caution.</strong> That is the most common mistake: you pay immediately for insurance you may never claim, and the cost is taken out of every file you write, for years.<br><br>
+<strong>What decides is an asymmetry.</strong> Starting simple keeps the options open: you harden one folder the day it earns it, without touching the others. Starting complicated closes them: nobody removes layers, they endure them. A bad simple choice is corrected piece by piece; a bad heavy one, you live with.<br><br>
+<strong>Here, changing your mind is measured.</strong> Your architecture is declared in the configuration and checked by a gate. The day you change the declaration, the gate prints you <em>the exact list</em> of files that no longer obey the new rule. A migration becomes a task list, not an exploration &mdash; and that is the difference with a project where the architecture lives only in people's heads.</p></section>
 
-<section><div class="sec-head"><h2>Et ensuite</h2></div>
-<p class="note">Votre choix devient une ligne dans la configuration : les dossiers, et qui a le droit d'appeler qui. Le profil la traduit en règle vérifiée automatiquement.<br><br><strong>À savoir avant de choisir :</strong> changer d'architecture plus tard veut dire déplacer des fichiers dans tout le projet. Le moment le moins cher pour trancher est maintenant, avant la première ligne de code.</p></section>`;
+<section><div class="sec-head"><h2>What comes next</h2></div>
+<p class="note">Your choice becomes one line in the configuration: the folders, and who is allowed to call whom. The profile translates it into an automatically checked rule.<br><br><strong>Worth knowing before you choose:</strong> changing architecture later means moving files across the whole project. The cheapest moment to decide is now, before the first line of code.</p></section>`;
 
   writeFileSync(target, shell(`Architecture — ${project.label}`, body));
-  console.log(`ecrit : ${target} (${type}, ${retained.length} options sur ${ARCHITECTURES.length}, ${analysis == null ? "questionnaire" : "conseil fonde sur l'analyse"})`);
+  console.log(`written: ${target} (${type}, ${retained.length} options out of ${ARCHITECTURES.length}, ${analysis == null ? "questionnaire" : "advice grounded in the analysis"})`);
   console.log(SURFACE_HINT);
 }
 

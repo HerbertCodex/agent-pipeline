@@ -12,15 +12,15 @@ import { createHash } from "node:crypto";
  * @returns la configuration parsee, ou jamais si elle est invalide
  */
 export function loadConfig(path = "pipeline.config.json") {
-  if (!existsSync(path)) fail(`introuvable : ${path} (lancer depuis la racine du projet)`);
+  if (!existsSync(path)) fail(`not found: ${path} (run it from the project root)`);
   let config;
   try {
     config = JSON.parse(readFileSync(path, "utf8"));
   } catch (error) {
-    fail(`${path}: JSON invalide (${error.message})`);
+    fail(`${path}: invalid JSON (${error.message})`);
   }
   for (const key of ["profile", "profiles_dir", "commands", "docs_dirs", "briefs_dir", "prompts_dir", "skills_dir", "rules_path", "project_context", "file_policy", "store_dir", "ci"]) {
-    if (config[key] == null) fail(`${path}: cle manquante "${key}"`);
+    if (config[key] == null) fail(`${path}: missing key "${key}"`);
   }
   return config;
 }
@@ -37,7 +37,7 @@ export function loadConfig(path = "pipeline.config.json") {
  */
 export function loadRules(path) {
   const resolved = path ?? loadConfig().rules_path;
-  if (!existsSync(resolved)) fail(`introuvable : ${resolved}`);
+  if (!existsSync(resolved)) fail(`not found: ${resolved}`);
   return JSON.parse(readFileSync(resolved, "utf8"));
 }
 

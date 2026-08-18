@@ -17,7 +17,7 @@ function main() {
   const handoff = JSON.parse(readFileSync(handoffPath, "utf8"));
   const rules = loadRules();
   const sha = handoff.evidence?.commit_sha;
-  if (!sha) fail("le handoff ne porte pas de commit_sha, rien a verifier");
+  if (!sha) fail("the handoff carries no commit_sha, nothing to verify");
 
   let diff;
   try {
@@ -31,11 +31,11 @@ function main() {
   const errors = [];
 
   for (const file of changed) {
-    if (!declared.has(file)) errors.push(`modifie mais non declare : ${file}`);
+    if (!declared.has(file)) errors.push(`modified but undeclared: ${file}`);
     if (!pathAllowed(file, policy)) errors.push(`hors role ${handoff.agent} : ${file}`);
   }
   for (const file of declared) {
-    if (!changed.includes(file)) errors.push(`declare mais jamais touche : ${file}`);
+    if (!changed.includes(file)) errors.push(`declared but never touched: ${file}`);
   }
 
   if (errors.length > 0) {
@@ -43,7 +43,7 @@ function main() {
     process.exit(1);
   }
   console.log(
-    `scope verifie : ${changed.length} fichier(s), ${baseRef}..${sha}, role ${handoff.agent}, ${new Date().toISOString()}`
+    `scope verified: ${changed.length} file(s), ${baseRef}..${sha}, role ${handoff.agent}, ${new Date().toISOString()}`
   );
 }
 

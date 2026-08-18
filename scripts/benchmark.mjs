@@ -95,7 +95,7 @@ function start(args) {
   console.log(`run ouvert : empreinte ${pending.fingerprint}, base ${pending.base_ref}`);
   if (pending.branch === "main") {
     console.log(
-      "ATTENTION : vous etes sur main. Le protocole demande une branche jetable depuis le tag de depart.",
+      "ATTENTION: you are on main. The protocol asks for a throwaway branch from the starting tag.",
     );
   }
 }
@@ -104,7 +104,7 @@ function start(args) {
  * Ferme un run : mesure et ajoute une ligne a l'historique.
  */
 function finish() {
-  if (!existsSync(PENDING)) fail(`aucun run ouvert. Lancez d'abord : benchmark.mjs --start`);
+  if (!existsSync(PENDING)) fail(`no run open. Start one first: benchmark.mjs --start`);
   const pending = JSON.parse(readFileSync(PENDING, "utf8"));
 
   const config = loadConfig();
@@ -158,7 +158,7 @@ function finish() {
   console.log(`run ferme : ${run.minutes} min, ${run.issues} issue(s), ${run.cycles} cycle(s)`);
   if (run.fingerprint_start !== run.fingerprint_end) {
     console.log(
-      "ATTENTION : la configuration du pipeline a change PENDANT le run. Ce resultat ne mesure aucune configuration en particulier.",
+      "WARNING: the pipeline configuration changed DURING the run. This result measures no configuration in particular.",
     );
   }
 }
@@ -167,7 +167,7 @@ function finish() {
  * Compare les runs enregistres, groupes par empreinte de configuration.
  */
 function report() {
-  if (!existsSync(RUNS)) fail(`aucun run enregistre dans ${RUNS}`);
+  if (!existsSync(RUNS)) fail(`no run recorded in ${RUNS}`);
   const runs = readFileSync(RUNS, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
 
   const groups = new Map();
@@ -192,15 +192,15 @@ function report() {
   const thin = [...groups.values()].filter((list) => list.length < 2);
   if (thin.length > 0) {
     console.log(
-      `\n  ${thin.length} configuration(s) n'ont qu'UN run. Un run est un echantillon de un :\n` +
-        "  deux executions de la meme configuration donnent des chiffres differents.\n" +
-        "  Ne conclure sur aucune de ces lignes avant un second run.",
+      `\n  ${thin.length} configuration(s) have only ONE run. One run is a sample of one:\n` +
+        "  two runs of the same configuration give different numbers.\n" +
+        "  Conclude nothing from these lines before a second run.",
     );
   }
   console.log(
-    "\n  La duree est l'indicateur le plus bruyant et le plus seduisant. Ceux qui comptent\n" +
-      "  sont les echappees, les cycles par issue et les criteres verifies au premier passage.\n" +
-      "  Un run deux fois plus rapide qui laisse echapper un defaut est un run pire.",
+    "\n  Duration is the noisiest and most seductive indicator. The ones that count\n" +
+      "  are escaped defects, cycles per issue and criteria verified on the first pass.\n" +
+      "  A run twice as fast that lets a defect escape is a worse run.",
   );
 }
 

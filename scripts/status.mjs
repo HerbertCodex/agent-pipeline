@@ -72,7 +72,7 @@ function renderHtml(columns, specs, profile) {
     tests_in_progress: "Tests en cours",
     tests_red: "Tests rouges",
     implementation_in_progress: "Implementation",
-    ready_for_qa: "Pret pour QA",
+    ready_for_qa: "Ready for QA",
     qa_in_progress: "QA en cours",
     closed: "Closed",
     blocked: "Bloquees",
@@ -102,7 +102,7 @@ function renderHtml(columns, specs, profile) {
     .map((s) => `<li><strong>${esc(s.record.id)}</strong> ${esc(s.record.title ?? "")} <span class="badge">${esc(s.record.status ?? "draft")}</span></li>`)
     .join("");
   return `<!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta http-equiv="refresh" content="15">
+<html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="15">
 <title>Pipeline ${esc(profile)}</title>
 <style>
 :root{color-scheme:light dark;font-family:system-ui,sans-serif}
@@ -125,8 +125,8 @@ pre{white-space:pre-wrap;background:color-mix(in srgb,CanvasText 6%,Canvas);padd
 time{opacity:.5;font-size:.65rem}
 ul.specs{list-style:none;padding:0;display:flex;gap:1rem;flex-wrap:wrap}
 </style></head><body>
-<h1>Pipeline <small>profil ${esc(profile)}, genere ${esc(new Date().toISOString())}, rafraichi toutes les 15 s</small></h1>
-<ul class="specs">${specsHtml || "<li>aucune spec</li>"}</ul>
+<h1>Pipeline <small>profile ${esc(profile)}, generated ${esc(new Date().toISOString())}, refreshed every 15 s</small></h1>
+<ul class="specs">${specsHtml || "<li>no spec</li>"}</ul>
 <div class="board">${columnsHtml}</div>
 </body></html>`;
 }
@@ -145,7 +145,7 @@ function main() {
   const columns = groupByColumn(issues);
 
   if (issues.length === 0) {
-    console.log(`store vide : aucune issue dans ${config.store_dir}/ (il se remplit a la premiere persistance de l'orchestrateur)`);
+    console.log(`store empty: no issue in ${config.store_dir}/ (it fills on the orchestrator's first write)`);
   }
   for (const [key, records] of columns) {
     if (records.length === 0) continue;
@@ -154,13 +154,13 @@ function main() {
   }
   const escalated = columns.get("operator_escalation").length;
   const blocked = columns.get("blocked").length;
-  if (escalated + blocked > 0) console.log(`ATTENTION : ${blocked} bloquee(s), ${escalated} escalade(s)`);
+  if (escalated + blocked > 0) console.log(`ATTENTION : ${blocked} blocked, ${escalated} escalade(s)`);
 
   if (process.argv.includes("--html")) {
     mkdirSync(config.store_dir, { recursive: true });
     const outPath = join(config.store_dir, "status.html");
     writeFileSync(outPath, renderHtml(columns, specs, config.profile));
-    console.log(`ecrit : ${outPath}`);
+    console.log(`written: ${outPath}`);
   }
 }
 

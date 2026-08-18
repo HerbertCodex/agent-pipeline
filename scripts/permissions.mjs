@@ -82,35 +82,35 @@ function toRules(globs) {
 function check(path, expected) {
   if (expected.length === 0) {
     console.log(
-      "AUCUNE regle derivable : chaque chemin refuse a un role est autorise a un autre.\n" +
-        "Des permissions globales a la session ne peuvent pas imposer cette file_policy — les refus\n" +
-        "restent des consignes de prompt. Ce controle ne prouve donc rien ici, et son succes n'est\n" +
-        "pas une garantie : c'est l'absence de garantie.",
+      "NO rule derivable: every path refused to one role is allowed to another.\n" +
+        "Session-global permissions cannot enforce this file_policy: the refusals\n" +
+        "stay prompt instructions. This check therefore proves nothing here, and its success is\n" +
+        "not a guarantee: it is the absence of one.",
     );
     return;
   }
 
-  if (!existsSync(path)) fail(`introuvable : ${path}`);
+  if (!existsSync(path)) fail(`not found: ${path}`);
 
   let settings;
   try {
     settings = JSON.parse(readFileSync(path, "utf8"));
   } catch (error) {
-    fail(`${path} n'est pas un JSON valide : ${error.message}`);
+    fail(`${path} is not valid JSON : ${error.message}`);
   }
 
   const deny = settings.permissions?.deny ?? [];
   const missing = expected.filter((rule) => !deny.includes(rule));
 
   if (missing.length > 0) {
-    console.error(`${path} ne refuse pas :`);
+    console.error(`${path} does not refuse:`);
     for (const rule of missing) console.error(`  ${rule}`);
     fail(
-      `${missing.length} regle(s) manquante(s). file_policy declare des refus que la plateforme n'impose pas : ` +
-        `ce sont des consignes de prompt, pas des barrieres.`,
+      `${missing.length} missing rule(s). file_policy declares refusals the platform does not enforce: ` +
+        `they are prompt instructions, not barriers.`,
     );
   }
-  console.log(`${path} impose les ${expected.length} regles derivees de file_policy.`);
+  console.log(`${path} enforces the ${expected.length} rules derived from file_policy.`);
 }
 
 /**
@@ -133,7 +133,7 @@ function main() {
   const config = loadConfig();
   const byRole = denialsByRole(config);
 
-  if (byRole.size === 0) fail("file_policy ne declare aucun refus : rien a deriver.");
+  if (byRole.size === 0) fail("file_policy declares no refusal: nothing to derive.");
 
   const candidates = [...new Set([...byRole.values()].flat())];
   const universal = universalDenials(config, candidates);
@@ -141,7 +141,7 @@ function main() {
 
   if (checkIndex !== -1) {
     const path = args[checkIndex + 1];
-    if (!path) fail("usage : permissions.mjs --check <fichier-de-reglages>");
+    if (!path) fail("usage: permissions.mjs --check <settings-file>");
     check(path, toRules(universal));
     return;
   }
@@ -160,15 +160,15 @@ function main() {
     for (const glob of globs) console.log(`    ${glob}`);
   }
 
-  console.log(`\nRefuses a TOUS les roles, donc traduisibles en permission globale (${universal.length}) :\n`);
+  console.log(`\nRefused to EVERY role, therefore expressible as a global permission (${universal.length}) :\n`);
   for (const glob of universal) console.log(`  ${glob}`);
 
   const partial = candidates.filter((glob) => !universal.includes(glob));
   if (partial.length > 0) {
     console.log(
-      `\nRefuses a certains roles seulement (${new Set(partial).size}) : une plateforme dont les permissions\n` +
-        `sont globales a la session ne peut pas les imposer sans bloquer aussi les roles autorises.\n` +
-        `Ils restent a la charge d'une configuration par agent, ou demeurent de simples consignes.\n`,
+      `\nRefuses a certain roles only (${new Set(partial).size}): a platform whose permissions\n` +
+        `are session-global cannot enforce them without also blocking the allowed roles.\n` +
+        `They remain the responsibility of a per-agent configuration, or stay mere instructions.\n`,
     );
     for (const glob of new Set(partial)) console.log(`  ${glob}`);
   }

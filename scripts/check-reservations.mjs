@@ -20,11 +20,11 @@ function main() {
   const path = join(config.store_dir, "issues.jsonl");
   const entries = readJsonl(path);
   const target = entries.find((e) => e.record.id === issueId);
-  if (target == null) fail(`issue introuvable : ${issueId}`);
+  if (target == null) fail(`issue not found: ${issueId}`);
 
   const targetReservations = target.record.pipeline_state?.file_reservations ?? [];
   if (targetReservations.length === 0) {
-    fail(`issue ${issueId} non gardee : aucune reservation declaree. Declarer un perimetre avant dispatch.`);
+    fail(`issue ${issueId} unguarded: no reservation declared. Declare a scope before dispatching.`);
   }
 
   const holding = new Set(rules.reservation_holding_phases);
@@ -45,9 +45,9 @@ function main() {
 
   if (conflicts.length > 0) {
     for (const conflict of conflicts) console.error(`conflit : ${conflict}`);
-    fail(`dispatch refuse pour ${issueId}`);
+    fail(`dispatch refused for ${issueId}`);
   }
-  console.log(`aucune collision : ${issueId} peut etre dispatchee (${targetReservations.length} reservation(s))`);
+  console.log(`no collision: ${issueId} can be dispatched (${targetReservations.length} reservation(s))`);
 }
 
 main();

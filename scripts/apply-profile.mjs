@@ -32,20 +32,20 @@ const ROLES = ["orchestrator", "product", "implementer", "qa"];
  * @returns le contenu rendu de AGENTS.md
  */
 function renderAgents(config) {
-  if (!existsSync(AGENTS_TEMPLATE)) fail(`introuvable : ${AGENTS_TEMPLATE}`);
+  if (!existsSync(AGENTS_TEMPLATE)) fail(`not found: ${AGENTS_TEMPLATE}`);
 
   const invariantsPath = join(config.profiles_dir, config.profile, "invariants.md");
   if (!existsSync(invariantsPath)) {
     fail(
-      `introuvable : ${invariantsPath}\n` +
-        `Le profil "${config.profile}" n'a pas d'invariants. Un profil sans invariants rendrait ` +
-        `un AGENTS.md dont la section 9 est vide, donc une politique muette sur la stack.\n` +
-        `Ecrire ce fichier est la premiere etape de ${PORTING_GUIDE}.`,
+      `not found: ${invariantsPath}\n` +
+        `Profile "${config.profile}" has no invariants. A profile with no invariants would render ` +
+        `an AGENTS.md whose section 9 is empty, therefore a policy silent about the stack.\n` +
+        `Writing that file is the first step of ${PORTING_GUIDE}.`,
     );
   }
 
   const invariants = readFileSync(invariantsPath, "utf8").trim();
-  if (invariants.length === 0) fail(`${invariantsPath} est vide`);
+  if (invariants.length === 0) fail(`${invariantsPath} is empty`);
 
   let text = readFileSync(AGENTS_TEMPLATE, "utf8")
     .replaceAll("{{profile}}", config.profile)
@@ -74,9 +74,9 @@ function projectBlock(text, name, source) {
   if (start === -1) fail(`${source}: bloc <!-- claude:${name} --> absent`);
   const from = start + open.length;
   const end = text.indexOf("\n<!-- /claude -->", from);
-  if (end === -1) fail(`${source}: bloc claude:${name} non ferme`);
+  if (end === -1) fail(`${source}: claude block ${name} non ferme`);
   const body = text.slice(from, end).trim();
-  if (body.length === 0) fail(`${source}: bloc claude:${name} vide`);
+  if (body.length === 0) fail(`${source}: claude block ${name} empty`);
   return body;
 }
 
@@ -96,14 +96,14 @@ function projectBlock(text, name, source) {
  * @returns le contenu rendu de CLAUDE.md
  */
 function renderClaude(config) {
-  if (!existsSync(CLAUDE_TEMPLATE)) fail(`introuvable : ${CLAUDE_TEMPLATE}`);
+  if (!existsSync(CLAUDE_TEMPLATE)) fail(`not found: ${CLAUDE_TEMPLATE}`);
   const contextPath = config.project_context;
   if (!existsSync(contextPath)) {
     fail(
-      `introuvable : ${contextPath}\n` +
-        `Sans lui, CLAUDE.md serait rendu sans ce qui est vrai de ce depot : ni commandes ` +
-        `locales, ni limites assumees, pour toute session neuve.\n` +
-        `Ecrire ce fichier est une etape de ${PORTING_GUIDE}.`,
+      `not found: ${contextPath}\n` +
+        `Without it, CLAUDE.md would render without what is true of this repository: no local ` +
+        `commands, no accepted limits, for any fresh session.\n` +
+        `Writing that file is a step of ${PORTING_GUIDE}.`,
     );
   }
 
@@ -126,7 +126,7 @@ function renderClaude(config) {
  * @returns le contenu rendu par nom de fichier de prompt
  */
 function renderPrompts(config) {
-  if (!existsSync(PROMPTS_SRC)) fail(`introuvable : ${PROMPTS_SRC}`);
+  if (!existsSync(PROMPTS_SRC)) fail(`not found: ${PROMPTS_SRC}`);
   const rendered = new Map();
   for (const file of readdirSync(PROMPTS_SRC).filter((f) => f.endsWith(".md")).sort()) {
     const text = readFileSync(join(PROMPTS_SRC, file), "utf8").replaceAll("{{briefs_dir}}", config.briefs_dir);
@@ -174,15 +174,15 @@ function collectSkills(config) {
 
   for (const [source, label] of [
     [SKILLS_SRC, "core"],
-    [profileSkills, `profil ${config.profile}`],
+    [profileSkills, `profile ${config.profile}`],
   ]) {
     for (const relative of walkRelative(source)) {
       const skill = relative.split("/")[0];
       const previous = origin.get(skill);
       if (previous != null && previous !== label) {
         fail(
-          `skill "${skill}" present dans ${previous} et dans ${label}.\n` +
-            `Un skill appartient au core s'il ne depend d'aucune stack, au profil sinon. Jamais aux deux.`,
+          `skill "${skill}" present in both ${previous} and ${label}.\n` +
+            `A skill belongs to the core if it depends on no stack, to the profile otherwise. Never to both.`,
         );
       }
       origin.set(skill, label);
@@ -210,7 +210,7 @@ function applySkills(config, checkMode) {
 
   if (wanted.size === 0) {
     if (existsSync(target) && walkRelative(target).length > 0) {
-      console.error(`desynchronise : ${target} peuple alors qu'aucun skill n'est fourni`);
+      console.error(`out of sync: ${target} populated while no skill is supplied`);
       return true;
     }
     return false;
@@ -226,7 +226,7 @@ function applySkills(config, checkMode) {
         console.error(`absent : ${path}`);
         drift = true;
       } else if (!readFileSync(path).equals(content)) {
-        console.error(`desynchronise : ${path}`);
+        console.error(`out of sync: ${path}`);
         drift = true;
       }
       present.delete(relative);
@@ -247,7 +247,7 @@ function applySkills(config, checkMode) {
     writeFileSync(path, content);
   }
   const names = new Set([...wanted.keys()].map((relative) => relative.split("/")[0]));
-  console.log(`ecrit : ${target}/ (${names.size} skills, ${wanted.size} fichiers)`);
+  console.log(`written: ${target}/ (${names.size} skills, ${wanted.size} files)`);
   return false;
 }
 
@@ -270,38 +270,38 @@ function checkArchitecture(config) {
   const chosen = config.architecture;
   if (chosen == null || typeof chosen !== "object") {
     fail(
-      "architecture manquante : declarez { id, project_type }. Le cadre ne choisit pas a votre place, " +
-        "mais un choix qui ne vit que dans une page HTML n'engage aucun agent — chacun rangera le code " +
-        "a sa facon, et la derive sera invisible parce que rien ne dit de quoi elle derive. " +
-        "Lancez render-architecture.mjs pour trancher, puis ecrivez le resultat ici.",
+      "architecture missing: declare { id, project_type }. The framework does not choose for you, " +
+        "but a choice that lives only in a rendered page binds no agent: each will lay the code out " +
+        "its own way, and drift stays invisible because nothing states what it drifts from. " +
+        "Run render-architecture.mjs to decide, then write the result here.",
     );
   }
   if (typeof chosen.project_type !== "string" || PROJECT_TYPES[chosen.project_type] == null) {
     fail(
-      `architecture.project_type invalide : attendu l'un de ${Object.keys(PROJECT_TYPES).join(", ")}. ` +
-        "Le type change la reponse, pas seulement le vocabulaire.",
+      `architecture.project_type invalid: expected one of ${Object.keys(PROJECT_TYPES).join(", ")}. ` +
+        "The project type changes the answer, not just the vocabulary.",
     );
   }
   if (typeof chosen.id !== "string" || chosen.id.length === 0) {
-    fail("architecture.id manquant : nommez le rangement retenu, ou \"custom\" s'il n'est dans aucun catalogue.");
+    fail("architecture.id missing: name the layout you retained, or \"custom\" if it is in no catalogue.");
   }
   if (chosen.id === "custom") {
     if (typeof chosen.note !== "string" || chosen.note.trim().length === 0) {
-      fail("architecture.id vaut \"custom\" : la note qui decrit le rangement retenu devient la seule reference. Elle est obligatoire.");
+      fail("architecture.id is \"custom\": the note describing the layout becomes the only reference. It is required.");
     }
     return;
   }
   const known = ARCHITECTURES.find((item) => item.id === chosen.id);
   if (known == null) {
     fail(
-      `architecture.id inconnu : "${chosen.id}". Connus : ${ARCHITECTURES.map((item) => item.id).join(", ")}, ` +
-        "ou \"custom\" avec une note.",
+      `architecture.id unknown: "${chosen.id}". Known: ${ARCHITECTURES.map((item) => item.id).join(", ")}, ` +
+        "or \"custom\" with a note.",
     );
   }
   if (!known.applies.includes(chosen.project_type)) {
     fail(
-      `architecture "${chosen.id}" ne s'applique pas a un projet ${chosen.project_type} ` +
-        `(elle vaut pour : ${known.applies.join(", ")}). Un choix hors type est un nom recopie, pas une decision.`,
+      `architecture "${chosen.id}" does not apply to a ${chosen.project_type} project ` +
+        `(it applies to: ${known.applies.join(", ")}). A choice outside the project type is a name copied out, not a decision.`,
     );
   }
 }
@@ -321,14 +321,14 @@ function main() {
   const config = loadConfig();
 
   for (const key of ["check", "lint", "build", "test_unit", "audit", "secrets_scan", "project_map"]) {
-    if (typeof config.commands[key] !== "string") fail(`commands.${key} manquante ou invalide`);
+    if (typeof config.commands[key] !== "string") fail(`commands.${key} missing or invalid`);
   }
   if (typeof config.commands.design_limits !== "string") {
     fail(
-      "commands.design_limits manquante : le core ne connait pas votre outil, mais il exige qu'une porte " +
-        "borne complexite, longueur de fonction, nombre de parametres et profondeur d'imbrication. " +
-        "Ce sont des approximations mesurables de ce que la responsabilite unique et KISS protegent ; " +
-        "sans porte, elles s'auto-annulent et le code n'est bon que si le modele l'est.",
+      "commands.design_limits missing: the core does not know your tool, but it requires a gate bounding " +
+        "borne complexity, function length, parameter count and nesting depth. " +
+        "These are measurable approximations of what single responsibility and KISS protect; " +
+        "with no gate they apply to nothing, and the code is only as good as the model.",
     );
   }
   checkArchitecture(config);
@@ -336,7 +336,7 @@ function main() {
     if (!ROLES.includes(role)) fail(`file_policy: role inconnu "${role}"`);
   }
   for (const role of ["implementer"]) {
-    if (config.file_policy[role] == null) fail(`file_policy.${role} est obligatoire`);
+    if (config.file_policy[role] == null) fail(`file_policy.${role} is required`);
   }
 
   const RULES_PATH = config.rules_path;
@@ -344,14 +344,14 @@ function main() {
     if (checkMode) {
       fail(
         `absent : ${RULES_PATH}\n` +
-          `Le fichier de regles n'a jamais ete amorce. Lancer apply-profile sans --check : ` +
-          `il le seme depuis ${RULES_SRC}.`,
+          `The rules file was never seeded. Run apply-profile without --check: ` +
+          `it seeds it from ${RULES_SRC}.`,
       );
     }
-    if (!existsSync(RULES_SRC)) fail(`introuvable : ${RULES_SRC}`);
+    if (!existsSync(RULES_SRC)) fail(`not found: ${RULES_SRC}`);
     mkdirSync(dirname(RULES_PATH), { recursive: true });
     writeFileSync(RULES_PATH, readFileSync(RULES_SRC));
-    console.log(`seme : ${RULES_PATH} (depuis ${RULES_SRC})`);
+    console.log(`seeded: ${RULES_PATH} (from ${RULES_SRC})`);
   }
 
   const rules = loadRules(RULES_PATH);
@@ -361,7 +361,7 @@ function main() {
 
   let ci = "";
   if (ciEnabled) {
-  if (!existsSync(CI_TEMPLATE)) fail(`introuvable : ${CI_TEMPLATE}`);
+  if (!existsSync(CI_TEMPLATE)) fail(`not found: ${CI_TEMPLATE}`);
   ci = readFileSync(CI_TEMPLATE, "utf8");
   const vars = {
     profile: config.profile,
@@ -387,59 +387,59 @@ function main() {
     let drift = false;
     const currentAgents = existsSync(AGENTS_OUT) ? readFileSync(AGENTS_OUT, "utf8") : "";
     if (currentAgents !== agents) {
-      console.error(`desynchronise : ${AGENTS_OUT}`);
+      console.error(`out of sync: ${AGENTS_OUT}`);
       drift = true;
     }
     const currentClaude = existsSync(CLAUDE_OUT) ? readFileSync(CLAUDE_OUT, "utf8") : "";
     if (currentClaude !== claude) {
-      console.error(`desynchronise : ${CLAUDE_OUT}`);
+      console.error(`out of sync: ${CLAUDE_OUT}`);
       drift = true;
     }
     for (const [file, text] of prompts) {
       const outPath = join(config.prompts_dir, file);
       const current = existsSync(outPath) ? readFileSync(outPath, "utf8") : "";
       if (current !== text) {
-        console.error(`desynchronise : ${outPath}`);
+        console.error(`out of sync: ${outPath}`);
         drift = true;
       }
     }
     if (currentPolicy !== wantedPolicy) {
-      console.error(`desynchronise : ${RULES_PATH} file_policy`);
+      console.error(`out of sync: ${RULES_PATH} file_policy`);
       drift = true;
     }
     if (ciEnabled) {
       const currentCi = existsSync(CI_OUT) ? readFileSync(CI_OUT, "utf8") : "";
       if (currentCi !== ci) {
-        console.error(`desynchronise : ${CI_OUT}`);
+        console.error(`out of sync: ${CI_OUT}`);
         drift = true;
       }
     } else if (existsSync(CI_OUT)) {
-      console.error(`desynchronise : ${CI_OUT} present alors que ci.provider est "none"`);
+      console.error(`out of sync: ${CI_OUT} present while ci.provider is "none"`);
       drift = true;
     }
     if (applySkills(config, true)) drift = true;
-    if (drift) fail("Profil non applique.");
-    console.log("Profil applique et synchronise.");
+    if (drift) fail("Profile not applied.");
+    console.log("Profile applied and in sync.");
   } else {
     rules.file_policy = config.file_policy;
     writeFileSync(RULES_PATH, JSON.stringify(rules, null, "\t") + "\n");
-    console.log(`ecrit : ${RULES_PATH} (file_policy du profil ${config.profile})`);
+    console.log(`written: ${RULES_PATH} (file_policy of profile ${config.profile})`);
     writeFileSync(AGENTS_OUT, agents);
-    console.log(`ecrit : ${AGENTS_OUT} (invariants du profil ${config.profile})`);
+    console.log(`written: ${AGENTS_OUT} (invariants of profile ${config.profile})`);
     writeFileSync(CLAUDE_OUT, claude);
-    console.log(`ecrit : ${CLAUDE_OUT} (contexte de ${config.project_context})`);
+    console.log(`written: ${CLAUDE_OUT} (contexte de ${config.project_context})`);
     if (ciEnabled) {
       mkdirSync(dirname(CI_OUT), { recursive: true });
       writeFileSync(CI_OUT, ci);
-      console.log(`ecrit : ${CI_OUT}`);
+      console.log(`written: ${CI_OUT}`);
     } else {
-      console.log(`ci.provider "none" : aucun workflow rendu, la preuve de cloture est la batterie locale complete de QA`);
+      console.log(`ci.provider "none" : no workflow rendered; the proof of closure is QA's full local battery`);
     }
     mkdirSync(config.prompts_dir, { recursive: true });
     for (const [file, text] of prompts) {
       writeFileSync(join(config.prompts_dir, file), text);
     }
-    console.log(`ecrit : ${config.prompts_dir}/ (${prompts.size} prompts, briefs -> ${config.briefs_dir})`);
+    console.log(`written: ${config.prompts_dir}/ (${prompts.size} prompts, briefs -> ${config.briefs_dir})`);
     applySkills(config, false);
   }
 }

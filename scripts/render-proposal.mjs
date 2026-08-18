@@ -21,8 +21,8 @@ function renderFeatures(features) {
 </article>`,
     )
     .join("");
-  return `<section><div class="sec-head"><h2>Ce que le produit fait</h2>
-<p>${features.length} fonctionnalites. Chaque regle numerotee est un engagement contraignant, pas une intention.</p></div>
+  return `<section><div class="sec-head"><h2>What the product does</h2>
+<p>${features.length} features. Every numbered rule is a binding commitment, not an intention.</p></div>
 <div class="features">${items}</div></section>`;
 }
 
@@ -34,8 +34,8 @@ function renderFeatures(features) {
  */
 function renderExclusions(entries) {
   if (!entries?.length) return "";
-  return `<section><div class="sec-head"><h2>Ce que le produit ne fait pas</h2>
-<p>${entries.length} exclusions nommees. Ce qui n'est pas ecrit ici est suppose fait — c'est pourquoi elles sont explicites.</p></div>
+  return `<section><div class="sec-head"><h2>What the product does not do</h2>
+<p>${entries.length} named exclusions. What is not written here is assumed built &mdash; which is why these are explicit.</p></div>
 <ol class="excl">${entries
     .map((e, i) => `<li><span class="rid">${pad(i)}</span><p>${esc(e)}</p></li>`)
     .join("")}</ol></section>`;
@@ -72,14 +72,14 @@ function renderDecisions(decisions) {
     .map(
       (d) => `<div class="open">
 <h3><span class="qid">${esc(d.id ?? "?")}</span>${esc(d.question)}</h3>
-<p class="lbl">Recommandation</p><p class="reco">${esc(d.product_recommendation)}</p>
+<p class="lbl">Recommendation</p><p class="reco">${esc(d.product_recommendation)}</p>
 <p class="lbl">Autres options</p>
 <ul class="alts">${(d.alternatives ?? []).map((a) => `<li><span>${esc(a)}</span></li>`).join("")}</ul>
 </div>`,
     )
     .join("");
-  return `<section><div class="sec-head"><h2>Ce qui attend votre arbitrage</h2>
-<p>${decisions.length} choix soumis. Rien n'est decoupe avant votre reponse.</p></div>
+  return `<section><div class="sec-head"><h2>What awaits your decision</h2>
+<p>${decisions.length} choices submitted. Nothing is decomposed before your answer.</p></div>
 <div class="features">${cards}</div></section>`;
 }
 
@@ -93,8 +93,8 @@ function renderTitles(titles) {
   const list = titles?.titles;
   if (!list?.length) return "";
   const note = titles.parallelism_intent ?? titles.effect_of_n5 ?? titles.note;
-  return `<section><div class="sec-head"><h2>Decoupage envisage</h2>
-<p>${list.length} issues. Aucun contenu d'issue n'est ecrit avant l'accord.</p></div>
+  return `<section><div class="sec-head"><h2>Envisaged decomposition</h2>
+<p>${list.length} issues. No issue content is written before the agreement.</p></div>
 <div class="waves">${list
     .map((t, i) => `<div class="wave"><span class="rid">${pad(i)}</span><p>${esc(t)}</p></div>`)
     .join("")}</div>
@@ -123,7 +123,7 @@ function main() {
     fail(`proposition illisible : ${error.message}`);
   }
   if (handoff.mode !== "spec_proposal") {
-    fail(`mode ${handoff.mode} : seul un spec_proposal se rend en page de relecture`);
+    fail(`mode ${handoff.mode} : only a spec_proposal renders as a review page`);
   }
 
   const scope = handoff.functional_scope ?? {};
@@ -133,8 +133,8 @@ function main() {
   const pledges =
     (handoff.design_commitments_carried_into_issues ?? []).length + (handoff.pr_commitments ?? []).length;
   const specId = handoff.scope?.spec_id ?? "spec";
-  const status = handoff.scope_final === true ? "perimetre arrete" : `${open.length} question(s) ouverte(s)`;
-  const title = handoff.title ?? `Perimetre ${specId}`;
+  const status = handoff.scope_final === true ? "scope settled" : `${open.length} question(s) ouverte(s)`;
+  const title = handoff.title ?? `Scope ${specId}`;
 
   const counts = [
     ["Fonctionnalites", features.length],
@@ -160,25 +160,25 @@ ${scope.intent ? `<p class="lede">${esc(scope.intent)}</p>` : ""}
       ? `<div style="flex-basis:100%"><dt>Empreinte du document</dt><dd class="digest">${esc(digest)}</dd></div>`
       : ""
   }</dl>
-<p class="verbatim">Texte repris <strong>verbatim</strong> de la proposition, sans reformulation : une relecture obligeante creerait un ecart entre ce que vous lisez et ce que l'empreinte fige.</p>
+<p class="verbatim">Text taken <strong>verbatim</strong> from the proposal, with no rewording: an obliging re-read would open a gap between what you read and what the digest freezes.</p>
 ${feedback ? `<p class="note"><strong>Depuis le tour precedent.</strong> ${esc(feedback)}</p>` : ""}
 </header>
 ${renderDecisions(open)}
 ${renderFeatures(features)}
 ${renderExclusions(scope.out_of_scope)}
-${renderPledges(handoff.design_commitments_carried_into_issues, "Engagements de conception", "Contraintes portees dans les issues et opposables en revue. Ce ne sont pas des conseils.")}
-${renderPledges(handoff.pr_commitments, "Ce que la PR dira", "Engagements de transparence. Les surfaces exposees sont nommees, pas attenuees.")}
+${renderPledges(handoff.design_commitments_carried_into_issues, "Design commitments", "Constraints carried into the issues and enforceable in review. These are not suggestions.")}
+${renderPledges(handoff.pr_commitments, "Ce que la PR dira", "Transparency commitments. The exposed surfaces are named, not softened.")}
 ${renderTitles(handoff.decomposition_titles)}
 <section><div class="sec-head"><h2>Ce que l'approbation engage</h2></div>
 <p class="note">Approuver ce document en fige le contenu. ${
-    digest ? `L'empreinte <code>${esc(digest.slice(0, 8))}…</code> lie la phase 2 : ` : "La phase 2 est liee a ce document : "
-  }tout decoupage derive d'un autre document, ou de celui-ci modifie apres coup, est refuse par <code>validate-handoff</code> avec un code de sortie non nul. <strong>Ce que ce document ne dit pas ne sera pas construit ; ce qu'il dit de travers sera construit de travers.</strong></p></section>
+    digest ? `L'empreinte <code>${esc(digest.slice(0, 8))}…</code> binds phase 2: ` : "Phase 2 is bound to this document: "
+  }any decomposition derived f'un autre document, ou de celui-ci modifie apres coup, est refuse par <code>validate-handoff</code> avec un code de sortie non nul. <strong>Ce que ce document ne dit pas ne sera pas construit ; ce qu'il dit de travers sera construit de travers.</strong></p></section>
 `;
 
-  const page = shell(`Perimetre ${specId}`, body);
+  const page = shell(`Scope ${specId}`, body);
   writeFileSync(target, page);
   console.log(
-    `ecrit : ${target} (tour ${handoff.round}, ${features.length} fonctionnalites, ${rules} regles, ${open.length} question(s) ouverte(s))`,
+    `written: ${target} (tour ${handoff.round}, ${features.length} fonctionnalites, ${rules} regles, ${open.length} question(s) ouverte(s))`,
   );
   console.log(SURFACE_HINT);
 }

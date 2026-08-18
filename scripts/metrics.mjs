@@ -115,24 +115,24 @@ function main() {
     }
   } else if (discoveries.length === 0) {
     console.log(
-      "  aucune enregistree, et AUCUNE decouverte non plus : ce zero ne mesure rien.\n" +
-        "  Il dit que le mecanisme n'a pas servi, pas qu'aucun defaut n'a echappe.",
+      "  none recorded, and NO discovery either: this zero measures nothing.\n" +
+        "  It says the mechanism was not exercised, not that no defect escaped.",
     );
   } else {
     console.log(
-      `  aucune enregistree, sur ${discoveries.length} decouverte(s).\n\n` +
-        "  Ce zero est lisible, mais lisez-le pour ce qu'il dit : aucune des decouvertes\n" +
-        "  ne porte `escaped_from`, donc toutes ont ete trouvees PENDANT le cycle de leur\n" +
-        "  issue source — attrapees a temps, rien n'a franchi QA. Une trouvaille reliee par\n" +
-        "  `discovered-from` n'est PAS une echappee : ce champ dit ou elle est apparue, pas\n" +
-        "  ce qui l'a laissee passer. Les confondre gonfle l'indicateur exactement quand le\n" +
-        "  mecanisme est bien utilise.",
+      `  none recorded, out of ${discoveries.length} discovery(ies).\n\n` +
+        "  This zero is readable, but read it for what it says: none of the discoveries\n" +
+        "  carries `escaped_from`, so all were found DURING the cycle of their\n" +
+        "  issue source: caught in time, nothing crossed QA. A finding linked by\n" +
+        "  `discovered-from` is NOT an escape: that field says where it appeared, not\n" +
+        "  what let it through. Confusing them inflates the indicator exactly when the\n" +
+        "  mechanism is being used well.",
     );
   }
 
   if (instrumented.length < issues.length) {
     console.log(
-      `\n  ${issues.length - instrumented.length} issue(s) sans historique de transitions : anterieures a l'instrumentation, ni cycles ni duree calculables.`,
+      `\n  ${issues.length - instrumented.length} issue(s) with no transition history: they predate the instrumentation, so neither cycles nor duration compute.`,
     );
   }
 }

@@ -31,7 +31,7 @@ function verifyDiscoveries(record, all, rules, path) {
   if (linked.length >= declared.length) return 0;
 
   console.error(
-    `${path}: issue ${record.id} fermee avec ${declared.length} decouverte(s) declaree(s) et ${linked.length} issue(s) creee(s)`,
+    `${path}: issue ${record.id} closed with ${declared.length} declared discovery(ies) and ${linked.length} created issue(s)`,
   );
   return 1;
 }
@@ -64,32 +64,32 @@ function verifyLedger(record, rules, path) {
     const waiver = record.criteria_ledger_waived;
     if (waiver?.reason && waiver?.at) return 0;
     console.error(
-      `${path}: issue ${id} fermee sans registre de verification, et sans derogation datee`,
+      `${path}: issue ${id} closed with no verification ledger and no dated waiver`,
     );
     return 1;
   }
 
   if (ledger.length !== criteria.length) {
     console.error(
-      `${path}: issue ${id} registre de ${ledger.length} entree(s) pour ${criteria.length} critere(s)`,
+      `${path}: issue ${id} ledger of ${ledger.length} entry(ies) for ${criteria.length} criterion(s)`,
     );
     problems += 1;
   }
 
   for (const [index, item] of ledger.entries()) {
     if (!vocabulary.values.includes(item.status)) {
-      console.error(`${path}: issue ${id} critere ${index + 1} statut inconnu ${item.status}`);
+      console.error(`${path}: issue ${id} criterion ${index + 1} unknown status ${item.status}`);
       problems += 1;
       continue;
     }
     const needsEvidence = vocabulary.evidence_required_for.includes(item.status);
     if (needsEvidence && !item.evidence) {
-      console.error(`${path}: issue ${id} critere ${index + 1} ${item.status} sans preuve`);
+      console.error(`${path}: issue ${id} criterion ${index + 1} ${item.status} with no evidence`);
       problems += 1;
     }
     if (record.pipeline_state?.phase === "closed" && item.status !== vocabulary.closable) {
       console.error(
-        `${path}: issue ${id} fermee alors que le critere ${index + 1} est ${item.status}`,
+        `${path}: issue ${id} closed while criterion ${index + 1} is ${item.status}`,
       );
       problems += 1;
     }
@@ -116,7 +116,7 @@ function main() {
     try {
       entries = readJsonl(path);
     } catch (error) {
-      console.error(`${path}: ligne JSON invalide (${error.message})`);
+      console.error(`${path}: line invalid JSON (${error.message})`);
       problems += 1;
       continue;
     }
@@ -124,7 +124,7 @@ function main() {
     for (const entry of entries) {
       const id = entry.record.id;
       if (id == null) {
-        console.error(`${path}:${entry.index + 1} record sans id`);
+        console.error(`${path}:${entry.index + 1} record with no id`);
         problems += 1;
         continue;
       }
@@ -136,13 +136,13 @@ function main() {
       if (kind === "issues") {
         const state = entry.record.pipeline_state;
         if (state == null) {
-          console.error(`${path}: issue ${id} sans pipeline_state`);
+          console.error(`${path}: issue ${id} with no pipeline_state`);
           problems += 1;
         } else if (rules.phases[state.phase] == null) {
           console.error(`${path}: issue ${id} phase inconnue ${state.phase}`);
           problems += 1;
         } else if (rules.phases[state.phase].owner !== state.owner) {
-          console.error(`${path}: issue ${id} proprietaire ${state.owner} invalide pour ${state.phase}`);
+          console.error(`${path}: issue ${id} owner ${state.owner} invalid for ${state.phase}`);
           problems += 1;
         }
         problems += verifyLedger(entry.record, rules, path);

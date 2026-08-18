@@ -40,28 +40,28 @@ function round(overrides) {
 const ONE = { round_reviewed: 1, summary: "une reponse", decided: [{ id: "N1" }] };
 const TWO = { round_reviewed: 1, summary: "deux reponses", decided: [{ id: "N2" }, { id: "N5" }] };
 
-describe("validate-handoff : deux reponses se confrontent l'une a l'autre", () => {
-  test("n'exige rien d'un tour qui ne repond qu'a une decision", () => {
+describe("validate-handoff: two answers are confronted with each other", () => {
+  test("requires nothing of a round answering a single decision", () => {
     const result = round({ operator_feedback: ONE });
     assert.equal(result.status, 0, result.output);
   });
 
-  test("refuse un tour repondant a deux decisions sans controle de composition", () => {
+  test("refuses a round answering two decisions with no composition check", () => {
     const result = round({ operator_feedback: TWO });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /answers_composition_check manquant/);
+    assert.match(result.output, /answers_composition_check missing/);
   });
 
-  test("refuse une affirmation de controle sans paire nommee", () => {
+  test("refuses a check claim with no named pair", () => {
     const result = round({
       operator_feedback: TWO,
       answers_composition_check: { pairs_checked: [], conflicts_found: [] },
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /pairs_checked vide/);
+    assert.match(result.output, /pairs_checked empty/);
   });
 
-  test("accepte un controle qui nomme ses paires", () => {
+  test("accepts a check that names its pairs", () => {
     const result = round({
       operator_feedback: TWO,
       answers_composition_check: {
@@ -72,7 +72,7 @@ describe("validate-handoff : deux reponses se confrontent l'une a l'autre", () =
     assert.equal(result.status, 0, result.output);
   });
 
-  test("refuse une paire dont le verdict n'est pas booleen", () => {
+  test("refuses a pair whose verdict is not a boolean", () => {
     const result = round({
       operator_feedback: TWO,
       answers_composition_check: {
@@ -81,10 +81,10 @@ describe("validate-handoff : deux reponses se confrontent l'une a l'autre", () =
       },
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /composes doit valoir/);
+    assert.match(result.output, /composes must be/);
   });
 
-  test("refuse une paire qui ne compose pas sans motif : elle se perdrait", () => {
+  test("refuses a non-composing pair with no note: it would be lost", () => {
     const result = round({
       operator_feedback: TWO,
       answers_composition_check: {
@@ -93,10 +93,10 @@ describe("validate-handoff : deux reponses se confrontent l'une a l'autre", () =
       },
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /se motive/);
+    assert.match(result.output, /carries its reason/);
   });
 
-  test("accepte un conflit declare et motive — le cas reel du 2026-08-17", () => {
+  test("accepts a declared conflict with its reason: the real 2026-08-17 case", () => {
     const result = round({
       operator_feedback: TWO,
       answers_composition_check: {
@@ -113,12 +113,12 @@ describe("validate-handoff : deux reponses se confrontent l'une a l'autre", () =
     assert.equal(result.status, 0, result.output);
   });
 
-  test("refuse un conflicts_found absent : l'absence de conflit se declare", () => {
+  test("refuses a missing conflicts_found: an absence of conflict is declared", () => {
     const result = round({
       operator_feedback: TWO,
       answers_composition_check: { pairs_checked: [{ pair: ["N2", "N5"], composes: true }] },
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /conflicts_found manquant/);
+    assert.match(result.output, /conflicts_found missing/);
   });
 });

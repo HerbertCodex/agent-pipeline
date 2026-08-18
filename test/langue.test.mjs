@@ -1,0 +1,144 @@
+import { test, describe } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const FRAMEWORK = join(here, "..");
+
+/**
+ * Nom de ce fichier, seule exclusion des balayages.
+ *
+ * Le controle porte les mots qu'il refuse : son propre source se
+ * denoncerait. Nommer l'exclusion vaut mieux que tordre le motif pour ne
+ * pas se voir, une expression contournee finissant par ne plus rien voir.
+ */
+const SELF = "langue.test.mjs";
+
+/**
+ * Mots outils francais absents du vocabulaire anglais courant.
+ *
+ * La detection ne peut pas s'appuyer sur les accents : les scripts n'en
+ * portent pas, precisement pour survivre a un terminal pauvre. Ce sont donc
+ * les mots de liaison qui trahissent la langue, et eux seuls sont fiables :
+ * un nom commun peut etre un identifiant, un mot outil ne l'est jamais.
+ */
+const FRENCH = [
+  "aucune", "aucun", "avec", "cette", "chaque", "dans", "depuis", "doit",
+  "elle", "est", "etre", "fichier", "fichiers", "introuvable", "invalide",
+  "jamais", "lancer", "leur", "manquant", "manquante", "mais", "pas",
+  "porte", "pour", "quand", "racine", "sans", "seul", "sont",
+  "sous", "toujours", "tous", "vers", "vide",
+  "attendu", "attendue", "choix", "decoupage", "ecrit", "ecriture", "liste",
+  "metier", "optimiste", "perime", "perimetre", "recue", "regle", "regles",
+  "verrou",
+  "aux", "ainsi", "ces", "cela", "des", "donc", "et", "les", "ses", "une",
+  "applique", "profil", "synchronise", "synchronises", "reussi", "termine",
+];
+const DETECT = new RegExp(`(?<![-\\w])(${FRENCH.join("|")})\\b(?![-\\w])`, "i");
+
+/**
+ * Le mot francais ne compte pas s'il est suivi d'un trait d'union : `sans-serif`
+ * est une valeur CSS, pas une phrase. Sans cette reserve la porte refuserait
+ * une feuille de style, donc deviendrait impossible a satisfaire.
+ */
+
+/**
+ * Retire commentaires et TSDoc d'un source.
+ *
+ * @param source - contenu du fichier
+ * @returns le source prive de ses commentaires
+ */
+function codeOnly(source) {
+  return source.replaceAll(/\/\*[\s\S]*?\*\//g, "").replaceAll(/^\s*\/\/.*$/gm, "");
+}
+
+/**
+ * Extrait les chaines qu'un utilisateur finit par lire.
+ *
+ * Toute chaine portant une espace est retenue, pas seulement celles passees a
+ * fail ou a console : un message pousse dans un tableau d'erreurs finit
+ * imprime lui aussi. La premiere version de ce controle ne lisait que les
+ * appels directs et laissait passer « hors role » dans verify-scope.
+ *
+ * @param source - contenu du fichier
+ * @returns les chaines passees a fail ou a console
+ */
+function userFacing(source) {
+  const found = [];
+  for (const m of codeOnly(source).matchAll(/(["'`])((?:[^\\]|\\.)*?)\1/g)) {
+    if (m[2].includes(" ")) found.push(m[2]);
+  }
+  return found;
+}
+
+/**
+ * Extrait les intitules de suites et de cas de test.
+ *
+ * @param source - contenu du fichier
+ * @returns les intitules declares
+ */
+function testTitles(source) {
+  return [...codeOnly(source).matchAll(/\b(?:describe|test|it)\(\s*(["'`])([\s\S]*?)\1/g)].map((m) => m[2]);
+}
+
+describe("the framework speaks one language", () => {
+  test("no user-facing message is in French", () => {
+    const offenders = [];
+    for (const name of readdirSync(join(FRAMEWORK, "scripts")).filter((f) => f.endsWith(".mjs"))) {
+      for (const line of userFacing(readFileSync(join(FRAMEWORK, "scripts", name), "utf8"))) {
+        const hit = line.match(DETECT);
+        if (hit != null) offenders.push(`${name} : « ${line.slice(0, 60)} » (${hit[1]})`);
+      }
+    }
+    assert.deepEqual(
+      offenders.slice(0, 12),
+      [],
+      `${offenders.length} message(s) en francais. Les documents sont en anglais : un lecteur qui suit ` +
+        "le guide et recoit un refus dans une autre langue doit deviner s'il a mal lu ou mal fait.",
+    );
+  });
+
+  test("no test title is in French", () => {
+    const offenders = [];
+    for (const name of readdirSync(join(FRAMEWORK, "test")).filter((f) => f.endsWith(".mjs"))) {
+      if (name === SELF) continue;
+      for (const title of testTitles(readFileSync(join(FRAMEWORK, "test", name), "utf8"))) {
+        const hit = title.match(DETECT);
+        if (hit != null) offenders.push(`${name} : « ${title.slice(0, 60)} » (${hit[1]})`);
+      }
+    }
+    assert.deepEqual(
+      offenders.slice(0, 12),
+      [],
+      `${offenders.length} intitule(s) en francais. La sortie des tests est ce qu'un contributeur lit en premier.`,
+    );
+  });
+
+  test("no document is in French", () => {
+    const offenders = [];
+    for (const directory of ["docs", "templates", "prompts"]) {
+      for (const name of readdirSync(join(FRAMEWORK, directory)).filter((f) => f.endsWith(".md"))) {
+        const body = readFileSync(join(FRAMEWORK, directory, name), "utf8");
+        if (/[éèàçùôêîœ]/.test(body)) offenders.push(`${directory}/${name}`);
+      }
+    }
+    assert.deepEqual(offenders, [], "les documents du cadre sont en anglais");
+  });
+
+  test("the detector does not fire on ordinary English", () => {
+    const english = [
+      "gate refused: the declared scope does not match the diff",
+      "store is out of date, re-read the record and try again",
+      "usage: verify-scope.mjs <handoff.json> <base-ref>",
+      "every gate must fail at least once before you trust it",
+      "${path} does not refuse: the platform allows what file_policy forbids",
+      "the analysis must carry business_rules, even empty",
+      "font-family:ui-sans-serif,system-ui,Roboto,sans-serif",
+      "written: 3 files, 2 sections, gates green",
+    ];
+    const wrong = english.filter((line) => DETECT.test(line));
+    assert.deepEqual(wrong, [], "un detecteur qui refuse de l'anglais rendrait la porte impossible a satisfaire");
+  });
+});

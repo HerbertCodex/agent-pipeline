@@ -73,7 +73,7 @@ function main() {
   const config = loadConfig();
   const path = join(config.store_dir, `${kind}s.jsonl`);
   const entry = readJsonl(path).find((e) => e.record.id === id);
-  if (entry == null) fail(`record introuvable : ${id} dans ${path}`);
+  if (entry == null) fail(`record not found: ${id} in ${path}`);
 
   const record =
     role == null

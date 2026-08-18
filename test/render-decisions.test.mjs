@@ -32,60 +32,60 @@ function render(issues, proposal = null) {
   return { ...result, html };
 }
 
-describe("render-decisions : ce qu'aucun agent ne peut prendre", () => {
-  test("classe une issue dont tout le perimetre est hors politique", () => {
+describe("render-decisions: what no agent can take", () => {
+  test("lists an issue whose whole scope is outside the policy", () => {
     const { output, html } = render([
       issue({ id: "i-orphan", title: "corriger le workflow", pipeline_state: state({ file_reservations: [".github/workflows/ci.yml"] }) }),
     ]);
-    assert.match(output, /1 sans agent/);
+    assert.match(output, /1 with no agent/);
     assert.match(html, /i-orphan/);
-    assert.match(html, /aucun agent possible/);
+    assert.match(html, /no possible agent/);
   });
 
-  test("ne classe pas une issue qu'un role peut prendre", () => {
+  test("does not list an issue a role can take", () => {
     const { output } = render([
       issue({ id: "i-ok", pipeline_state: state({ file_reservations: ["src/x/**", "test/x.spec.ts"] }) }),
     ]);
-    assert.match(output, /0 sans agent/);
+    assert.match(output, /0 with no agent/);
     assert.match(output, /1 dispatchable/);
   });
 
-  test("classe une issue dont le perimetre est partage entre deux roles", () => {
+  test("lists an issue whose scope is split across two roles", () => {
     const { output, html } = render([
       issue({ id: "i-split", title: "editer un document et regenerer les briefs", pipeline_state: state({ file_reservations: ["src/x/**", "pipeline/store/x"] }) }),
     ]);
-    assert.match(output, /1 sans agent/, "aucun role unique ne couvre les deux moities");
+    assert.match(output, /1 with no agent/, "aucun role unique ne couvre les deux moities");
     assert.match(html, /i-split/);
   });
 
-  test("ignore une issue close", () => {
+  test("ignores a closed issue", () => {
     const { output } = render([
       issue({ id: "i-done", pipeline_state: state({ phase: "closed", owner: "none", file_reservations: [".github/x"] }) }),
     ]);
-    assert.match(output, /0 sans agent/);
+    assert.match(output, /0 with no agent/);
   });
 });
 
-describe("render-decisions : ce qui est arrete", () => {
-  test("classe une issue bloquee et nomme sa phase", () => {
+describe("render-decisions: what is stopped", () => {
+  test("lists a blocked issue and names its phase", () => {
     const { output, html } = render([
       issue({ id: "i-stuck", pipeline_state: state({ phase: "blocked_infrastructure", owner: "orchestrator", file_reservations: ["src/x/**"] }) }),
     ]);
-    assert.match(output, /1 bloquee/);
+    assert.match(output, /1 blocked/);
     assert.match(html, /blocked_infrastructure/);
-    assert.match(html, /tient ses reservations/);
+    assert.match(html, /holds its reservations/);
   });
 
-  test("une issue bloquee n'est pas comptee deux fois", () => {
+  test("a blocked issue is not counted twice", () => {
     const { output } = render([
       issue({ id: "i-stuck", pipeline_state: state({ phase: "blocked_product", owner: "product", file_reservations: [".github/x"] }) }),
     ]);
-    assert.match(output, /1 bloquee/);
-    assert.match(output, /0 sans agent/, "une issue arretee se lit comme arretee, pas comme orpheline");
+    assert.match(output, /1 blocked/);
+    assert.match(output, /0 with no agent/, "une issue arretee se lit comme arretee, pas comme orpheline");
   });
 });
 
-describe("render-decisions : les questions de spec", () => {
+describe("render-decisions: the spec questions", () => {
   const PROPOSAL = {
     mode: "spec_proposal",
     round: 2,
@@ -95,41 +95,41 @@ describe("render-decisions : les questions de spec", () => {
     ],
   };
 
-  test("reprend les choix soumis avec recommandation et options", () => {
+  test("carries the submitted choices with recommendation and options", () => {
     const { output, html } = render([], PROPOSAL);
-    assert.match(output, /1 question\(s\) de spec/);
+    assert.match(output, /1 spec question\(s\)/);
     assert.match(html, /combien de prets \?/);
     assert.match(html, /cinq/);
     assert.match(html, /dix/);
   });
 
-  test("ajoute la demande d'approbation quand le perimetre est arrete", () => {
+  test("adds the approval request once the scope is final", () => {
     const { html } = render([], { ...PROPOSAL, round: 5, decisions_for_operator: [], scope_final: true });
-    assert.match(html, /Approuver le perimetre du tour 5/);
-    assert.match(html, /refusee si son contenu bouge/);
+    assert.match(html, /Approve the scope of round 5/);
+    assert.match(html, /refused if its content moves/);
   });
 
-  test("refuse un fichier qui n'est pas une proposition", () => {
+  test("refuses a file that is not a proposal", () => {
     const { status, output } = render([], { mode: "issue_handoff" });
     assert.notEqual(status, 0);
-    assert.match(output, /doit etre une proposition/);
+    assert.match(output, /must be a spec proposal/);
   });
 
-  test("fonctionne sans proposition du tout", () => {
+  test("works with no proposal at all", () => {
     const { status, output } = render([issue()]);
     assert.equal(status, 0, output);
-    assert.match(output, /0 question\(s\) de spec/);
+    assert.match(output, /0 spec question\(s\)/);
   });
 });
 
-describe("render-decisions : la page tient debout", () => {
-  test("annonce explicitement qu'il n'y a rien a trancher", () => {
+describe("render-decisions: the page holds together", () => {
+  test("states explicitly when there is nothing to arbitrate", () => {
     const { html } = render([issue({ pipeline_state: state({ file_reservations: ["src/x/**"] }) })]);
-    assert.match(html, /Rien n'attend d'arbitrage/);
-    assert.match(html, /Aucune issue bloquee/);
+    assert.match(html, /Nothing awaits arbitration/);
+    assert.match(html, /No blocked issue/);
   });
 
-  test("neutralise une injection passee par un titre d'issue", () => {
+  test("neutralises an injection carried by an issue title", () => {
     const { html } = render([
       issue({ id: "i-evil", title: "<script>alert(1)</script>", pipeline_state: state({ file_reservations: [".github/x"] }) }),
     ]);
@@ -137,7 +137,7 @@ describe("render-decisions : la page tient debout", () => {
     assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
   });
 
-  test("est autonome et couvre les deux themes", () => {
+  test("is self-contained and covers both themes", () => {
     const { html } = render([issue()]);
     assert.doesNotMatch(html, /https?:\/\//);
     assert.match(html, /prefers-color-scheme/);
@@ -145,10 +145,10 @@ describe("render-decisions : la page tient debout", () => {
   });
 });
 
-describe("render-decisions : le framework nomme ce qu'un harnais doit faire", () => {
-  test("imprime quoi faire de la page, sans supposer que le harnais sait publier", () => {
+describe("render-decisions: the framework names what a harness must do", () => {
+  test("prints what to do with the page without assuming the harness can publish", () => {
     const { output } = render([issue()]);
-    assert.match(output, /si le harnais sait heberger/);
-    assert.match(output, /sinon, lui rendre ce chemin/);
+    assert.match(output, /if the harness can host/);
+    assert.match(output, /otherwise hand them this path/);
   });
 });

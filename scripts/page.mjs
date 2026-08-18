@@ -172,4 +172,4 @@ export function shell(title, body) {
  * pas avoir lu.
  */
 export const SURFACE_HINT =
-  "a publier : si le harnais sait heberger une page HTML, la publier et rendre le lien a l'operateur ; sinon, lui rendre ce chemin. Le fichier s'ouvre seul, sans reseau ni dependance.";
+  "to publish: if the harness can host an HTML page, publish it and hand the operator the link; otherwise hand them this path. The file opens on its own, with no network and no dependency.";

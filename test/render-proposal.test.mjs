@@ -36,8 +36,8 @@ function render(handoff) {
   return { ...result, html };
 }
 
-describe("render-proposal : ce qu'il accepte de rendre", () => {
-  test("rend une proposition et compte ce qu'elle porte", () => {
+describe("render-proposal: what it agrees to render", () => {
+  test("renders a proposal and counts what it carries", () => {
     const { status, html, output } = render({
       mode: "spec_proposal",
       round: 3,
@@ -52,13 +52,13 @@ describe("render-proposal : ce qu'il accepte de rendre", () => {
     assert.match(html, /reservation/);
   });
 
-  test("refuse tout mode qui n'est pas une proposition", () => {
+  test("refuses any mode that is not a proposal", () => {
     const { status, output } = render({ mode: "issue_handoff", round: 1 });
     assert.notEqual(status, 0);
-    assert.match(output, /seul un spec_proposal/);
+    assert.match(output, /only a spec_proposal/);
   });
 
-  test("refuse un fichier illisible", () => {
+  test("refuses an unreadable file", () => {
     sandbox ??= createSandbox();
     const result = run(sandbox, "render-proposal.mjs", ["/absent.json", join(sandbox, "x.html")]);
     assert.notEqual(result.status, 0);
@@ -66,8 +66,8 @@ describe("render-proposal : ce qu'il accepte de rendre", () => {
   });
 });
 
-describe("render-proposal : le contenu est une donnee, jamais du balisage", () => {
-  test("neutralise une injection de script dans un nom de fonctionnalite", () => {
+describe("render-proposal: content is data, never markup", () => {
+  test("neutralises a script injection in a feature name", () => {
     const { html } = render({
       mode: "spec_proposal",
       round: 1,
@@ -85,7 +85,7 @@ describe("render-proposal : le contenu est une donnee, jamais du balisage", () =
     assert.match(html, /a &amp; b/);
   });
 
-  test("neutralise une injection passee par une exclusion ou une decision", () => {
+  test("neutralises an injection carried by an exclusion or a decision", () => {
     const { html } = render({
       mode: "spec_proposal",
       round: 1,
@@ -101,8 +101,8 @@ describe("render-proposal : le contenu est une donnee, jamais du balisage", () =
   });
 });
 
-describe("render-proposal : la page dit ou en est le tour", () => {
-  test("un tour ouvert annonce ses questions et les rend avant le perimetre", () => {
+describe("render-proposal: the page says where the round stands", () => {
+  test("an open round announces its questions and renders them before the scope", () => {
     const { html } = render({
       mode: "spec_proposal",
       round: 2,
@@ -117,12 +117,12 @@ describe("render-proposal : la page dit ou en est le tour", () => {
     assert.match(html, /combien de prets \?/);
     assert.match(html, /duree portee a 21 jours/);
     assert.ok(
-      html.indexOf("attend votre arbitrage") < html.indexOf("Ce que le produit fait"),
-      "un tour ouvert se lit d'abord par ce qu'il demande",
+      html.indexOf("awaits your decision") < html.indexOf("What the product does"),
+      "an open round reads first by what it asks",
     );
   });
 
-  test("un tour final annonce un perimetre arrete et porte son empreinte", () => {
+  test("a final round announces a settled scope and carries its digest", () => {
     const { html } = render({
       mode: "spec_proposal",
       round: 5,
@@ -132,12 +132,12 @@ describe("render-proposal : la page dit ou en est le tour", () => {
       decisions_for_operator: [],
       handoff_file: { path: "/x.json", digest_sha256: "a".repeat(64) },
     });
-    assert.match(html, /perimetre arrete/);
+    assert.match(html, /scope settled/);
     assert.match(html, new RegExp("a".repeat(64)));
-    assert.doesNotMatch(html, /attend votre arbitrage/);
+    assert.doesNotMatch(html, /awaits your decision/);
   });
 
-  test("la page est autonome : aucune ressource externe a charger", () => {
+  test("the page is self-contained: no external resource to load", () => {
     const { html } = render({
       mode: "spec_proposal",
       round: 1,

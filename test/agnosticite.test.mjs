@@ -48,8 +48,8 @@ function codeOnly(source) {
   return source.replaceAll(/\/\*[\s\S]*?\*\//g, "").replaceAll(/^\s*\/\/.*$/gm, "");
 }
 
-describe("agnosticite : le framework ne connait pas la stack du projet", () => {
-  test("aucun script du core n'invoque le lanceur de taches d'un ecosysteme", () => {
+describe("agnosticism: the framework knows nothing of the project stack", () => {
+  test("no core script invokes an ecosystem task runner", () => {
     const offenders = [];
     for (const [name, source] of [...filesIn(SCRIPTS), ...filesIn(TESTS)]) {
       if (name === SELF) continue;
@@ -63,7 +63,7 @@ describe("agnosticite : le framework ne connait pas la stack du projet", () => {
     );
   });
 
-  test("aucun script du core ne depend d'un paquet installe", () => {
+  test("no core script depends on an installed package", () => {
     const offenders = [];
     for (const [name, source] of filesIn(SCRIPTS)) {
       for (const match of source.matchAll(/^\s*import[^;]*?from\s+"([^"]+)"/gm)) {
@@ -76,7 +76,7 @@ describe("agnosticite : le framework ne connait pas la stack du projet", () => {
     assert.deepEqual(offenders, [], "le core ne s'installe pas : il n'importe que des modules natifs et ses voisins");
   });
 
-  test("aucun script du core n'ecrit en dur un chemin que la configuration possede", () => {
+  test("no core script hardcodes a path the configuration owns", () => {
     const owned = /"pipeline\/(rules\.json|store|briefs|profiles)/;
     const offenders = [];
     for (const [name, source] of filesIn(SCRIPTS)) {
@@ -91,10 +91,10 @@ describe("agnosticite : le framework ne connait pas la stack du projet", () => {
   });
 });
 
-describe("agnosticite : la CI separe le core de la stack", () => {
+describe("agnosticism: CI separates the core from the stack", () => {
   const template = readFileSync(join(FRAMEWORK, "templates", "ci.template.yml"), "utf8");
 
-  test("chaque etape du core s'execute par node, jamais par un lanceur de taches", () => {
+  test("every core step runs through node, never a task runner", () => {
     const lines = template.split("\n");
     const offenders = [];
     for (const [index, line] of lines.entries()) {
@@ -106,14 +106,14 @@ describe("agnosticite : la CI separe le core de la stack", () => {
     assert.deepEqual(offenders, [], "les etapes du core ne passent jamais par la stack du projet");
   });
 
-  test("les etapes de la stack restent un emplacement a remplir, jamais une commande ecrite", () => {
+  test("the stack steps stay a placeholder, never a written command", () => {
     assert.match(template, /\{\{steps\}\}/, "les portes du projet viennent de commands, pas du template");
     assert.match(template, /\{\{install\}\}/, "l'installation appartient a l'ecosysteme du projet");
   });
 });
 
-describe("le cadre exige une porte sur les bornes de conception", () => {
-  test("apply-profile refuse une configuration sans design_limits", () => {
+describe("the framework requires a gate on design limits", () => {
+  test("apply-profile refuses a configuration with no design_limits", () => {
     const root = createSandbox();
     try {
       const path = join(root, "pipeline.config.json");
@@ -122,14 +122,14 @@ describe("le cadre exige une porte sur les bornes de conception", () => {
       writeFileSync(path, JSON.stringify(config));
       const result = run(root, "apply-profile.mjs", ["--check"]);
       assert.notEqual(result.status, 0);
-      assert.match(result.output, /design_limits manquante/);
-      assert.match(result.output, /s'auto-annulent/, "le refus dit pourquoi la porte existe, pas seulement qu'elle manque");
+      assert.match(result.output, /design_limits missing/);
+      assert.match(result.output, /apply to nothing/, "the refusal says why the gate exists, not only that it is missing");
     } finally {
       destroySandbox(root);
     }
   });
 
-  test("elle est acceptee des qu'elle est declaree, quel que soit l'outil", () => {
+  test("it is accepted as soon as it is declared, whatever the tool", () => {
     const root = createSandbox();
     try {
       const path = join(root, "pipeline.config.json");
@@ -144,7 +144,7 @@ describe("le cadre exige une porte sur les bornes de conception", () => {
   });
 });
 
-describe("le cadre exige que le rangement du code soit declare", () => {
+describe("the framework requires the code layout to be declared", () => {
   /**
    * Ecrit une configuration bac a sable dont le bloc architecture est impose.
    *
@@ -163,55 +163,55 @@ describe("le cadre exige que le rangement du code soit declare", () => {
     writeFileSync(path, JSON.stringify(config));
   }
 
-  test("apply-profile refuse une configuration sans bloc architecture", () => {
+  test("apply-profile refuses a configuration with no architecture block", () => {
     const root = createSandbox();
     try {
       withArchitecture(root, null);
       const result = run(root, "apply-profile.mjs", ["--check"]);
       assert.notEqual(result.status, 0);
-      assert.match(result.output, /architecture manquante/);
+      assert.match(result.output, /architecture missing/);
       assert.match(
         result.output,
-        /page HTML n'engage aucun agent/,
-        "le refus dit pourquoi la cle existe, pas seulement qu'elle manque",
+        /rendered page binds no agent/,
+        "the refusal says why the key exists, not only that it is missing",
       );
     } finally {
       destroySandbox(root);
     }
   });
 
-  test("un rangement inconnu est refuse, et les connus sont nommes", () => {
+  test("an unknown layout is refused, and the known ones are named", () => {
     const root = createSandbox();
     try {
       withArchitecture(root, { id: "microservices", project_type: "backend" });
       const result = run(root, "apply-profile.mjs", ["--check"]);
       assert.notEqual(result.status, 0);
-      assert.match(result.output, /architecture\.id inconnu/);
+      assert.match(result.output, /architecture.id unknown/);
       assert.match(result.output, /feature-modules/, "le refus liste ce qui est accepte");
     } finally {
       destroySandbox(root);
     }
   });
 
-  test("un rangement hors du type de projet est refuse", () => {
+  test("a layout outside the project type is refused", () => {
     const root = createSandbox();
     try {
       withArchitecture(root, { id: "hexagonal", project_type: "frontend" });
       const result = run(root, "apply-profile.mjs", ["--check"]);
       assert.notEqual(result.status, 0);
-      assert.match(result.output, /ne s'applique pas a un projet frontend/);
+      assert.match(result.output, /does not apply to a frontend project/);
     } finally {
       destroySandbox(root);
     }
   });
 
-  test("custom est accepte, mais seulement avec la note qui devient la reference", () => {
+  test("custom is accepted, but only with the note that becomes the reference", () => {
     const root = createSandbox();
     try {
       withArchitecture(root, { id: "custom", project_type: "backend" });
       const sansNote = run(root, "apply-profile.mjs", ["--check"]);
       assert.notEqual(sansNote.status, 0);
-      assert.match(sansNote.output, /note qui decrit le rangement retenu/);
+      assert.match(sansNote.output, /note describing the layout/);
 
       withArchitecture(root, { id: "custom", project_type: "backend", note: "un acteur par flux, rien de standard" });
       const avecNote = run(root, "apply-profile.mjs", ["--check"]);
@@ -221,19 +221,19 @@ describe("le cadre exige que le rangement du code soit declare", () => {
     }
   });
 
-  test("un type de projet invalide est refuse avant tout choix de rangement", () => {
+  test("an invalid project type is refused before any layout choice", () => {
     const root = createSandbox();
     try {
       withArchitecture(root, { id: "feature-modules", project_type: "embarque" });
       const result = run(root, "apply-profile.mjs", ["--check"]);
       assert.notEqual(result.status, 0);
-      assert.match(result.output, /project_type invalide/);
+      assert.match(result.output, /project_type invalid/);
     } finally {
       destroySandbox(root);
     }
   });
 
-  test("chaque rangement du catalogue porte un type de projet reel", () => {
+  test("every catalogue layout carries a real project type", () => {
     const types = new Set(Object.keys(PROJECT_TYPES));
     const offenders = [];
     for (const item of ARCHITECTURES) {

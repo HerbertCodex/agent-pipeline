@@ -37,31 +37,31 @@ function inspect(graph) {
   return run(sandbox, "architecture-drift.mjs", [path]);
 }
 
-describe("architecture-drift : il se tait sur un projet jeune", () => {
-  test("les signaux de partage restent en veille en dessous du seuil", () => {
+describe("architecture-drift: it stays quiet on a young project", () => {
+  test("sharing signals stay dormant below the threshold", () => {
     const graph = { ...grid(2, 3), shared: { "socle/base": ["m0"] } };
     const { signals, mature } = drift(graph);
     assert.equal(mature, false);
     assert.deepEqual(signals, [], "un partage a un consommateur n'est pas un signe sur deux modules");
   });
 
-  test("le meme graphe, une fois le projet mur, declenche le signal", () => {
+  test("the same graph, once the project is mature, raises the signal", () => {
     const graph = { ...grid(5, 6), shared: { "socle/base": ["m0"] } };
     const { signals, mature } = drift(graph);
     assert.equal(mature, true);
     assert.equal(signals.length, 1);
-    assert.match(signals[0].signal, /n'est utilise que par/);
+    assert.match(signals[0].signal, /used only by/);
   });
 
-  test("la sortie annonce la mise en veille au lieu de se taire silencieusement", () => {
+  test("the output announces the dormancy instead of going silent", () => {
     const { output } = inspect({ ...grid(2, 3), shared: { "socle/base": ["m0"] } });
-    assert.match(output, /projet jeune/);
-    assert.match(output, /restent en veille/);
+    assert.match(output, /young project/);
+    assert.match(output, /stay dormant/);
   });
 });
 
-describe("architecture-drift : la racine de composition n'est pas une derive", () => {
-  test("elle est exclue du comptage de couplage", () => {
+describe("architecture-drift: the composition root is not drift", () => {
+  test("it is excluded from the coupling count", () => {
     const graph = {
       modules: {
         racine: { files: 2, imports: ["a", "b", "c"] },
@@ -76,7 +76,7 @@ describe("architecture-drift : la racine de composition n'est pas une derive", (
     assert.equal(signals.filter((s) => s.signal.includes("racine")).length, 0);
   });
 
-  test("sans declaration, un module qui importe tout est signale", () => {
+  test("with no declaration, a module importing everything is flagged", () => {
     const graph = {
       modules: {
         racine: { files: 2, imports: ["a", "b", "c"] },
@@ -91,54 +91,54 @@ describe("architecture-drift : la racine de composition n'est pas une derive", (
   });
 });
 
-describe("architecture-drift : ce qu'il voit reellement", () => {
-  test("un cycle entre deux modules est grave et propose une sortie", () => {
+describe("architecture-drift: what it actually sees", () => {
+  test("a cycle between two modules is serious and offers a way out", () => {
     const graph = {
       modules: { a: { files: 6, imports: ["b"] }, b: { files: 6, imports: ["a"] }, c: { files: 6, imports: [] }, d: { files: 6, imports: [] } },
     };
     const { signals } = drift(graph);
     const cycle = signals.find((s) => s.level === "grave");
     assert.ok(cycle, "un cycle doit etre signale");
-    assert.match(cycle.next, /reference differee|Sortez ce qu'ils partagent/);
+    assert.match(cycle.next, /deferred reference|Pull what they share/);
   });
 
-  test("un cycle n'est signale qu'une fois, pas dans les deux sens", () => {
+  test("a cycle is flagged once, not in both directions", () => {
     const graph = {
       modules: { a: { files: 6, imports: ["b"] }, b: { files: 6, imports: ["a"] }, c: { files: 6, imports: [] }, d: { files: 6, imports: [] } },
     };
     assert.equal(drift(graph).signals.filter((s) => s.level === "grave").length, 1);
   });
 
-  test("un module trois fois plus gros que le median est signale, avec un conseil local", () => {
+  test("a module three times the median is flagged, with local advice", () => {
     const graph = { modules: { a: { files: 30, imports: [] }, b: { files: 5, imports: [] }, c: { files: 5, imports: [] }, d: { files: 5, imports: [] } } };
-    const gros = drift(graph).signals.find((s) => s.signal.includes("plus gros"));
+    const gros = drift(graph).signals.find((s) => s.signal.includes("bigger than the median"));
     assert.ok(gros);
-    assert.match(gros.next, /CE module seul/);
+    assert.match(gros.next, /THAT module alone/);
   });
 
-  test("un decoupage sain ne produit aucun signal", () => {
+  test("a healthy split produces no signal", () => {
     assert.deepEqual(drift(grid(5, 6)).signals, []);
   });
 });
 
-describe("architecture-drift : il dit ce qu'il ne sait pas voir", () => {
-  test("la duplication semantique d'une regle est annoncee comme hors de portee", () => {
+describe("architecture-drift: it names what it cannot see", () => {
+  test("semantic duplication of a rule is announced as out of reach", () => {
     const { output } = inspect(grid(5, 6));
-    assert.match(output, /non detectable ici/);
-    assert.match(output, /MEME regle metier avec un code different/);
-    assert.match(output, /se constate en relisant, pas en calculant/);
+    assert.match(output, /not detectable here/);
+    assert.match(output, /SAME business rule with different code/);
+    assert.match(output, /found by reading, not by computing/);
   });
 
-  test("refuse un graphe sans modules", () => {
+  test("refuses a graph with no modules", () => {
     const { status, output } = inspect({ shared: {} });
     assert.notEqual(status, 0);
-    assert.match(output, /doit porter modules/);
+    assert.match(output, /must carry modules/);
   });
 
-  test("refuse un graphe introuvable", () => {
+  test("refuses a graph that does not exist", () => {
     sandbox ??= createSandbox();
     const result = run(sandbox, "architecture-drift.mjs", ["/absent.json"]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /introuvable/);
+    assert.match(result.output, /not found/);
   });
 });

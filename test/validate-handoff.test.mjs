@@ -38,40 +38,40 @@ function validate(overrides) {
   return run(sandbox, "validate-handoff.mjs", [path]);
 }
 
-describe("validate-handoff : une proposition soumet des choix", () => {
-  test("accepte une proposition complete", () => {
+describe("validate-handoff: a proposal submits choices", () => {
+  test("accepts a complete proposal", () => {
     const result = validate({ mode: "spec_proposal", round: 1, functional_scope: SCOPE, decisions_for_operator: [DECISION] });
     assert.equal(result.status, 0, result.output);
   });
 
-  test("refuse une proposition sans functional_scope", () => {
+  test("refuses a proposal with no functional_scope", () => {
     const result = validate({ mode: "spec_proposal", round: 1, decisions_for_operator: [DECISION] });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /functional_scope manquant/);
+    assert.match(result.output, /functional_scope missing/);
   });
 
-  test("refuse une fonctionnalite sans regle metier", () => {
+  test("refuses a feature with no business rule", () => {
     const scope = { features: [{ name: "X", user_value: "y", rules: [] }], out_of_scope: [] };
     const result = validate({ mode: "spec_proposal", round: 1, functional_scope: scope, decisions_for_operator: [DECISION] });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /rules vide/);
+    assert.match(result.output, /rules empty/);
   });
 
-  test("refuse un out_of_scope absent : ce qu'on ne fait pas se dit", () => {
+  test("refuses a missing out_of_scope: what is not built is stated", () => {
     const scope = { features: SCOPE.features };
     const result = validate({ mode: "spec_proposal", round: 1, functional_scope: scope, decisions_for_operator: [DECISION] });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /out_of_scope manquant/);
+    assert.match(result.output, /out_of_scope missing/);
   });
 
-  test("refuse une decision sans alternative", () => {
+  test("refuses a decision with no alternative", () => {
     const decision = { ...DECISION, alternatives: [] };
     const result = validate({ mode: "spec_proposal", round: 1, functional_scope: SCOPE, decisions_for_operator: [decision] });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /alternatives vide/);
+    assert.match(result.output, /alternatives empty/);
   });
 
-  test("refuse une proposition qui porte deja des issues", () => {
+  test("refuses a proposal already carrying issues", () => {
     const result = validate({
       mode: "spec_proposal",
       round: 1,
@@ -80,24 +80,24 @@ describe("validate-handoff : une proposition soumet des choix", () => {
       issues: [{ id: "i-1" }],
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /ne porte pas d'issues/);
+    assert.match(result.output, /carries no issues/);
   });
 });
 
-describe("validate-handoff : un tour dit ce qu'on lui a demande", () => {
-  test("refuse un round absent", () => {
+describe("validate-handoff: a round says what it was asked", () => {
+  test("refuses a missing round", () => {
     const result = validate({ mode: "spec_proposal", functional_scope: SCOPE, decisions_for_operator: [DECISION] });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /round manquant/);
+    assert.match(result.output, /round missing/);
   });
 
-  test("refuse un tour 2 sans operator_feedback", () => {
+  test("refuses a round 2 with no operator_feedback", () => {
     const result = validate({ mode: "spec_proposal", round: 2, functional_scope: SCOPE, decisions_for_operator: [DECISION] });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /sans operator_feedback/);
+    assert.match(result.output, /with no operator_feedback/);
   });
 
-  test("accepte un tour 2 qui dit ce qui a change", () => {
+  test("accepts a round 2 that says what changed", () => {
     const result = validate({
       mode: "spec_proposal",
       round: 2,
@@ -109,14 +109,14 @@ describe("validate-handoff : un tour dit ce qu'on lui a demande", () => {
   });
 });
 
-describe("validate-handoff : un tour sans question se declare", () => {
-  test("refuse une liste vide non declaree", () => {
+describe("validate-handoff: a round with no question declares it", () => {
+  test("refuses an undeclared empty list", () => {
     const result = validate({ mode: "spec_proposal", round: 1, functional_scope: SCOPE, decisions_for_operator: [] });
     assert.notEqual(result.status, 0);
     assert.match(result.output, /scope_final/);
   });
 
-  test("accepte une liste vide accompagnee de scope_final", () => {
+  test("accepts an empty list when scope_final is declared", () => {
     const result = validate({
       mode: "spec_proposal",
       round: 1,
@@ -127,14 +127,14 @@ describe("validate-handoff : un tour sans question se declare", () => {
     assert.equal(result.status, 0, result.output);
   });
 
-  test("refuse le champ absent meme avec scope_final : le silence se dit", () => {
+  test("refuses the missing field even with scope_final: silence is stated", () => {
     const result = validate({ mode: "spec_proposal", round: 1, functional_scope: SCOPE, scope_final: true });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /decisions_for_operator manquant/);
+    assert.match(result.output, /decisions_for_operator missing/);
   });
 });
 
-describe("validate-handoff : un plan derive d'une proposition approuvee", () => {
+describe("validate-handoff: a plan derived from an approved proposal", () => {
   /**
    * Ecrit une proposition sur disque et rend son chemin avec son empreinte.
    *
@@ -148,13 +148,13 @@ describe("validate-handoff : un plan derive d'une proposition approuvee", () => 
     return { path, digest: createHash("sha256").update(readFileSync(path, "utf8"), "utf8").digest("hex") };
   }
 
-  test("refuse un plan sans approved_proposal", () => {
+  test("refuses a plan with no approved_proposal", () => {
     const result = validate({ mode: "spec_plan" });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /approved_proposal manquant/);
+    assert.match(result.output, /approved_proposal missing/);
   });
 
-  test("accepte un plan dont l'empreinte correspond au fichier", () => {
+  test("accepts a plan whose digest matches the file", () => {
     const { path, digest } = approved();
     const result = validate({
       mode: "spec_plan",
@@ -163,26 +163,26 @@ describe("validate-handoff : un plan derive d'une proposition approuvee", () => 
     assert.equal(result.status, 0, result.output);
   });
 
-  test("refuse une empreinte inventee", () => {
+  test("refuses an invented digest", () => {
     const { path } = approved();
     const result = validate({
       mode: "spec_plan",
       approved_proposal: { path, digest_sha256: "0".repeat(64), approved_at: "2026-08-17", round: 5 },
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /ne correspond pas au contenu/);
+    assert.match(result.output, /does not match the content/);
   });
 
-  test("refuse une proposition introuvable", () => {
+  test("refuses a proposal that does not exist", () => {
     const result = validate({
       mode: "spec_plan",
       approved_proposal: { path: "/absent.json", digest_sha256: "0".repeat(64), approved_at: "x", round: 1 },
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /introuvable/);
+    assert.match(result.output, /not found/);
   });
 
-  test("refuse un plan derive d'une proposition modifiee APRES l'approbation", () => {
+  test("refuses a plan derived from a proposal modified AFTER approval", () => {
     const { path, digest } = approved({ duree: "14 jours" });
     writeFileSync(path, JSON.stringify({ duree: "30 jours" }));
     const result = validate({
@@ -190,21 +190,21 @@ describe("validate-handoff : un plan derive d'une proposition approuvee", () => 
       approved_proposal: { path, digest_sha256: digest, approved_at: "2026-08-17", round: 5 },
     });
     assert.notEqual(result.status, 0, "on ne fait pas approuver 14 jours pour en planifier 30");
-    assert.match(result.output, /ne correspond pas au contenu/);
+    assert.match(result.output, /does not match the content/);
   });
 
-  test("refuse un plan sans le tour approuve", () => {
+  test("refuses a plan without the approved round", () => {
     const { path, digest } = approved();
     const result = validate({
       mode: "spec_plan",
       approved_proposal: { path, digest_sha256: digest, approved_at: "2026-08-17" },
     });
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /round manquant/);
+    assert.match(result.output, /round missing/);
   });
 });
 
-describe("validate-handoff : transitions et preuve de rouge", () => {
+describe("validate-handoff: transitions and red proof", () => {
   const ISSUE_BASE = {
     schema_version: 1,
     agent: "implementer",
@@ -216,7 +216,7 @@ describe("validate-handoff : transitions et preuve de rouge", () => {
     evidence: { commands: [], files: [], commit_sha: null, notes: [] },
   };
 
-  test("refuse une transition interdite", () => {
+  test("refuses a forbidden transition", () => {
     sandbox ??= createSandbox();
     const path = writeJson(sandbox, "h.json", {
       ...ISSUE_BASE,
@@ -227,7 +227,7 @@ describe("validate-handoff : transitions et preuve de rouge", () => {
     assert.match(result.output, /transition interdite/);
   });
 
-  test("refuse une preuve de rouge sortie a zero", () => {
+  test("refuses a red proof that exited zero", () => {
     sandbox ??= createSandbox();
     const path = writeJson(sandbox, "h.json", {
       ...ISSUE_BASE,
@@ -239,10 +239,10 @@ describe("validate-handoff : transitions et preuve de rouge", () => {
     });
     const result = run(sandbox, "validate-handoff.mjs", [path]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /n'a jamais ete rouge/);
+    assert.match(result.output, /was never red/);
   });
 
-  test("refuse un chemin hors de la politique du role", () => {
+  test("refuses a path outside the role policy", () => {
     sandbox ??= createSandbox();
     const path = writeJson(sandbox, "h.json", {
       ...ISSUE_BASE,
@@ -257,10 +257,10 @@ describe("validate-handoff : transitions et preuve de rouge", () => {
     });
     const result = run(sandbox, "validate-handoff.mjs", [path]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /hors role/);
+    assert.match(result.output, /outside role/);
   });
 
-  test("refuse une decouverte sans motif", () => {
+  test("refuses a discovery with no rationale", () => {
     sandbox ??= createSandbox();
     const path = writeJson(sandbox, "h.json", {
       ...ISSUE_BASE,
@@ -273,6 +273,6 @@ describe("validate-handoff : transitions et preuve de rouge", () => {
     });
     const result = run(sandbox, "validate-handoff.mjs", [path]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /rationale manquant/);
+    assert.match(result.output, /rationale missing/);
   });
 });

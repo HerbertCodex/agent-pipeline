@@ -53,7 +53,7 @@ export function computeWave(records, rules, specId = null) {
 
     const reservations = record.pipeline_state?.file_reservations ?? [];
     if (reservations.length === 0) {
-      waiting.push({ id: record.id, reason: "non gardee : aucune reservation declaree" });
+      waiting.push({ id: record.id, reason: "unguarded: no reservation declared" });
       continue;
     }
 
@@ -108,7 +108,7 @@ function main() {
   }
 
   if (ready.length === 0) {
-    console.log("aucune issue dispatchable maintenant.");
+    console.log("no issue dispatchable right now.");
   } else {
     console.log(`vague dispatchable en parallele (${ready.length}) :`);
     for (const item of ready) console.log(`  ${item.id}  [${item.reservations.join(", ")}]`);

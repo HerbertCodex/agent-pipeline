@@ -20,8 +20,8 @@ function withIssue(overrides = {}) {
   return { root: sandbox, id: record.id, hash: recordHash(sandbox, "issues", record.id) };
 }
 
-describe("store-update : verrou optimiste", () => {
-  test("refuse un hash perime sans rien ecrire", () => {
+describe("store-update: optimistic lock", () => {
+  test("refuses a stale hash without writing anything", () => {
     const { root, id } = withIssue();
     const before = readRecord(root, "issues", id);
     const request = writeJson(root, "r.json", {
@@ -31,11 +31,11 @@ describe("store-update : verrou optimiste", () => {
     });
     const result = run(root, "store-update.mjs", [request]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /verrou optimiste/);
+    assert.match(result.output, /optimistic lock/i);
     assert.deepEqual(readRecord(root, "issues", id), before, "le record ne doit pas avoir bouge");
   });
 
-  test("refuse une version non consecutive", () => {
+  test("refuses a non-consecutive version", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -44,12 +44,12 @@ describe("store-update : verrou optimiste", () => {
     });
     const result = run(root, "store-update.mjs", [request]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /version attendue 2/);
+    assert.match(result.output, /expected version 2/);
   });
 });
 
-describe("store-update : transitions confrontees a rules.json", () => {
-  test("accepte une transition declaree", () => {
+describe("store-update: transitions confronted with rules.json", () => {
+  test("accepts a declared transition", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -60,7 +60,7 @@ describe("store-update : transitions confrontees a rules.json", () => {
     assert.equal(readRecord(root, "issues", id).pipeline_state.phase, "in_progress");
   });
 
-  test("refuse une transition absente de rules.json malgre un proprietaire coherent", () => {
+  test("refuses a transition absent from rules.json despite a coherent owner", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -69,11 +69,11 @@ describe("store-update : transitions confrontees a rules.json", () => {
     });
     const result = run(root, "store-update.mjs", [request]);
     assert.notEqual(result.status, 0, "planned->ready_for_qa n'est pas dans rules.transitions");
-    assert.match(result.output, /transition planned->ready_for_qa absente/);
+    assert.match(result.output, /transition planned->ready_for_qa absent/);
     assert.equal(readRecord(root, "issues", id).pipeline_state.version, 1);
   });
 
-  test("une phase inchangee est un amendement : la version avance, le journal n'enregistre rien", () => {
+  test("an unchanged phase is an amendment: the version advances, the journal records nothing", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -87,7 +87,7 @@ describe("store-update : transitions confrontees a rules.json", () => {
     assert.deepEqual(after.transitions ?? [], [], "un amendement ne fabrique pas de mouvement");
   });
 
-  test("une vraie transition est journalisee", () => {
+  test("a real transition is journalled", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -102,8 +102,8 @@ describe("store-update : transitions confrontees a rules.json", () => {
   });
 });
 
-describe("store-update : reecriture des criteres", () => {
-  test("remplace les criteres et efface un registre etabli contre les anciens", () => {
+describe("store-update: rewriting the criteria", () => {
+  test("replaces the criteria and clears a ledger rendered on the old ones", () => {
     const { root, id, hash } = withIssue({
       criteria_ledger: [
         { index: 0, status: "verified", evidence: "preuve", at: "hier" },
@@ -122,7 +122,7 @@ describe("store-update : reecriture des criteres", () => {
     assert.equal(after.pipeline_state.version, 1, "reecrire des criteres n'est pas une transition");
   });
 
-  test("refuse une liste de criteres vide", () => {
+  test("refuses an empty criteria list", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -131,10 +131,10 @@ describe("store-update : reecriture des criteres", () => {
     });
     const result = run(root, "store-update.mjs", [request]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /liste non vide/);
+    assert.match(result.output, /non-empty list|must be a non-empty/);
   });
 
-  test("refuse un critere qui n'est pas une chaine non vide", () => {
+  test("refuses a criterion that is not a non-empty string", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -145,8 +145,8 @@ describe("store-update : reecriture des criteres", () => {
   });
 });
 
-describe("store-update : registre de criteres", () => {
-  test("refuse un registre dont la longueur ne correspond pas aux criteres", () => {
+describe("store-update: criteria ledger", () => {
+  test("refuses a ledger whose length does not match the criteria", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -155,10 +155,10 @@ describe("store-update : registre de criteres", () => {
     });
     const result = run(root, "store-update.mjs", [request]);
     assert.notEqual(result.status, 0, "l'issue porte deux criteres, le registre une seule entree");
-    assert.match(result.output, /registre de 1 entree/);
+    assert.match(result.output, /ledger of 1 entry/);
   });
 
-  test("refuse un statut exigeant une preuve quand la preuve manque", () => {
+  test("refuses a status requiring evidence when the evidence is missing", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
@@ -169,8 +169,8 @@ describe("store-update : registre de criteres", () => {
   });
 });
 
-describe("store-update : isolement des ecritures", () => {
-  test("ne reecrit que la ligne visee, octet pour octet pour les autres", () => {
+describe("store-update: write isolation", () => {
+  test("rewrites only the targeted line, byte for byte for the others", () => {
     const other = issue({ id: "i-t2", title: "voisine" });
     const target = issue();
     sandbox = createSandbox({ issues: [target, other] });
@@ -184,7 +184,7 @@ describe("store-update : isolement des ecritures", () => {
     assert.deepEqual(readRecord(sandbox, "issues", "i-t2"), before, "la voisine ne doit pas bouger");
   });
 
-  test("refuse de creer un identifiant deja present", () => {
+  test("refuses to create an id that already exists", () => {
     const { root } = withIssue();
     const request = writeJson(root, "r.json", {
       create_record: { kind: "issue", record: issue() },

@@ -9,51 +9,51 @@
 export const BRIEF_QUESTIONS = [
   {
     id: "B1",
-    question: "En une phrase, a quoi sert le produit et pour qui ?",
-    hint: "Sans jargon. Si la phrase a besoin d'un mot technique, c'est qu'elle decrit la solution et pas le besoin.",
-    reveals: "le domaine, et si le produit a un utilisateur identifiable",
+    question: "In one sentence, what is the product for, and for whom?",
+    hint: "No jargon. If the sentence needs a technical word, it is describing the solution, not the need.",
+    reveals: "the domain, and whether the product has an identifiable user",
   },
   {
     id: "B2",
-    question: "Citez trois choses qu'un utilisateur fait avec.",
-    hint: "Des gestes, pas des ecrans. « emprunter un livre », pas « la page emprunt ».",
-    reveals: "les operations reelles, et si elles sont plus que du stockage",
+    question: "Name three things a user does with it.",
+    hint: "Actions, not screens. « borrow a book », not « the loan page ».",
+    reveals: "the real operations, and whether they are more than storage",
   },
   {
     id: "B3",
-    question: "Y a-t-il des situations ou le systeme doit REFUSER quelque chose ? Lesquelles ?",
-    hint: "Pas les champs obligatoires ni les formats. De vrais refus : « ce livre est deja sorti », « ce compte n'a pas assez ».",
-    reveals: "LA question qui detecte le metier. Aucun refus de ce genre, aucun metier.",
+    question: "Are there situations where the system must REFUSE something? Which ones?",
+    hint: "Not required fields or formats. Real refusals: « this book is already out », « this account has too little ».",
+    reveals: "THE question that detects a domain. No refusal of that kind, no domain.",
   },
   {
     id: "B4",
-    question: "Ces refus, un professionnel du metier les comprendrait-il sans qu'on parle informatique ?",
-    hint: "Un bibliothecaire, un comptable. S'il hoche la tete, c'est du metier. S'il ne voit pas pourquoi vous lui dites ca, c'est de la saisie.",
-    reveals: "si les refus sont des regles metier ou de la validation deguisee",
+    question: "Would a professional in the field understand those refusals without any talk of software?",
+    hint: "A librarian, an accountant. If they nod, it is domain. If they cannot see why you are telling them, it is data entry.",
+    reveals: "whether the refusals are business rules or validation in disguise",
   },
   {
     id: "B5",
-    question: "Le produit parle-t-il a des systemes exterieurs ? Pourriez-vous en changer un jour ?",
-    hint: "Base de donnees, paiement, envoi de courriel, service tiers. Et surtout : lequel changerez-vous VRAIMENT.",
-    reveals: "si des ports se justifient, ou si ce serait une assurance jamais utilisee",
+    question: "Does the product talk to outside systems? Might you replace one some day?",
+    hint: "Database, payment, email delivery, third-party service. And above all: which one will you REALLY replace.",
+    reveals: "whether ports are justified, or would be insurance you never claim",
   },
   {
     id: "B6",
-    question: "Combien de personnes ou d'agents travailleront dessus en meme temps ?",
-    hint: "Compte les agents du pipeline comme des personnes : ils se marchent dessus de la meme maniere.",
-    reveals: "si le rangement doit optimiser la coherence ou le travail parallele",
+    question: "How many people or agents will work on it at the same time?",
+    hint: "Count pipeline agents as people: they get in each other's way the same way.",
+    reveals: "whether the layout should optimise for cohesion or for parallel work",
   },
   {
     id: "B7",
-    question: "Dans vos projets precedents, qu'est-ce qui a change le plus souvent ?",
-    hint: "Les ecrans, les regles, les integrations. Repondez sur l'experience, pas sur l'intention.",
-    reveals: "ce qu'il faut placer au centre, et ce qu'il faut laisser en peripherie",
+    question: "In your previous projects, what changed most often?",
+    hint: "Screens, rules, integrations. Answer from experience, not from intention.",
+    reveals: "what belongs at the centre, and what belongs at the edge",
   },
   {
     id: "B8",
-    question: "Qu'est-ce que le produit ne fera PAS ?",
-    hint: "Ce qui n'est pas nomme est suppose fait. C'est vrai des la premiere conversation.",
-    reveals: "le perimetre reel, et souvent une regle metier cachee dans une exclusion",
+    question: "What will the product NOT do?",
+    hint: "What is not named is assumed built. That is true from the first conversation.",
+    reveals: "the real scope, and often a business rule hidden inside an exclusion",
   },
 ];
 
@@ -61,9 +61,9 @@ export const BRIEF_QUESTIONS = [
  * Verdicts possibles d'une architecture face a un projet analyse.
  */
 const VERDICT = {
-  recommande: { label: "Recommandé", rank: 0 },
+  recommande: { label: "Recommended", rank: 0 },
   possible: { label: "Possible", rank: 1 },
-  excessif: { label: "Excessif ici", rank: 2 },
+  excessif: { label: "Excessive here", rank: 2 },
 };
 
 /**
@@ -86,56 +86,56 @@ export function judge(entry, analysis) {
 
   if (entry.id === "feature-modules") {
     verdict = "recommande";
-    reasons.push(parallel ? `${analysis.concurrent_workers === "teams" ? "Plusieurs equipes" : "Plusieurs intervenants"} en parallele : chacun son dossier, personne ne se croise.` : "Cout quasi nul, et rien n'oblige a en sortir tant qu'une douleur precise ne l'exige pas.");
-    if (rules > 0) reasons.push(`${rules} regle(s) metier reperee(s) : elles tiennent dans le dossier de leur fonctionnalite tant qu'elles ne sont pas partagees.`);
+    reasons.push(parallel ? `${analysis.concurrent_workers === "teams" ? "Several teams" : "Several people"} in parallel: one folder each, nobody collides.` : "Almost no cost, and nothing forces you out of it until a precise pain demands it.");
+    if (rules > 0) reasons.push(`${rules} business rule(s) found: they fit inside their feature folder for as long as they are not shared.`);
   }
 
   if (entry.id === "layered") {
     if (parallel) {
       verdict = "excessif";
-      reasons.push("Chaque fonctionnalite traverse les trois dossiers : a plusieurs, tout le monde edite les memes endroits.");
+      reasons.push("Every feature crosses all three folders: with several people, everyone edits the same places.");
     } else {
-      reasons.push("Lisible a une personne, et familier.");
+      reasons.push("Readable by one person, and familiar.");
     }
   }
 
   if (entry.id === "hexagonal") {
     if (swappable === 0) {
       verdict = "excessif";
-      reasons.push("Aucune integration declaree remplacable : les ports seraient une assurance dont vous n'encaisserez jamais l'interet.");
+      reasons.push("No integration declared replaceable: ports would be insurance you never claim.");
     } else if (swappable >= 2) {
       verdict = "recommande";
-      reasons.push(`${swappable} integrations que vous comptez pouvoir changer : c'est exactement le probleme que l'hexagonale resout.`);
+      reasons.push(`${swappable} integrations you expect to replace: that is exactly the problem hexagonal solves.`);
     } else {
-      reasons.push("Une seule integration remplacable : isolez celle-la, pas tout le reste.");
+      reasons.push("A single replaceable integration: isolate that one, not everything else.");
     }
   }
 
   if (entry.id === "clean" || entry.id === "onion") {
     if (rules === 0) {
       verdict = "excessif";
-      reasons.push("Aucune regle metier reperee : les couches se rempliraient d'objets qui recopient des lignes.");
+      reasons.push("No business rule found: the layers would fill with objects copying rows around.");
     } else if (rules >= 8) {
       verdict = "recommande";
-      reasons.push(`${rules} regles metier : assez dense pour justifier de les isoler de toute technologie.`);
+      reasons.push(`${rules} business rules: dense enough to justify isolating them from any technology.`);
     } else {
       verdict = "excessif";
-      reasons.push(`${rules} regle(s) metier : c'est un invariant a proteger, pas un domaine a isoler. Protegez-le au bon endroit plutot que d'ajouter des couches.`);
+      reasons.push(`${rules} business rule(s): that is an invariant to protect, not a domain to isolate. Protect it in the right place rather than adding layers.`);
     }
   }
 
   if (entry.id === "feature-sliced") {
     verdict = parallel ? "recommande" : "possible";
-    reasons.push("Empeche les imports circulaires dans une base ou tout tend a tout importer.");
+    reasons.push("Prevents circular imports in a codebase where everything tends to import everything.");
   }
 
   if (entry.id === "mvvm") {
-    reasons.push("La logique d'ecran se teste sans lancer l'interface.");
+    reasons.push("Screen logic is testable without launching the interface.");
   }
 
   if (entry.id === "mvi") {
     verdict = analysis.expected_churn === "screens" ? "possible" : "excessif";
-    reasons.push(analysis.expected_churn === "screens" ? "Les ecrans bougent souvent : un etat reproductible se rentabilise." : "Sans etat d'ecran complique, la machinerie coute plus cher que ce qu'elle protege.");
+    reasons.push(analysis.expected_churn === "screens" ? "Screens change often: reproducible state pays for itself." : "With no complicated screen state, the machinery costs more than it protects.");
   }
 
   return { verdict, label: VERDICT[verdict].label, rank: VERDICT[verdict].rank, reasons };
@@ -150,7 +150,7 @@ export function judge(entry, analysis) {
 export function summarise(analysis) {
   const rules = (analysis.business_rules ?? []).length;
   const swappable = (analysis.integrations ?? []).filter((item) => item.replaceable === true).length;
-  const domain = rules === 0 ? "aucune regle metier" : rules < 8 ? `${rules} regle(s) metier a proteger` : `${rules} regles metier, un domaine dense`;
-  const ports = swappable === 0 ? "aucune integration a remplacer" : `${swappable} integration(s) remplacable(s)`;
-  return `${domain}, ${ports}, ${analysis.concurrent_workers === "one" ? "un seul intervenant" : analysis.concurrent_workers === "teams" ? "plusieurs equipes" : "quelques intervenants en parallele"}.`;
+  const domain = rules === 0 ? "no business rule" : rules < 8 ? `${rules} business rule(s) to protect` : `${rules} business rules, a dense domain`;
+  const ports = swappable === 0 ? "no integration to replace" : `${swappable} replaceable integration(s)`;
+  return `${domain}, ${ports}, ${analysis.concurrent_workers === "one" ? "a single person" : analysis.concurrent_workers === "teams" ? "several teams" : "a few people in parallel"}.`;
 }

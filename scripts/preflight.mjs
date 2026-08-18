@@ -55,7 +55,7 @@ function main() {
   const json = process.argv.includes("--json");
   const config = loadConfig();
   const keys = Object.keys(config.commands ?? {});
-  if (keys.length === 0) fail("aucune commande declaree dans commands");
+  if (keys.length === 0) fail("no command declared in commands");
 
   const results = keys.map((key) => classify(key, config.commands[key]));
   const missing = results.filter((item) => item.verdict === "indisponible");
@@ -69,12 +69,12 @@ function main() {
     }
     console.log("");
     if (missing.length === 0) {
-      console.log("toutes les portes declarees sont executables.");
-      console.log("Une porte rouge signale donc un constat, jamais un outil manquant.");
+      console.log("every declared gate can run.");
+      console.log("A red gate therefore reports a finding, never a missing tool.");
     } else {
-      console.log(`${missing.length} porte(s) ne peuvent pas s'executer : ${missing.map((item) => item.key).join(", ")}`);
-      console.log("Ces portes echouent au lieu de proteger. Le depot affirme une protection que personne n'exerce.");
-      console.log("Installez l'outil, ou retirez la cle de commands — mais ne laissez pas une porte rouge en permanence.");
+      console.log(`${missing.length} gate(s) cannot run : ${missing.map((item) => item.key).join(", ")}`);
+      console.log("These gates fail instead of protecting. The repository claims a protection nobody exercises.");
+      console.log("Install the tool, or drop the key from commands, but do not leave a gate permanently red.");
     }
   }
 
