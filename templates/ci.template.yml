@@ -1,0 +1,46 @@
+name: ci
+
+# Chaque cle de `commands` devient une etape ci-dessous, `secrets_scan` compris :
+# ce template ne nomme donc aucun outil, et le scan de secrets est celui que le
+# projet a declare. `fetch-depth: 0` lui laisse l'historique complet s'il en veut.
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: gates ({{profile}})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: {{runtime.uses}}
+        with:
+{{runtime.with}}
+
+      - name: install
+        run: {{install}}
+
+{{steps}}
+
+      - name: core-tests
+        run: node --test "agent-pipeline/test/**/*.test.mjs"
+
+      - name: briefs-sync
+        run: node agent-pipeline/scripts/sync-briefs.mjs --check
+
+      - name: profile-sync
+        run: node agent-pipeline/scripts/apply-profile.mjs --check
+
+      - name: store-invariants
+        run: node agent-pipeline/scripts/store-verify.mjs

@@ -1,0 +1,144 @@
+import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { join } from "node:path";
+import { loadConfig, fail } from "./lib.mjs";
+
+const MARKER = "# genere par agent-pipeline/scripts/install-hooks.mjs";
+
+/**
+ * Commandes de chaque crochet, par cle de configuration.
+ *
+ * `pre-commit` garde ce qui ne doit jamais entrer dans l'historique.
+ * `pre-push` garde ce qui ne doit jamais atteindre la branche partagee, plus
+ * les cibles generees : c'est la desynchronisation d'une cible generee qui a
+ * motive ce script, personne ne l'ayant vue partir dans un merge.
+ *
+ * `build`, la suite complete et `audit` en sont volontairement absents : ils
+ * appartiennent a la CI ou a la batterie de cloture de QA, et un crochet lent
+ * finit contourne.
+ */
+const HOOKS = {
+  "pre-commit": { commands: ["lint", "secrets_scan"], generated: false },
+  "pre-push": { commands: ["check", "lint"], generated: true },
+};
+
+/**
+ * Verifications de cibles generees ajoutees a `pre-push`.
+ *
+ * `project_map` n'est pas cite ici : sa commande vient de la config, parce
+ * qu'elle depend du langage du projet.
+ */
+const GENERATED_CHECKS = [
+  "node agent-pipeline/scripts/sync-briefs.mjs --check",
+  "node agent-pipeline/scripts/apply-profile.mjs --check",
+];
+
+/**
+ * Rend le contenu d'un crochet depuis les commandes du profil.
+ *
+ * Le crochet ne connait aucune stack : il ne fait qu'appeler les valeurs que
+ * `commands` porte, dans l'ordre, et s'arrete au premier echec. Changer
+ * d'ecosysteme ne change que la configuration.
+ *
+ * @param name - nom du crochet
+ * @param config - configuration du projet
+ * @returns le script shell du crochet
+ */
+function renderHook(name, config) {
+  const spec = HOOKS[name];
+  const lines = ["#!/bin/sh", MARKER, "# Ne pas editer a la main : relancer install-hooks.mjs.", "set -e", ""];
+
+  for (const key of spec.commands) {
+    const command = config.commands?.[key];
+    if (typeof command !== "string") fail(`commands.${key} manquante : le crochet ${name} ne peut pas etre rendu`);
+    lines.push(`echo "[${name}] ${key}"`, command, "");
+  }
+
+  if (spec.generated) {
+    for (const check of GENERATED_CHECKS) lines.push(`echo "[${name}] cible generee"`, check, "");
+    const projectMap = config.commands?.project_map;
+    if (typeof projectMap === "string") lines.push(`echo "[${name}] project_map"`, projectMap, "");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Rend le repertoire des crochets, en respectant `core.hooksPath`.
+ *
+ * Un depot qui a redirige ses crochets et un script qui ecrit dans
+ * `.git/hooks` produisent le pire des cas : des fichiers presents que rien
+ * n'execute.
+ *
+ * @returns le chemin du repertoire des crochets
+ */
+function hooksDir() {
+  let configured = "";
+  try {
+    configured = execFileSync("git", ["config", "--get", "core.hooksPath"], { encoding: "utf8" }).trim();
+  } catch {
+    configured = "";
+  }
+  if (configured.length > 0) return configured;
+
+  const gitDir = execFileSync("git", ["rev-parse", "--git-common-dir"], { encoding: "utf8" }).trim();
+  return join(gitDir, "hooks");
+}
+
+/**
+ * Installe les crochets git, ou verifie qu'ils sont installes et a jour.
+ *
+ * Le pipeline affirme depuis toujours que `pre-push` refuse une cible
+ * generee desynchronisee. Rien ne l'installait : l'affirmation etait vraie
+ * sur le papier et fausse sur le disque, et c'est ainsi qu'un brief perime a
+ * ete pousse puis merge sans que rien ne le signale. Ce script est ce qui
+ * manquait derriere la phrase.
+ *
+ * Un crochet existant qui ne porte pas la marque de ce script n'est jamais
+ * ecrase sans `--force` : il appartient a quelqu'un d'autre.
+ *
+ * Usage : node install-hooks.mjs [--check] [--force]
+ */
+function main() {
+  const args = process.argv.slice(2);
+  const checkMode = args.includes("--check");
+  const force = args.includes("--force");
+  const config = loadConfig();
+  const dir = hooksDir();
+
+  let drift = false;
+  for (const name of Object.keys(HOOKS)) {
+    const path = join(dir, name);
+    const wanted = renderHook(name, config);
+    const current = existsSync(path) ? readFileSync(path, "utf8") : null;
+
+    if (checkMode) {
+      if (current == null) {
+        console.error(`absent : ${path}`);
+        drift = true;
+      } else if (current !== wanted) {
+        console.error(`desynchronise : ${path}`);
+        drift = true;
+      }
+      continue;
+    }
+
+    if (current != null && !current.includes(MARKER) && !force) {
+      fail(`${path} existe et n'a pas ete genere par ce script. Relire, puis relancer avec --force pour l'ecraser.`);
+    }
+
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path, wanted);
+    chmodSync(path, 0o755);
+    console.log(`ecrit : ${path}`);
+  }
+
+  if (checkMode) {
+    if (drift) {
+      fail("Crochets non installes ou perimes. Lancer install-hooks.mjs, sans --check.");
+    }
+    console.log("Crochets installes et a jour.");
+  }
+}
+
+main();

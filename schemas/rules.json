@@ -1,0 +1,147 @@
+{
+	"schema_version": 3,
+	"description": "Source machine unique des regles du pipeline. Tous les scripts la lisent ; les documents la citent ; en cas d'ecart, ce fichier fait foi.",
+	"phases": {
+		"planned": {
+			"owner": "orchestrator"
+		},
+		"in_progress": {
+			"owner": "implementer"
+		},
+		"ready_for_qa": {
+			"owner": "orchestrator"
+		},
+		"qa_in_progress": {
+			"owner": "qa"
+		},
+		"closed": {
+			"owner": "none"
+		},
+		"blocked_product": {
+			"owner": "product"
+		},
+		"blocked_dependency": {
+			"owner": "product"
+		},
+		"blocked_infrastructure": {
+			"owner": "orchestrator"
+		},
+		"operator_escalation": {
+			"owner": "operator"
+		}
+	},
+	"transitions": [
+		"planned->in_progress",
+		"in_progress->ready_for_qa",
+		"in_progress->blocked_product",
+		"in_progress->blocked_dependency",
+		"in_progress->blocked_infrastructure",
+		"ready_for_qa->qa_in_progress",
+		"qa_in_progress->closed",
+		"qa_in_progress->in_progress",
+		"qa_in_progress->blocked_product",
+		"qa_in_progress->blocked_dependency",
+		"qa_in_progress->blocked_infrastructure",
+		"qa_in_progress->operator_escalation",
+		"blocked_product->in_progress",
+		"blocked_dependency->in_progress",
+		"blocked_infrastructure->in_progress",
+		"blocked_infrastructure->qa_in_progress"
+	],
+	"transition_source": {
+		"product": [
+			"blocked_product",
+			"blocked_dependency"
+		],
+		"implementer": [
+			"in_progress"
+		],
+		"qa": [
+			"qa_in_progress"
+		]
+	},
+	"context_headings": {
+		"product": [
+			"## Context for Implementer",
+			"## Context for Operator"
+		],
+		"implementer": [
+			"## Context for QA",
+			"## Context for Product (SPEC UNCLEAR)",
+			"## Context for Product (DEPENDENCY)",
+			"## Context for Orchestrator (INFRASTRUCTURE)"
+		],
+		"qa": [
+			"## Context for Implementer (REGRESSION)",
+			"## Context for Product (SPEC UNCLEAR)",
+			"## Context for Product (DEPENDENCY)",
+			"## Context for Operator (ESCALATION)",
+			"## Context for Orchestrator (INFRASTRUCTURE)"
+		]
+	},
+	"fault_routing": {
+		"spec": "blocked_product",
+		"dependency": "blocked_dependency",
+		"infrastructure": "blocked_infrastructure"
+	},
+	"code_fault_routing": {
+		"regression_required": {
+			"to": "in_progress",
+			"heading": "## Context for Implementer (REGRESSION)",
+			"requires": "regression.criterion"
+		},
+		"regression_waived": {
+			"to": "in_progress",
+			"heading": "## Context for Implementer (REGRESSION)",
+			"requires": "regression.reason"
+		}
+	},
+	"max_code_rejections": 3,
+	"non_authoring_agents": [
+		"qa",
+		"product"
+	],
+	"red_proof": {
+		"agent": "implementer",
+		"outcome": "ready_for_qa",
+		"fields": [
+			"cmd",
+			"exit"
+		]
+	},
+	"reservation_holding_phases": [
+		"in_progress",
+		"ready_for_qa",
+		"qa_in_progress",
+		"blocked_product",
+		"blocked_dependency",
+		"blocked_infrastructure",
+		"operator_escalation"
+	],
+	"state_required_fields": [
+		"schema_version",
+		"phase",
+		"owner",
+		"version",
+		"qa_code_rejections",
+		"file_reservations",
+		"last_commit_sha",
+		"last_transition_at"
+	],
+	"file_policy": null,
+	"criterion_status": {
+		"values": [
+			"unverified",
+			"pending",
+			"blocked",
+			"verified"
+		],
+		"default": "unverified",
+		"closable": "verified",
+		"evidence_required_for": [
+			"verified",
+			"blocked"
+		]
+	},
+	"discovery_relationship": "discovered-from"
+}
