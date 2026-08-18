@@ -4,7 +4,7 @@
 
 **Un cadre pour faire écrire du logiciel par des agents — où chaque règle qui compte est adossée à une commande qui échoue.**
 
-`Node` · `agnostique` · `132 tests sur lui-même` · `sans dépendance`
+`Node` · `agnostique` · `132 tests sur lui-même` · `sans dépendance` · `MIT`
 
 </div>
 
@@ -321,11 +321,28 @@ Rien d'autre ne vient du cadre. Tout le reste vient de vos portes — et `prefli
 
 Écrites plutôt que découvertes.
 
-- **Les tests du cadre exigent un projet hôte.** Le harnais copie le fichier de règles du projet pour ne pas prouver une copie divergente à sa place.
 - **Les profils vivent côté projet.** Cloner ce dépôt n'apporte pas les portes d'une stack donnée : pour un second projet du même type, elles se réécrivent. Une réserve de profils partagés reste à concevoir.
 - **Rien ne déclenche les pages de relecture.** Le cadre les produit et dit ce qu'un harnais capable doit en faire ; c'est la session qui doit y penser. *Une discipline, pas une porte — et par la doctrine ci-dessus, c'est une faiblesse assumée.*
 - **Aucun étalon externe.** Le cadre mesure son propre débit et ses défauts échappés ; il ne prouve pas encore qu'il fait mieux qu'une session directe.
 - Les exemples de certains skills de patrons sont à coloration JavaScript. Un biais de rédaction, pas un couplage.
+
+---
+
+## ✅ Vérifier le cadre lui-même
+
+```bash
+node --test "test/**/*.test.mjs"
+```
+
+**132 tests**, qui tournent sur un clone nu comme dans un projet installé. Ils couvrent le verrou optimiste et les transitions du store, les portes de validation des handoffs, l'échappement des pages rendues, le détecteur de dérive, et la porte d'agnosticité qui empêche un couplage de stack d'entrer ici.
+
+Chacune de ces portes a été éprouvée par une **casse volontaire** vérifiée appliquée — un motif de remplacement qui ne trouve rien laisse la porte verte et ne prouve rien.
+
+---
+
+## 📄 Licence
+
+MIT — voir [`LICENSE`](LICENSE). Copier `agent-pipeline/` dans un dépôt privé, commercial ou non, est l'usage prévu.
 
 ---
 

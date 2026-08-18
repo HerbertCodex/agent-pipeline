@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, cpSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -10,17 +10,28 @@ const SCRIPTS = join(here, "..", "scripts");
 const PROJECT_ROOT = join(here, "..", "..");
 
 /**
- * Resout le fichier de regles du projet hote depuis sa configuration.
+ * Resout le fichier de regles a copier dans un bac a sable.
  *
- * Le chemin n'est pas ecrit en dur : `rules_path` est configurable, et un
- * harnais qui suppose `pipeline/rules.json` ne tournerait que sur les projets
- * qui ont garde le defaut. Le core ne suppose ni langage ni arborescence.
+ * Dans un projet hote, c'est SON fichier — `rules_path` est configurable, et
+ * un harnais qui supposerait `pipeline/rules.json` ne tournerait que sur les
+ * projets ayant garde le defaut.
  *
- * @returns le chemin absolu du fichier de regles du projet hote
+ * Hors projet — le cadre clone seul — c'est la source d'amorcage
+ * `schemas/rules.json`, dont chaque projet descend. Ce n'est donc pas un jeu
+ * de regles de test qui divergerait en silence : c'est l'original. Sans ce
+ * repli, un lecteur qui clone et lance les tests voit cent echecs et conclut
+ * que le cadre est casse.
+ *
+ * @returns le chemin absolu du fichier de regles a utiliser
  */
 function resolveRules() {
-  const config = JSON.parse(readFileSync(join(PROJECT_ROOT, "pipeline.config.json"), "utf8"));
-  return join(PROJECT_ROOT, config.rules_path);
+  const hosted = join(PROJECT_ROOT, "pipeline.config.json");
+  if (existsSync(hosted)) {
+    const config = JSON.parse(readFileSync(hosted, "utf8"));
+    const path = join(PROJECT_ROOT, config.rules_path);
+    if (existsSync(path)) return path;
+  }
+  return join(here, "..", "schemas", "rules.json");
 }
 
 /**
@@ -44,7 +55,19 @@ export function createSandbox({ issues = [], specs = [] } = {}) {
   const root = mkdtempSync(join(tmpdir(), "pipeline-core-"));
   mkdirSync(join(root, "pipeline", "store"), { recursive: true });
 
-  cpSync(resolveRules(), join(root, "pipeline", "rules.json"));
+  const policy = {
+    implementer: { allow: ["src/**", "test/**"], deny: ["package.json"] },
+    product: { allow: [] },
+    qa: { allow: [] },
+    orchestrator: { allow: ["pipeline/store/**"] },
+  };
+  // `file_policy` est INJECTEE dans les regles par apply-profile depuis la
+  // config : la source d'amorcage ne la porte pas. Le bac a sable reproduit
+  // donc l'injection au lieu de dependre d'un fichier deja rendu par un
+  // projet hote — sans quoi les tests ne passeraient que la ou le pipeline
+  // tourne deja.
+  const rules = JSON.parse(readFileSync(resolveRules(), "utf8"));
+  writeFileSync(join(root, "pipeline", "rules.json"), JSON.stringify({ ...rules, file_policy: policy }, null, 2));
 
   writeFileSync(
     join(root, "pipeline.config.json"),
@@ -60,12 +83,7 @@ export function createSandbox({ issues = [], specs = [] } = {}) {
       project_context: "pipeline/project-context.md",
       store_dir: "pipeline/store",
       ci: { provider: "none" },
-      file_policy: {
-        implementer: { allow: ["src/**", "test/**"], deny: ["package.json"] },
-        product: { allow: [] },
-        qa: { allow: [] },
-        orchestrator: { allow: ["pipeline/store/**"] },
-      },
+      file_policy: policy,
     }),
   );
 
