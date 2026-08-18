@@ -1,45 +1,57 @@
-# Portes de qualité
-
-Chaque exigence est soit une commande qui échoue, soit une preuve exigée dans un handoff, soit une revue outillée. Une exigence qui n'est aucune des trois n'existe pas.
+# Quality gates
 
 <!-- brief:implementer,qa,orchestrator -->
-## Code mort
+## Dead code
 
-La commande `dead_code` détecte exports jamais importés, fichiers orphelins et dépendances inutilisées ; elle tourne en CI et dans la batterie QA. Un symbole mort introduit par l'issue est retiré dans le même commit. Un symbole mort préexistant est signalé comme candidat dans le handoff, jamais retiré hors périmètre : Product décide. Un export « pour plus tard » est du code mort avec une excuse. Les faux positifs se déclarent dans la config de l'outil, committée et relue, jamais en désactivant la porte.
+`dead_code` refuses an unused export, an orphan file, an unused dependency. **An export kept "for later" is dead code with an excuse**: nobody imports it, nothing proves it, and it will be maintained by someone who assumes it matters.
 
-## Analyse statique de sécurité
-
-La commande `sast` analyse le code du projet (`audit` ne couvre que les dépendances). Un finding est traité ou suppressé avec justification inline committée et relue ; une suppression sans raison est un rejet QA. La SAST complète les preuves d'intégration et la revue de frontières ; elle ne voit ni une policy manquante ni une décision prise du mauvais côté.
+Two consequences to work with rather than against. A shared helper is created **at its first real use**, never in advance — creating it earlier makes it an export nobody imports, and the gate is right to refuse it. And a symbol whose only consumer is a test may be invisible to the tool if it treats specs as entry points: check what your tool actually counts before trusting a green result.
 <!-- /brief -->
 
 <!-- brief:implementer,qa,product -->
-## Réutiliser avant d'écrire : la note de réutilisation
+## Static security analysis
 
-Le symptôme connu : un composant réécrit parce que personne n'a vérifié qu'il existait, puis deux copies qui divergent. **Tout handoff d'Implementer qui crée un composant, module, helper ou fonction partagée contient une note de réutilisation** dans son contexte : ce qui a été cherché, l'existant le plus proche avec son chemin, et en une phrase pourquoi il ne convient pas sans le déformer. QA rejette en faute `code` toute création sans note, et toute note dont l'existant aurait manifestement convenu. Product liste dans chaque issue les composants existants attendus en réutilisation ; un écart est une question, pas automatiquement une faute.
+`sast` refuses `eval`, `new Function`, a dynamically built command, and the classic injection shapes. It reads patterns, not intentions: it will never see an authorisation check that was never written.
 
-Ordre de préférence quand l'existant convient presque : l'utiliser tel quel ; l'étendre par un paramètre à défaut rétrocompatible ; en dernier recours créer une variante. Une variante créée pour éviter de toucher un composant partagé est le premier pas de la divergence : si l'extension casse un usage existant, c'est un conflit de périmètre à remonter, pas une raison de dupliquer.
-
-## La carte du projet, contre laquelle la note est jugée
-
-Exiger une note de réutilisation sans dire **où chercher** ne produit que des notes de complaisance : « j'ai cherché, je n'ai rien trouvé » est invérifiable. La carte rend cette phrase falsifiable.
-
-`docs/project-map.md` est **généré depuis le code** et liste chaque export public avec sa nature et le rôle que sa documentation lui donne, harnais de test compris. Product la lit avant de spécifier, l'Implementer avant de créer, QA la confronte à toute création du diff.
-
-Elle n'est jamais rédigée à la main. Une carte périmée est pire qu'une carte absente : elle affirme, donc plus personne ne vérifie, et le premier agent qui y lit une absence fera le doublon avec bonne conscience. La porte `project_map` rejoue la génération et échoue sur toute dérive — c'est ce qui autorise à lui faire confiance.
-
-**Contrat de profil.** Le core ne sait pas lire votre langage : il exige seulement que la commande `project_map` du profil régénère la carte au chemin déclaré et supporte `--check`. `apply-profile` refuse une configuration qui ne la déclare pas. Un profil TypeScript peut passer par l'API du compilateur, un profil Dart par `analyzer`, un profil Swift par `sourcekitten` — les rôles ne voient qu'un chemin et une porte, jamais l'outil.
+A rule disabled in the configuration is a **gate change**, therefore human review. Disabling one inline, in the file it concerns, is worse: it hides in a diff nobody reads twice. If a rule produces systematic false positives, disable it once, in the committed configuration, with the reason written next to it.
 <!-- /brief -->
 
 <!-- brief:implementer,qa -->
-## Commentaires : le contrat survit, la narration périme
+## Reuse before writing: the reuse note
 
-**Contrat exigé (`doc_lint`)** : toute fonction, classe, interface ou type **exporté** porte une documentation structurée du langage (JSDoc/TSDoc, docstring, JavaDoc) : description, paramètres, retour, erreurs. Un contrat documente ce qui reste vrai tant que la signature ne change pas ; c'est pourquoi il ne périme pas. Ne pas répéter les types déjà portés par le langage. La porte détecte la dérive : renommer un paramètre sans sa doc fait échouer la CI.
+**Every creation carries a note saying what was searched, what was found, and why it did not fit.** Not "I found nothing" — which describes a search nobody can check — but the closest existing component named, and the precise reason it does not answer.
 
-**Narration interdite (`comment_policy`)** : décrire ce que fait le code, bannières, code commenté, TODO sans issue : tout cela raconte l'implémentation d'aujourd'hui et ment demain. Le pourquoi va dans le message de commit ; un piège payé va dans le document de pièges du profil. Exceptions admises par le balayage, committées et relues : directives d'outils, annotations lues par une garde, marqueurs conventionnels du profil. Une fonction non exportée ne porte ni contrat ni narration : si son corps doit être raconté, c'est son nom ou son découpage qui est en cause.
+The order of preference is fixed: **use as is**, then **extend with a parameter that has a backward-compatible default**, and only then **create a variant**. A variant created to avoid touching a shared component is the first step of divergence, and it is invisible until the two copies disagree.
+
+The note is judged against the project map. That is why the map exists, and why a stale map is worse than no map.
+<!-- /brief -->
+
+<!-- brief:implementer,qa -->
+## The project map, against which the note is judged
+
+`project_map` regenerates a map of every public export, its nature and the first line of its contract, at the path declared in the configuration. `map_coverage` fails if a source file is missing from it.
+
+**Profile contract.** The core cannot read your language: it requires only that the profile's `project_map` command regenerate the map at the declared path and support `--check`. `apply-profile` refuses a configuration that does not declare it. A TypeScript profile can go through the compiler API, a Dart profile through `analyzer`, a Swift profile through `sourcekitten` — the roles only ever see a path and a gate, never the tool.
+
+The trap is not a red gate, it is a green one: **a `--check` that compares an empty map to an empty map exits 0**. Count the files under your roots against the entries rendered, once, before trusting it.
+<!-- /brief -->
+
+<!-- brief:implementer,qa -->
+## Comments: the contract survives, narration expires
+
+`doc_lint` requires a contract on every exported symbol — description, one entry per parameter, a return when the function yields one. Renaming a parameter without its documentation fails.
+
+`comment_policy` refuses the opposite: describing what the code does, banners, section dividers, commented-out code, a `TODO` with no linked issue. **Narration describes today's implementation and lies tomorrow.** The why goes into the commit message; a trap already paid for goes into the profile's pitfalls document.
+
+A non-exported function carries neither contract nor narration. If its body needs to be told, its name or its decomposition is what is wrong.
 <!-- /brief -->
 
 <!-- brief:product,qa -->
-## Ce qu'aucun outil ne prouve
+## What no tool proves
 
-Le découpage juste, le bon nom, l'abstraction au bon moment restent un jugement, outillé sans être automatisé : maquette validée avant le code pour les écrans à enjeu visuel, revue QA sur la cohésion (ce qui change ensemble vit ensemble) et le couplage, YAGNI avant SOLID (l'abstraction se paie quand le deuxième usage existe). Un rejet QA d'architecture cite la règle du profil violée et le coût concret observé, jamais un goût.
+Gates catch what is missing far better than what is wrong. A missing contract fails; a wrong abstraction passes. A test that asserts nothing passes coverage; only a mutation gate sees it.
+
+So there is a residue, and it is where review earns its place: whether the decomposition holds, whether an abstraction was worth its price, whether two decisions that are each defensible compose, whether a limit accepted deliberately is still acceptable.
+
+**Quality is a command that fails or a proof that is demanded, never an adjective.** Where neither exists, say so instead of implying the gates covered it.
 <!-- /brief -->

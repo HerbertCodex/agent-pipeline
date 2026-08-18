@@ -1,246 +1,249 @@
-# Installer le pipeline dans un nouveau projet
+# Installing the pipeline in a new project
 
-Ce document s'adresse à l'agent qui configure le pipeline dans un dépôt qui ne le connaît pas encore. Il suppose que `agent-pipeline/` vient d'être copié à la racine du projet et que rien d'autre n'a été fait.
+This document addresses the agent configuring the pipeline in a repository that does not know it yet. It assumes `agent-pipeline/` has just been copied to the project root and nothing else has been done.
 
-Il n'est pas une introduction au pipeline. Pour ce qu'il fait et pourquoi, lire `AGENTS.md` **après** l'avoir rendu, puis `state-machine.md` et `quality-gates.md`.
+It is not an introduction to the pipeline. For what it does and why, read `AGENTS.md` **after** rendering it, then `state-machine.md` and `quality-gates.md`.
 
-## Ce que tu configures, et ce que tu ne touches pas
+## What you configure, and what you do not touch
 
-`agent-pipeline/scripts/` est **agnostique** : ces scripts ne connaissent ni langage, ni framework, ni gestionnaire de paquets. Ils lisent le store, calculent l'ordonnancement, valident les handoffs. Tu n'y touches pas, et tu n'y introduis aucune dépendance de stack — la même règle vaut pour `agent-pipeline/prompts/`, `agent-pipeline/docs/` et `agent-pipeline/templates/`.
+`agent-pipeline/scripts/` is **agnostic**: those scripts know no language, no framework, no package manager. They read the store, compute the schedule, validate handoffs. You do not touch them, and you introduce no stack dependency there — the same rule holds for `agent-pipeline/prompts/`, `agent-pipeline/docs/` and `agent-pipeline/templates/`.
 
-Tout ce qui parle de la stack ou de ce dépôt-ci vit dans cinq endroits, et ce sont les cinq que tu écris :
+Everything that speaks of the stack or of this repository lives in six places, and those are the six you write:
 
-| Quoi | Où | Ce que ça porte |
+| What | Where | What it carries |
 | --- | --- | --- |
-| La configuration | `pipeline.config.json` | commandes, `file_policy`, répertoires, surfaces à relecture humaine, CI |
-| Les invariants | `<profiles_dir>/<profil>/invariants.md` | la section 9 d'`AGENTS.md` : ce qui est interdit dans ce langage |
-| Les skills de stack | `<profiles_dir>/<profil>/skills/` | ce qu'un skill sait de cette stack et qui n'a pas sa place dans le core |
-| Le contexte du dépôt | le fichier `project_context` | les trois blocs de `CLAUDE.md` : ce que le projet est, ses commandes locales, ses limites assumées |
-| Les outils du projet | `scripts/` | la carte du projet, la politique de commentaires |
-| Les standards | `docs/stack/` | conventions relues par QA |
+| The configuration | `pipeline.config.json` | commands, `file_policy`, directories, human-review surfaces, CI |
+| The invariants | `<profiles_dir>/<profile>/invariants.md` | section 9 of `AGENTS.md`: what is forbidden in this language |
+| The stack skills | `<profiles_dir>/<profile>/skills/` | what a skill knows about this stack and that has no place in the core |
+| The repository context | the `project_context` file | the three `CLAUDE.md` blocks: what the project is, its local commands, its accepted limits |
+| The project tools | `scripts/` | the project map, the comment policy |
+| The standards | `docs/stack/` | conventions reviewed by QA |
 
-Les skills, eux, se rangent selon une seule question : **ce skill parlerait-il encore juste dans un projet d'une autre stack ?** Si oui, il appartient à `agent-pipeline/skills/` et voyage avec le pipeline. Sinon il appartient au profil. Un skill d'interface web dans le core rendrait le core faux pour un projet Go ; `apply-profile` refuse d'ailleurs un même nom des deux côtés.
+Skills are sorted by a single question: **would this skill still be right in a project on another stack?** If yes it belongs to `agent-pipeline/skills/` and travels with the pipeline. Otherwise it belongs to the profile. A web-interface skill in the core would make the core wrong for a Go project; `apply-profile` refuses the same name on both sides.
 
-`AGENTS.md`, `CLAUDE.md`, le fichier `rules_path`, `.claude/agents/` et les skills installés dans `skills_dir` sont **générés** par `apply-profile`. Ne les écris jamais à la main : ta modification sera écrasée au prochain rendu, et `apply-profile --check` la signalera comme une dérive avant ça.
+`AGENTS.md`, `CLAUDE.md`, the `rules_path` file, the rendered prompts and the skills installed into `skills_dir` are **generated** by `apply-profile`. Never write them by hand: your change will be overwritten at the next render, and `apply-profile --check` will report it as drift before that.
 
-`CLAUDE.md` est chargé à chaque session et porte l'obligation de demander « pipeline ou direct » avant d'agir. Un dépôt sans lui démarre sans point d'entrée : cette obligation n'a lieu pour personne, et rien ne le signale — c'est pourquoi il est rendu et non laissé à ta bonne volonté.
+`CLAUDE.md` is loaded on every session and carries the obligation to ask "pipeline or direct" before acting. A repository without it starts with no entry point: that obligation then happens for nobody, and nothing reports it — which is why it is rendered rather than left to your good will.
 
-## L'ordre, et la vérification après chaque étape
+## The order, and the check after each step
 
-### 1. Nommer le profil et écrire ses invariants
+### 1. Name the profile and write its invariants
 
-Choisis un identifiant court et descriptif : `api-fastapi`, `web-svelte`, `cli-go`. Écris `<profiles_dir>/<profil>/invariants.md` — `profiles_dir` est déclaré dans ta config et vit à la racine du projet, jamais dans `agent-pipeline/` — une liste à puces, chacune vérifiable, chacune propre au langage.
+Choose a short descriptive identifier: `api-fastapi`, `web-svelte`, `cli-go`. Write `<profiles_dir>/<profile>/invariants.md` — `profiles_dir` is declared in your config and lives at the project root, never inside `agent-pipeline/` — as a bullet list, each bullet checkable, each specific to the language.
 
-Un invariant utile interdit quelque chose de précis que ce langage rend facile. « Écrire du code propre » n'est pas un invariant ; « aucun `any` » et « aucun `except:` nu » en sont.
+A useful invariant forbids something precise that the language makes easy. "Write clean code" is not an invariant; "no `any`" and "no bare `except:`" are.
 
-Demande-toi, pour chaque puce : **quelle porte la fait échouer ?** Si la réponse est « aucune », soit tu ajoutes la porte à l'étape 3, soit tu retires la puce. Une règle que rien ne fait mordre s'auto-annule — c'est la leçon la plus chère de ce pipeline, et elle se réapprend dans chaque projet.
+For every bullet, ask: **which gate makes it fail?** If the answer is "none", either you add the gate at step 3 or you remove the bullet. A rule nothing enforces cancels itself — that is this pipeline's most expensive lesson, and it is relearned in every project.
 
-### 2. Écrire `pipeline.config.json`
+### 2. Write `pipeline.config.json`
 
-Pars de celui du projet d'origine et remplace chaque valeur. Les clés `commands` sont un contrat : les prompts et les documents désignent les portes **par leur clé**, jamais par la commande. `check` doit rester la vérification de types quel que soit l'outil qui la rend.
+Start from the origin project's file and replace every value. The `commands` keys are a contract: prompts and documents designate gates **by their key**, never by the command. `check` must remain type checking whatever tool provides it.
 
-Les clés obligatoires, refusées si absentes : `check`, `lint`, `build`, `test_unit`, `audit`, `secrets_scan`, `project_map`.
+Mandatory keys, refused if absent: `check`, `lint`, `build`, `test_unit`, `audit`, `secrets_scan`, `project_map`, `design_limits`.
 
-Les chemins obligatoires, refusés si absents : `profiles_dir`, `docs_dirs`, `briefs_dir`, `prompts_dir`, `skills_dir`, `rules_path`, `project_context`, `store_dir`.
+Mandatory paths, refused if absent: `profiles_dir`, `docs_dirs`, `briefs_dir`, `prompts_dir`, `skills_dir`, `rules_path`, `project_context`, `store_dir`.
 
-Tu es libre de les ranger où tu veux, et c'est le but : rien de tout cela n'est figé dans le core. Grouper la machinerie sous un seul répertoire — `pipeline/profiles`, `pipeline/briefs`, `pipeline/store`, `pipeline/rules.json` — évite de disputer au projet hôte des noms qu'il veut pour lui, `docs/` et `scripts/` en tête. Seuls `AGENTS.md`, `CLAUDE.md`, `.claude/` et `pipeline.config.json` restent à la racine : la plateforme les y cherche.
+You are free to place them where you want, and that is the point: none of it is fixed in the core. Grouping the machinery under a single directory — `pipeline/profiles`, `pipeline/briefs`, `pipeline/store`, `pipeline/rules.json` — avoids fighting the host project for names it wants for itself, `docs/` and `scripts/` first among them. Only `AGENTS.md`, `CLAUDE.md`, the prompts directory and `pipeline.config.json` stay at the root: the platform looks for them there.
 
-`rules_path` est **semé** au premier rendu depuis `agent-pipeline/schemas/rules.json`, puis complété par la `file_policy` du profil. Tu n'as pas à le copier toi-même.
+`rules_path` is **seeded** at the first render from `agent-pipeline/schemas/rules.json`, then completed with the profile's `file_policy`. You do not copy it yourself.
 
-Pour un projet Python, par exemple, `check` devient `mypy .`, `lint` devient `ruff check . && ruff format --check .`, `test_unit` devient `pytest`. Pour un projet Svelte, `check` devient `svelte-check`, `test_unit` devient `vitest run`.
+For a Python project, `check` becomes `mypy .`, `lint` becomes `ruff check . && ruff format --check .`, `test_unit` becomes `pytest`. For a Svelte project, `check` becomes `svelte-check`, `test_unit` becomes `vitest run`.
 
-Adapte aussi :
+Also adapt:
 
-- `file_policy` — les globs `deny` doivent couvrir les vrais chemins du projet ; l'entrée `implementer` est obligatoire ;
-- `human_review_paths` — authentification, migrations, tout ce qui ne doit jamais être approuvé par une machine seule ;
-- `project_map.roots` et `project_map.skip` — les racines à cartographier et le motif des fichiers de test ;
-- `ci.provider` — `"none"` si tu n'installes pas de CI, et sache alors que QA exécutera réellement chaque porte au lieu de lire un run.
+- `file_policy` — the `deny` globs must cover the project's real paths; the `implementer` entry is mandatory;
+- `human_review_paths` — authentication, migrations, anything that must never be approved by a machine alone;
+- `project_map.roots` and `project_map.skip` — the roots to map and the test-file pattern;
+- `ci.provider` — `"none"` if you install no CI, and know then that QA will actually run every gate instead of reading a run.
 
-### 3. Écrire les outils du projet
+### 3. Write the project tools
 
-Deux scripts vivent dans `scripts/` et sont propres à la stack.
+Two scripts live in `scripts/` and are specific to the stack.
 
-#### La carte du projet : tu dois l'écrire, et ce n'est pas négociable
+#### The project map: you must write it, and this is not negotiable
 
-**Le générateur de carte hérité ne fonctionnera pas dans ton projet, et tu dois en écrire un.** C'est l'étape que ce guide te demande le plus explicitement, parce que c'est celle dont l'omission est la plus silencieuse.
+**The inherited map generator will not work in your project, and you must write one.** This is the step this guide asks for most explicitly, because it is the one whose omission is the quietest.
 
-Le script du projet d'origine importe le paquet `typescript` et ne collecte que les fichiers `.ts`. Dans un projet Python ou Go, il ne démarre même pas — `Cannot find package 'typescript'`. C'est le cas **heureux** : l'échec est bruyant. Le cas malheureux est un projet où il démarre, ne trouve aucun fichier correspondant, écrit une carte vide, et où `--check` compare vide à vide et **sort en 0**.
+The origin project's script imports a language-specific parser and collects only that language's files. In a project of another stack it will not even start — that is the **happy** case: the failure is loud. The unhappy case is a project where it starts, finds no matching file, writes an empty map, and where `--check` compares empty to empty and **exits 0**.
 
-**Ce que le pipeline perd si tu sautes cette étape.** `docs/project-map.md` est la réponse à « est-ce que ça existe déjà ? », lue avant de créer un module, un service, un helper ou un harnais de test. La **note de réutilisation exigée de tout ajout est jugée contre elle** : sans carte juste, cette note n'est plus jugeable par personne, et la porte qui la réclame devient une formalité. Les agents recréent alors ce qui existe déjà, chacun de leur côté, sans qu'aucune porte ne s'en aperçoive — et le pipeline perd la mémoire de ce qu'il a construit.
+**What the pipeline loses if you skip this step.** The project map is the answer to "does this already exist?", read before creating a module, a service, a helper or a test harness. The **reuse note required of every addition is judged against it**: without an accurate map, that note is judgeable by nobody, and the gate demanding it becomes a formality. Agents then recreate what already exists, each on their own, without any gate noticing — and the pipeline loses the memory of what it has built.
 
-Ce n'est donc pas un outil de confort. C'est le seul mécanisme par lequel le pipeline sait ce qu'il contient.
+So this is not a convenience tool. It is the only mechanism by which the pipeline knows what it contains.
 
-**Ce que le core exige, et rien de plus** : un chemin de sortie, une régénération, et un `--check` qui sort en 1 quand la carte est périmée. Le langage du générateur est libre — écris-le dans celui du projet. En Python, le module `ast` de la bibliothèque standard suffit ; en Go, `go/ast` ; en JavaScript ou TypeScript, l'API du compilateur.
+**What the core requires, and nothing more**: an output path, a regeneration, and a `--check` that exits 1 when the map is stale. The generator's language is free — write it in the project's own. In Python the standard `ast` module is enough; in Go, `go/ast`; in JavaScript or TypeScript, the compiler API.
 
-**Ce qu'il doit produire** : chaque export public avec sa nature et le rôle que sa documentation lui donne, harnais de test compris.
+**What it must produce**: every public export with its nature and the role its documentation gives it, test harnesses included.
 
-**Comment prouver qu'il marche, par une commande et pas par une lecture :**
+**How to prove it works, by a command and not by reading:**
 
 ```
 node agent-pipeline/scripts/map-coverage.mjs
 ```
 
-Il compte les fichiers de source sous `project_map.roots`, retire ceux que `skip` écarte, et exige que **chacun** soit cité dans la carte rendue. Il ne connaît ni ton langage ni le format de ta carte : il apparie sur le nom de fichier. Sortie 1 si un seul manque, sortie 1 aussi si aucun fichier de source n'est trouvé — ce qui attrape une `roots` mal réglée.
+It counts the source files under `project_map.roots`, removes those `skip` excludes, and requires that **each one** is cited in the rendered map. It knows neither your language nor your map format: it matches on file name. Exit 1 if a single one is missing, exit 1 as well if no source file is found — which catches a misconfigured `roots`.
 
-C'est ce contrôle qui distingue une carte vide d'une carte à jour. La porte `project_map` compare la carte à sa régénération : elle attrape une carte **périmée**, jamais une carte **vide**. Les deux passent au vert quand le générateur ne collecte rien.
+That check is what distinguishes an empty map from an up-to-date one. The `project_map` gate compares the map to its regeneration: it catches a **stale** map, never an **empty** one. Both go green when the generator collects nothing.
 
-Lance-le après chaque régénération, et fais-en une porte de ta configuration si tu veux qu'il morde tout seul.
+Run it after every regeneration, and make it a gate of your configuration if you want it to bite on its own.
 
-**Si tu décides de ne pas porter la carte**, supprime le script hérité au lieu de le laisser en place. Un script mort qui porte le nom d'une porte est pire qu'un script absent : le prochain agent lira son nom dans la config et le croira actif.
+**If you decide not to port the map**, delete the inherited script instead of leaving it in place. A dead script bearing the name of a gate is worse than a missing one: the next agent will read its name in the config and believe it active.
 
-**La politique de commentaires** interdit la narration et n'accepte que les contrats sur les exports. La syntaxe des commentaires change avec le langage ; les racines scannées aussi.
+**The comment policy** forbids narration and accepts only contracts on exports. Comment syntax changes with the language; so do the scanned roots.
 
-### 4. Rendre, puis vérifier que le rendu est réel
+### 4. Render, then check that the render is real
 
-`apply-profile` refuse de rendre sans le fichier `project_context` et te donne le chemin manquant. Écris ses trois blocs — `<!-- claude:summary -->`, `<!-- claude:commands -->`, `<!-- claude:context -->` — avant de lancer la commande ; un bloc vide est refusé comme un fichier absent.
+`apply-profile` refuses to render without the `project_context` file and gives you the missing path. Write its three blocks — `<!-- claude:summary -->`, `<!-- claude:commands -->`, `<!-- claude:context -->` — before running the command; an empty block is refused like a missing file.
 
 ```
 node agent-pipeline/scripts/apply-profile.mjs
 node agent-pipeline/scripts/sync-briefs.mjs
-node <ton script de carte>
+node <your map script>
 ```
 
-Puis, et c'est l'étape que personne ne saute :
+Then, and this is the step nobody skips:
 
 ```
 node agent-pipeline/scripts/apply-profile.mjs --check
 node agent-pipeline/scripts/sync-briefs.mjs --check
-node <ton script de carte> --check
+node <your map script> --check
 ```
 
-Les trois doivent sortir en 0. Ces trois `--check` sont les cibles générées : un dépôt dont l'une dérive travaille sur une politique périmée sans le savoir.
+All three must exit 0. These three `--check` are the generated targets: a repository where one of them drifts is working on a stale policy without knowing it.
 
-### 5. Prouver que chaque porte mord
+### 5. Prove that every gate bites
 
-**Ne te contente pas de lancer les portes et de les voir vertes.** Une porte verte sur un dépôt sain ne prouve rien : elle peut être verte parce qu'elle ne mesure rien.
+**Do not settle for running the gates and seeing them green.** A green gate on a healthy repository proves nothing: it may be green because it measures nothing.
 
-Pour chaque commande de `commands`, casse volontairement ce qu'elle est censée attraper et vérifie qu'elle échoue :
+For every command in `commands`, deliberately break what it is meant to catch and check that it fails:
 
-| Porte | Ce que tu casses | Ce que tu attends |
+| Gate | What you break | What you expect |
 | --- | --- | --- |
-| `check` | une erreur de type évidente | code ≠ 0 |
-| `lint` | un fichier mal formaté | code ≠ 0 |
-| `test_unit` | inverse une assertion | code ≠ 0 |
-| `coverage` | vérifie qu'elle exécute **toutes** les suites qu'elle mesure | un fichier prouvé seulement en e2e ne doit pas compter comme non couvert |
-| `mutation` | vérifie qu'elle n'a pas réutilisé son cache | un rapport « n of n reused » n'a rien mesuré |
-| `project_map` | ajoute un export sans régénérer | code ≠ 0 |
-| `secrets_scan` | ajoute une fausse clé | code ≠ 0 |
+| `check` | an obvious type error | exit ≠ 0 |
+| `lint` | a badly formatted file | exit ≠ 0 |
+| `test_unit` | invert an assertion | exit ≠ 0 |
+| `design_limits` | a function with one parameter too many | exit ≠ 0 |
+| `coverage` | check that it runs **all** the suites it measures | a file proven only end to end must not count as uncovered |
+| `mutation` | check it has not reused its cache | a report saying "n of n reused" measured nothing |
+| `project_map` | add an export without regenerating | exit ≠ 0 |
+| `secrets_scan` | add a fake key | exit ≠ 0 |
 
-Rétablis après chaque essai.
+Restore after each attempt.
 
-Deux lignes de ce tableau viennent de défauts réellement trouvés sur le projet d'origine, portes vertes : `coverage` collectait sur tout le code source mais n'exécutait qu'une seule suite, et `mutation` réutilisait son cache — son propre rapport annonçait « 31 of 31 mutant result(s) are reused ». Les deux ont été corrigées là-bas.
+**And check that your break actually breaks.** A replacement pattern that matches nothing leaves the gate green and proves nothing — this has happened three times on the origin project in a single day, each time producing a reassuring green.
 
-La ligne `project_map` est d'une autre nature, et la distinction compte pour toi. Le projet d'origine est en TypeScript et sa carte ne collecte que les `.ts` : elle y est donc **exacte**, et il n'y a rien à y corriger. Le piège n'apparaît qu'au portage, au moment où la stack change et où un script hérité continue de chercher des fichiers qui n'existent plus. C'est le défaut le plus difficile à voir, parce qu'il naît d'un outil qui était juste ailleurs.
+Two lines of that table come from defects actually found on the origin project, gates green: `coverage` collected over all source files but ran only one suite, and `mutation` reused its cache — its own report announced "31 of 31 mutant result(s) are reused". Both were fixed there.
 
-### 6. Installer les crochets
+The `project_map` line is of another nature, and the distinction matters to you. The origin project's map is **accurate** there, and there is nothing to fix. The trap appears only at porting time, when the stack changes and an inherited script keeps looking for files that no longer exist. It is the hardest defect to see, because it comes from a tool that was right somewhere else.
 
-`pre-commit` lance le format, `lint` et `secrets_scan`. `pre-push` lance `check`, `lint` et les trois `--check` de cibles générées. Sans eux, les règles de l'étape 4 ne sont déclenchées par rien.
+### 6. Install the hooks
 
-Vérifie qu'ils sont **installés**, pas seulement écrits : un `.git/hooks/` qui ne contient que des `.sample` signifie qu'aucun crochet ne tourne.
+`pre-commit` runs the formatter, `lint` and `secrets_scan`. `pre-push` runs `check`, `lint` and the three generated-target `--check`. Without them, the rules of step 4 are triggered by nothing.
 
-### 7. Amorcer le store
+Check they are **installed**, not merely written: a `.git/hooks/` containing only `.sample` files means no hook runs.
 
-Le store est `<store_dir>/issues.jsonl` et `<store_dir>/specs.jsonl`. Deux fichiers vides suffisent à démarrer.
+### 7. Seed the store
+
+The store is `<store_dir>/issues.jsonl` and `<store_dir>/specs.jsonl`. Two empty files are enough to start.
 
 ```
 node agent-pipeline/scripts/store-verify.mjs
 node agent-pipeline/scripts/next-step.mjs
 ```
 
-Le premier doit annoncer les invariants respectés, le second qu'aucun pas n'est à exécuter. Le pipeline est prêt.
+The first must report the invariants respected, the second that there is no step to run. The pipeline is ready.
 
-## Le point de contrôle final
+## The final checkpoint
 
-Avant de rendre la main, réponds à ces questions par une commande, jamais par une lecture :
+Before handing back, answer these questions with a command, never with a reading:
 
-1. `apply-profile --check`, `sync-briefs --check` et la carte `--check` sortent-ils tous en 0 ?
-2. **As-tu écrit le générateur de carte, et cite-t-il réellement le code ?** Compte les fichiers sous `roots` face aux entrées rendues. Un `--check` vert sur une carte vide est vert.
-3. Chaque porte de `commands` a-t-elle échoué au moins une fois, sur une casse volontaire ?
-4. `preflight` confirme-t-il que **chaque porte déclarée est exécutable** ? Une porte injouable échoue au lieu de protéger.
-5. Les crochets sont-ils installés et se déclenchent-ils ?
-6. `store-verify` est-il vert ?
-7. Chaque invariant du profil a-t-il une porte qui le fait échouer ?
+1. Do `apply-profile --check`, `sync-briefs --check` and the map `--check` all exit 0?
+2. **Did you write the map generator, and does it really cite the code?** Count the files under `roots` against the rendered entries. A green `--check` on an empty map is green.
+3. Has every gate in `commands` failed at least once, on a deliberate break?
+4. Does `preflight` confirm that **every declared gate is executable**? An unrunnable gate fails instead of protecting.
+5. Are the hooks installed and do they fire?
+6. Is `store-verify` green?
+7. Does every profile invariant have a gate that makes it fail?
 
-Une réponse « je pense que oui » à l'une de ces sept questions est une réponse non.
+**An "I think so" to any of these seven questions is a no.**
 
-## Ce que tu ne décides pas
+## What you do not decide
 
-Trois choses restent à l'opérateur humain, dans tous les profils : **installer une dépendance**, **éditer `pipeline.config.json`** une fois le pipeline en service, et **merger**. Pendant l'installation initiale tu écris la configuration — c'est son objet — mais dès que le pipeline tourne, elle passe sous la main de l'opérateur.
+Three things stay with the human operator, in every profile: **installing a dependency**, **editing `pipeline.config.json`** once the pipeline is running, and **merging**. During the initial installation you write the configuration — that is its purpose — but as soon as the pipeline runs, it passes into the operator's hands.
 
-Signale, n'invente pas : une commande indisponible se remonte, elle ne se remplace jamais par un substitut qui prétend prouver le système réel.
+Report, do not invent: an unavailable command is escalated, never replaced by a substitute pretending to prove the real system.
 
-## La porte `design_limits`, exigée de tout profil
+## The `design_limits` gate, required of every profile
 
-`apply-profile` refuse une configuration sans `commands.design_limits`. Le core ne connaît pas votre outil, mais il exige qu'une porte borne quatre choses :
+`apply-profile` refuses a configuration without `commands.design_limits`. The core does not know your tool, but it requires a gate bounding four things:
 
-| Borne | Ce qu'elle approxime |
+| Bound | What it approximates |
 | --- | --- |
-| complexité cyclomatique | KISS, et un proxy de responsabilité unique |
-| longueur d'une fonction | responsabilité unique |
-| nombre de paramètres | ségrégation d'interface |
-| profondeur d'imbrication | KISS |
+| cyclomatic complexity | KISS, and a proxy for single responsibility |
+| function length | single responsibility |
+| parameter count | interface segregation |
+| nesting depth | KISS |
 
-**Ce ne sont pas SOLID.** Ce sont des approximations mesurables de ce que SOLID protège : une fonction de deux cents lignes viole presque toujours la responsabilité unique, l'inverse n'est pas vrai. Une porte imparfaite qui mord vaut mieux qu'un principe que personne ne vérifie — et sans elle, la responsabilité unique s'auto-annule, le code n'étant bon que si le modèle l'est.
+**These are not SOLID.** They are measurable approximations of what SOLID protects: a two-hundred-line function almost always violates single responsibility, the converse is not true. An imperfect gate that bites beats a principle nobody checks — and without it, single responsibility cancels itself, the code being good only if the model is.
 
-**Ouvert-fermé et Liskov ne sont pas approximables** et restent en revue humaine. Écrivez-le dans les invariants du profil plutôt que de laisser croire qu'ils sont couverts.
+**Open-closed and Liskov are not approximable** and stay in human review. Write that in the profile invariants rather than letting anyone believe they are covered.
 
-Trois exigences de forme, apprises en la posant :
+Three requirements of form, learned while putting this gate in place:
 
-- **Calibrez sur le code réel avant de figer les seuils.** Mesurez les maximums constatés, placez la borne au-dessus. Un chiffre rond choisi d'avance casse au premier passage, puis se desserre — et une porte desserrée une fois se desserre toujours.
-- **Séparez-la de la porte de style.** Une fonction devenue trop complexe n'est pas une faute de formatage ; les confondre fait lire les deux de la même façon, c'est-à-dire distraitement.
-- **Exemptez les blocs de test de la limite de longueur.** Un scénario long décrit un parcours, ce n'est pas une dette.
+- **Calibrate on real code before freezing the thresholds.** Measure the observed maxima, set the bound above them. A round number chosen in advance breaks on the first run, then gets loosened — and a gate loosened once loosens again.
+- **Separate it from the style gate.** A function that has become too complex is not a formatting fault; confusing the two makes both read the same way, which is to say inattentively.
+- **Exempt test blocks from the length limit.** A long scenario describes a journey, it is not debt.
 
-L'outil est libre : `eslint` pour TypeScript, `pylint` avec `max-complexity` pour Python, `gocyclo` pour Go. Le core ne voit qu'une clé et un code de sortie.
+The tool is free: `eslint` for TypeScript, `pylint` with `max-complexity` for Python, `gocyclo` for Go. The core sees only a key and an exit code.
 
-## Ce que la porte d'agnosticité refuse
+## What the agnosticism gate refuses
 
-Porter le pipeline vers une autre stack révèle les couplages qu'on n'a pas vus en l'écrivant. Cinq d'entre eux sont désormais refusés par `agent-pipeline/test/agnosticite.test.mjs`, donc constatés avant le portage et non pendant :
+Porting the pipeline to another stack reveals the couplings nobody saw while writing it. Five of them are now refused by `agent-pipeline/test/agnosticite.test.mjs`, and therefore found before the port rather than during it:
 
-- aucun script du core n'invoque le lanceur de tâches d'un écosystème — un projet Python, Go ou Rust n'a pas de `package.json`, et le core ne dépend que de Node ;
-- aucun script du core n'importe un paquet installé : modules natifs et voisins relatifs seulement, parce que le core ne s'installe pas ;
-- aucun script du core n'écrit en dur un chemin que la configuration possède (`rules_path`, `store_dir`, `briefs_dir`, `profiles_dir`) ;
-- chaque étape CI du core s'exécute par `node` en direct, jamais par la stack du projet ;
-- les étapes de la stack restent un emplacement à remplir dans le template, jamais une commande écrite.
+- no core script invokes an ecosystem's task runner — a Python, Go or Rust project has no `package.json`, and the core depends only on Node;
+- no core script imports an installed package: native modules and relative siblings only, because the core does not install;
+- no core script hard-codes a path the configuration owns (`rules_path`, `store_dir`, `briefs_dir`, `profiles_dir`);
+- every core CI step runs through `node` directly, never through the project's stack;
+- the stack's steps stay a placeholder in the template, never a written command.
 
-La comparaison porte sur le code privé de ses commentaires : une consigne peut légitimement citer `npm` en prose, seule une invocation est un couplage. Le fichier de la porte s'exclut lui-même, et c'est nommé plutôt que contourné — un motif tordu pour ne pas se voir finit par ne plus voir ce qu'il cherche.
+The comparison is made on the code stripped of its comments: a piece of guidance may legitimately quote a tool in prose, only an invocation is a coupling. The gate's own file excludes itself, and that is named rather than worked around — a pattern twisted so as not to see itself ends up not seeing what it looks for either.
 
-## Choisir l'architecture, à la configuration
-
-```
-node agent-pipeline/scripts/render-architecture.mjs <sortie.html> <backend|frontend|mobile|fullstack>
-```
-
-Sans analyse jointe, la page pose d'abord **huit questions en langue ordinaire** — une sorte de cahier des charges non définitif. C'est l'ordre qui compte : présenter huit options à quelqu'un qui n'a pas encore décrit son produit, c'est un catalogue, pas une aide à la décision.
-
-**B3 est la question qui détecte le métier** : *y a-t-il des situations où le système doit REFUSER quelque chose ?* Pas un champ obligatoire ni un format — un vrai refus, « ce livre est déjà sorti », « ce compte n'a pas assez ». Un système qui ne refuse jamais rien pour une raison venue du monde réel n'a pas de métier, il a un schéma. **B4 vérifie** que les refus cités en sont : un professionnel du métier les comprendrait-il sans qu'on parle informatique ?
-
-Les réponses deviennent une analyse structurée, jointe en troisième argument. La page rend alors un **conseil argumenté** : chaque option reçoit un verdict et ses raisons, tirées de l'analyse et citées. « Aucune intégration déclarée remplaçable : les ports seraient une assurance dont vous n'encaisserez jamais l'intérêt » se discute ; un classement sans motif s'accepte.
-
-L'analyse doit porter `business_rules`, même vide : dire qu'il n'y en a aucune est une conclusion, pas un oubli, et le validateur refuse le champ absent.
-
-Le framework **ne choisit pas** l'architecture : ce serait imposer une réponse à une question qui dépend du produit. Il rend le choix explicable, puis opposable.
-
-Le type de projet filtre le catalogue, et ce n'est pas cosmétique — il change la réponse. Un service back-end voit l'hexagonale et Clean ; une interface web voit le découpage en tranches et MVVM, et ne voit pas les ports, qui répondent à une contrainte qu'elle n'a pas. Un depot full-stack reçoit en plus la seule question qui compte vraiment chez lui : **ce qui traverse la frontière entre les deux côtés**, parce que c'est elle qui décide de ce qui casse quand un côté bouge.
-
-La page ouvre sur les **questions qui décident** avant tout nom d'architecture. La première élimine le plus d'options à elle seule : *combien d'adaptateurs allez-vous réellement remplacer ?* Si la réponse est zéro — et pour une base de données c'est presque toujours zéro — les ports sont une cérémonie que chaque nouvelle route paie.
-
-Chaque option publie **la déclaration que la configuration portera** : ses couches et le sens autorisé des dépendances. L'opérateur lit donc exactement ce que la porte appliquera, au lieu de choisir un nom et de découvrir la contrainte à l'implémentation.
-
-Le profil traduit ensuite cette déclaration en porte pour sa stack — zones d'import pour TypeScript, équivalent ailleurs — et la règle rejoint `invariants.md`, où chaque puce nomme la porte qui la refuse. Une architecture qui ne serait écrite que dans un document ne serait pas une architecture : ce serait une intention.
-
-## Savoir quand l'architecture ne tient plus
+## Choosing the architecture, at configuration time
 
 ```
-node agent-pipeline/scripts/architecture-drift.mjs <graphe.json>
+node agent-pipeline/scripts/render-architecture.mjs <output.html> <backend|frontend|mobile|fullstack> [analysis.json]
 ```
 
-Le choix initial n'a pas à être définitif ; encore faut-il savoir quand il a cessé de convenir. Le détecteur confronte le graphe de dépendances aux signes écrits dans le catalogue : un module qui en importe trois autres, deux modules qui s'importent mutuellement, un fichier partagé à un seul consommateur, un partage devenu fourre-tout, un module trois fois plus gros que les autres. Chaque signal dit ce qu'il **signifie** et ce qu'il faut **regarder ensuite** — un signal sans suite est une alarme, pas un diagnostic.
+With no analysis attached, the page first asks **eight questions in plain language** — a kind of non-final brief. The order is what matters: presenting eight options to someone who has not yet described their product is a catalogue, not a decision aid.
 
-**Le framework juge, il n'extrait pas.** Lire des imports demande de connaître un langage ; le core n'en connaît aucun. Le projet fournit donc le graphe sous une forme neutre — `modules`, leurs `files` et leurs `imports`, les fichiers `shared` avec leurs consommateurs, et la `composition_root` — et cette frontière est ce qui rend le détecteur portable. L'extracteur, lui, appartient au projet : il connaît le langage, donc il ne peut pas vivre dans le cadre.
+**B3 is the question that detects the domain**: *are there situations where the system must REFUSE something?* Not a required field nor a format — a real refusal, "this book is already out", "this account does not have enough". A system that never refuses anything for a reason coming from the real world has no domain, it has a schema. **B4 checks** that the refusals cited really are refusals: would a professional of the trade understand them without anyone mentioning computers?
 
-Deux précautions valent d'être connues, parce qu'elles décident si le détecteur sera lu ou ignoré :
+The answers become a structured analysis, attached as the third argument. The page then renders **reasoned advice**: each option gets a verdict and its reasons, drawn from the analysis and quoted. "No declared integration is replaceable: the ports would be insurance whose payout you will never collect" can be argued with; a ranking with no reason is simply accepted.
 
-- **il se tait sur un projet jeune.** En dessous de quatre modules et vingt fichiers, un partage à un seul consommateur se déclenche systématiquement et à tort — le second module n'existe simplement pas encore. Il l'annonce au lieu de se taire en silence ;
-- **la racine de composition est exclue.** Le fichier qui assemble l'application importe légitimement tout le monde ; le compter comme un couplage produirait une alarme permanente, et une alarme permanente ne se lit plus.
+The analysis must carry `business_rules`, even empty: saying there are none is a conclusion, not an oversight, and the validator refuses a missing field.
 
-Ce qu'il **ne voit pas**, et qu'il écrit à chaque exécution : deux modules qui appliquent la **même règle métier** avec un code différent. Un graphe d'imports ne voit pas le sens. Ce déclencheur-là se constate en relisant, jamais en calculant, et le prétendre couvert serait pire que de ne pas le chercher.
+The framework **does not choose** the architecture: that would impose an answer to a question that depends on the product. It makes the choice explainable, then enforceable.
+
+The project type filters the catalogue, and that is not cosmetic — it changes the answer. A back-end service sees hexagonal and Clean; a web interface sees feature slices and MVVM, and does not see ports, which answer a constraint it does not have. A full-stack repository additionally receives the only question that really matters there: **what crosses the boundary between the two sides**, because that is what decides what breaks when one side moves.
+
+The page opens on the **questions that decide**, before any architecture name. The first eliminates the most options on its own: *how many adapters will you actually replace?* If the answer is zero — and for a database it almost always is — ports are a ceremony every new route pays for.
+
+Each option publishes **the declaration the configuration will carry**: its layers and the allowed direction of dependencies. The operator therefore reads exactly what the gate will enforce, instead of choosing a name and discovering the constraint at implementation time.
+
+The profile then translates that declaration into a gate for its stack — import zones for TypeScript, the equivalent elsewhere — and the rule joins `invariants.md`, where each bullet names the gate that refuses it. An architecture written only in a document would not be an architecture: it would be an intention.
+
+## Knowing when the architecture no longer holds
+
+```
+node agent-pipeline/scripts/architecture-drift.mjs <graph.json>
+```
+
+The initial choice does not have to be final; you still need to know when it has stopped fitting. The detector confronts the dependency graph with the signs written in the catalogue: a module importing three others, two modules importing each other, a shared file with a single consumer, a shared directory turned catch-all, a module three times bigger than the others. Every signal says what it **means** and what to **look at next** — a signal with no follow-up is an alarm, not a diagnosis.
+
+**The framework judges, it does not extract.** Reading imports requires knowing a language; the core knows none. The project therefore supplies the graph in a neutral form — `modules` with their `files` and `imports`, the `shared` files with their consumers, and the `composition_root` — and that boundary is what makes the detector portable. The extractor belongs to the project: it knows the language, so it cannot live in the framework.
+
+Two precautions are worth knowing, because they decide whether the detector gets read or ignored:
+
+- **it stays quiet on a young project.** Below four modules and twenty files, a shared file with a single consumer fires systematically and wrongly — the second module simply does not exist yet. It announces the fact instead of going silent;
+- **the composition root is excluded.** The file assembling the application legitimately imports everyone; counting it as coupling would produce a permanent alarm, and a permanent alarm stops being read.
+
+What it **does not see**, and writes on every run: two modules applying the **same business rule** with different code. An import graph does not see meaning. That trigger is found by reading, never by computing, and claiming it covered would be worse than not looking for it.

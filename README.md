@@ -296,10 +296,10 @@ node agent-pipeline/scripts/status.mjs                 # 👁️ vue d'ensemble
 | | |
 | :-- | :-- |
 | `scripts/` | 25 scripts, tous en Node, **sans aucune dépendance installée** |
-| `prompts/` | les quatre rôles |
-| `docs/` | dont **`nouveau-profil.md`** (portage) et **`operateur.md`** (manuel humain) |
+| `prompts/` | the four roles, in English |
+| `docs/` | **entirely in English**, including **`nouveau-profil.md`** (porting) and **`operateur.md`** (human manual) |
 | `templates/` | `AGENTS.md`, `CLAUDE.md`, le workflow CI |
-| `skills/` | ce qui ne dépend d'aucune stack |
+| `skills/` | what depends on no stack, in English |
 | `test/` | **132 tests** sur le cadre lui-même |
 | `schemas/` | la forme des handoffs |
 
@@ -324,7 +324,8 @@ Rien d'autre ne vient du cadre. Tout le reste vient de vos portes — et `prefli
 - **Les profils vivent côté projet.** Cloner ce dépôt n'apporte pas les portes d'une stack donnée : pour un second projet du même type, elles se réécrivent. Une réserve de profils partagés reste à concevoir.
 - **Rien ne déclenche les pages de relecture.** Le cadre les produit et dit ce qu'un harnais capable doit en faire ; c'est la session qui doit y penser. *Une discipline, pas une porte — et par la doctrine ci-dessus, c'est une faiblesse assumée.*
 - **Aucun étalon externe.** Le cadre mesure son propre débit et ses défauts échappés ; il ne prouve pas encore qu'il fait mieux qu'une session directe.
-- Les exemples de certains skills de patrons sont à coloration JavaScript. Un biais de rédaction, pas un couplage.
+- Some pattern-skill examples lean JavaScript. A writing bias, not a coupling — the `tdd` skill, for one, carries a transposition table to six other languages.
+- **The documents are in English, this README aside.** Models follow English instructions more reliably, and the framework is meant to be read by them first.
 
 ---
 

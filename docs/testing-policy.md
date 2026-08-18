@@ -1,48 +1,55 @@
-# Politique de tests
-
-Un test protège un comportement dont dépend un utilisateur ou un autre module. Rien d'autre. Une suite verte d'assertions de présentation est pire que pas de suite : fausse confiance, casse à chaque refactor inoffensif. Les obligations propres à la stack complètent ce socle dans les documents du profil.
+# Testing policy
 
 <!-- brief:implementer,qa -->
-## Ce qui n'est JAMAIS testé
+## What is NEVER tested
 
-Styles, classes, couleurs, layout ; markup statique (libellés, placeholders, conteneurs) ; comportement du framework ; bibliothèques tierces (on teste NOTRE usage) ; getters triviaux et ré-exports ; snapshots complets. La présentation, le responsive et l'accessibilité sont validés par QA dans l'application réelle selon le profil, jamais assertés en tests. L'Implementer reste responsable de les implémenter : « aucun test ne le couvre » n'est pas une défense.
+Styles, classes, colours, layout; static markup — labels, placeholders, containers; framework behaviour; third-party libraries (we test **our** use of them); trivial getters and re-exports; whole-object snapshots.
 
-## Mocks
-
-Les mocks isolent NOTRE code. **Jamais asserter contre un mock ce que seul le système réel décide** : autorisations, contraintes, triggers, résolution de conflit de sync. Un tel test passe par construction. Ces preuves vont au niveau intégration, contre l'infrastructure réelle du profil. Avant de différer pour infrastructure manquante : inspecter les harnais existants, puis `blocked_infrastructure`, jamais un mock de remplacement.
+Presentation, responsiveness and accessibility are validated by QA in the real application according to the profile, never asserted in tests. The Implementer still has to implement them: **"no test covers it" is not a defence.**
 <!-- /brief -->
 
 <!-- brief:implementer,qa -->
-## Sélection et budget
+## Mocks
 
-Un test par critère d'acceptation, plus les seuls cas limites qui corrompraient des données, perdraient le travail de l'utilisateur ou le bloqueraient. Par méthode : classes d'équivalence (un représentant par classe), valeurs limites (vide, zéro, un, max, max+1, null), chemins négatifs réellement gérés. Un test sans critère numéroté ni mode de défaillance nommé est supprimé.
+Mock what you do not own and cannot run: a paid third party, a slow network, a clock. Do not mock what you own — mocking your own service asserts the shape of your mock, not the behaviour of your code.
 
-Niveaux : **unitaire** par défaut ; **composant** uniquement si état, branchement sur props ou événements ; **intégration** pour ce que seul le système réel décide ; **E2E** 1 à 2 maximum, sur le parcours nommé de l'issue, par rôle et nom accessible, jamais par sélecteur de structure. Un test rouge doit échouer parce que le comportement manque, pas parce que le test est cassé ; tout test qui passe pour une mauvaise raison est supprimé ou réécrit.
-
-## Fixtures
-
-Du code committé : jamais de clé, token ou mot de passe réel, même expiré, même local. Valeurs manifestement fausses (`'test-anon-key'`) ou environnement local.
+A test that only checks a mock was called proves the call, not the outcome. Assert on the effect: the row written, the response returned, the state changed.
 <!-- /brief -->
 
 <!-- brief:qa,product,implementer -->
-## Couverture : un signal, jamais une cible
+## Selection and budget
 
-La commande `coverage` du profil mesure la couverture et publie le rapport ; QA en cite le résumé dans chaque validation. Deux usages sont légitimes et deux seulement : la **couverture du diff** (les lignes introduites par l'issue sont exercées par la suite ; une branche neuve jamais exécutée est une question posée à l'Implementer), et le **cliquet** (le taux global ne descend pas sous la valeur committée dans la config de couverture ; il monte quand le travail le fait monter, jamais par des tests écrits pour lui).
+Every criterion carries the **lowest level that proves it**: `[unit]`, `[component]`, `[integration]`, `[e2e]`. A business rule proven end to end is a rule that will be slow to test and vague to diagnose; a wiring proven in a unit test is a wiring nobody verified.
 
-Un seuil absolu comme objectif est interdit : il se satisfait de tests sans assertion et pousse à tester la présentation, exactement ce que cette politique interdit. La vraie porte de complétude reste la revue de critères : **un critère sans test qui le prouve est un rejet, à 100 % de couverture comme à 40 %.** Inversement, du code non couvert peut être légitime (branchement de plateforme, garde défensive documentée) : il se justifie dans le handoff, il ne se maquille pas.
-
+The rule of thumb that survives: **prove the rule where it lives, prove the wiring where it is wired.** An end-to-end suite exists to show that the pieces are connected, not to enumerate business cases.
 <!-- /brief -->
 
 <!-- brief:orchestrator -->
-## Preuve de phase rouge
+## Fixtures
 
-Au handoff `ready_for_qa`, l'orchestrateur rejoue `evidence.red_proof.cmd` contre le commit `test:` de l'issue et exige un code de sortie non nul avant de persister : un rouge qui rejoue vert est rejeté vers l'Implementer. C'est la preuve mécanique du TDD, et depuis que l'Implementer possède à la fois ses tests et son code, c'est **le** garde-fou qui a remplacé la frontière de rôles — aucune implémentation ne peut être validée sans échec constaté, pas seulement déclaré. `validate-handoff` refuse déjà un handoff sans `red_proof` ou dont l'`exit` vaut 0 ; le rejeu est ce qui distingue une preuve d'une affirmation.
+A test writes nothing into the repository tree. Temporary directories are created under the system temp path and removed afterwards — a data file left behind dirties the tree and breaks `verify-scope`, which then reports a file nobody declared.
 
-Corollaire : les tests et l'implémentation vont dans **deux commits séparés**, `test:` puis `feat:`. Un commit unique rend la phase rouge inauditable et est rejeté. QA diffe ensuite les fichiers de test entre le commit de test et HEAD : tout assouplissement d'assertion non déclaré dans le handoff est une faute de code.
+Two runs of the same suite give the same result. A suite that depends on execution order, on a shared clock, or on a file left by the previous run is a suite that will fail on someone else's machine and be declared flaky rather than fixed.
 <!-- /brief -->
 
 <!-- brief:implementer,qa -->
-## Tests de sécurité
+## Coverage: a signal, never a target
 
-Tester la surface d'attaque que l'issue introduit réellement, nommée dans son champ « security surface ». Isolation inter-utilisateurs : en intégration, contre le système réel, obligatoire si l'issue touche une policy. Injection : uniquement là où une entrée atteint une requête brute, un filtre dynamique ou un rendu. Autorisation : tester le garde introduit, au niveau où la décision est prise. Sans surface : `// No security tests: <raison>` dans le fichier de test.
+Coverage measures what is **executed**, not what is **asserted**. A test that calls a function and checks nothing counts as covered.
+
+The threshold exists to catch a collapse, not to certify quality. Writing a test to move the number is the failure mode the metric invites, and it is worse than the gap it fills — it adds maintenance and proves nothing.
+
+Where the profile runs a mutation gate, that is the one that says whether the tests would bite. Where it does not, say so instead of letting a coverage figure imply it.
+
+## Red proof
+
+The red is **observed**, never declared: the exact command, its non-zero exit code, the test commit it was seen against. The orchestrator replays it against that commit.
+
+Two kinds of red are not worth the same. A red that fails at module load, because the code does not exist yet, establishes that the tests came first. A red that fails on an **assertion** establishes in addition that the assertion has content. **Say which criteria are covered by which** — the distinction is what a complacent test hides behind.
+
+## Security tests
+
+A security test belongs where hostile input reaches something that interprets it: a raw query, a command, a path, a template. Write it there.
+
+Where the input never reaches an interpreter — bound parameters, an escaped value — the test asserts a property of the library, not of your code, and the testing policy refuses it. Prove the boundary instead: the value comes back byte for byte, the error message names no schema.
 <!-- /brief -->

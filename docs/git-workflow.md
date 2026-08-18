@@ -1,35 +1,39 @@
-# Workflow Git
-
-Les commandes concrètes sont dans la table « Commandes du projet » du brief, alimentée par `pipeline.config.json`.
+# Git workflow
 
 <!-- brief:product,orchestrator -->
-## Branches
+## One branch per spec
 
-`main` est protégée : jamais de commit direct, merge via PR uniquement. **Une branche = une spec** (`feat/<nom>`, `fix/<nom>`, `hotfix/<nom>`) ; les issues d'une spec partagent sa branche. Une branche qui vit des semaines signale une spec à découper, pas une PR à multiplier. Toujours partir de `main` à jour, arbre propre (`git status --porcelain` vide).
+Product creates the spec branch from the default branch, on a clean tree. If the tree is dirty it returns a blocker instead of cleaning up after another agent — a working tree it did not write is not its to tidy.
+
+The branch is not pushed while it is identical to its base: a CI run on a commit that changes nothing proves nothing and teaches everyone to skim the runs.
 <!-- /brief -->
 
 <!-- brief:implementer,product -->
-## Commits
+## Two commits per issue
 
-Conventional Commits dans la langue `commit_language` du profil : `feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`, `security:`. Un commit = un changement logique, qui compile et passe `check` et `lint`. **Exception unique** : le commit `test:` de phase rouge compile mais ne passe pas ; aucun autre type n'en bénéficie et aucun autre rôle ne peut s'en réclamer. Jamais de `--no-verify`. Le pourquoi d'une décision non évidente va dans le message de commit, que `git blame` atteint depuis la ligne.
+`test:` carries the tests alone and **replays red**. `feat:` carries the implementation. QA diffs the two, which is what makes the red proof checkable after the fact rather than merely reported.
+
+Nothing else belongs in either commit. A generated target regenerated in the same commit is expected; a drive-by fix is not, and it will show up in `verify-scope` as a file nobody declared.
 <!-- /brief -->
 
 <!-- brief:implementer,orchestrator -->
-## Branche partagée entre agents
+## The commit message carries the why
 
-Seul `git commit -m "..." -- <chemins-explicites>` est atomique : `git add` puis `commit` emporte ce qu'un autre agent a stagé entre les deux. La forme atomique isole le staging, pas les hooks : un hook qui balaie tout le dépôt peut échouer sur le fichier qu'un autre agent écrit ; c'est une sérialisation à assumer, jamais une raison de formater le fichier d'un autre ni d'utiliser `--no-verify`.
+The code says what it does. The message says why it was done that way, and above all which alternative was rejected and on what evidence.
 
-Si le changement **correct** casse un fichier hors périmètre : s'arrêter et remonter à l'orchestrateur (changement correct, fichier bloqué, erreur exacte). Rendre un champ optionnel ou élargir une signature « pour débloquer » est interdit : cette dette n'est plus reliée à sa cause par personne.
+A decision that is not obvious from the diff — a deviation from the prescribed architecture, an option whose default would have broken a criterion, a limit accepted deliberately — belongs there. `git blame` must be able to reach it.
 <!-- /brief -->
 
 <!-- brief:implementer,product,qa -->
-## Hooks et CI
+## Never rewrite what has been pushed
 
-`pre-commit` : format, `lint`, `secrets_scan` (la fuite ne doit pas entrer dans l'historique). `pre-push` : `check`, `lint`, `sync-briefs --check`, `apply-profile --check`. PAS `build` ni la suite complète ni `audit` : la CI générée les rejoue par SHA et fait foi. L'orchestrateur pousse la branche de spec après chaque persistance portant un commit ; pousser une branche de travail n'ouvre aucune PR.
+No force-push on a shared branch, no rebase of commits another role has already read, no `--no-verify`. A hook that blocks is a gate speaking; going around it removes the gate for everyone, silently.
+
+If a hook makes a legitimate step impossible, that is a finding to report, not an obstacle to bypass.
 <!-- /brief -->
 
 <!-- brief:product -->
-## Pull Requests
+## The pull request
 
-Une PR = une spec. Description : quoi, pourquoi, comment tester. Relire son propre diff. Squash merge recommandé. Relecture humaine obligatoire sur `human_review_paths` et les surfaces core.
+One pull request per spec, opened after QA closes the last issue. It cites the CI run for the exact head SHA, says what changed and how to test it, and **names the surfaces that require human review** rather than leaving a reviewer to find them.
 <!-- /brief -->

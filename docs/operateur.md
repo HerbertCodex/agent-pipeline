@@ -1,18 +1,18 @@
-# Manuel de l'opérateur
+# Operator manual
 
-Ce document s'adresse à **l'humain**. Tout le reste de `agent-pipeline/docs/` parle aux agents ; ici on parle de ce que la machine ne peut pas faire à ta place, et de ce qui ne fonctionnera pas si tu ne le fais pas.
+This document addresses **the human**. Everything else in `agent-pipeline/docs/` speaks to the agents; here we talk about what the machine cannot do for you, and what will not work if you do not do it.
 
-## Ce que le pipeline est, en une phrase
+## What the pipeline is, in one sentence
 
-Quatre rôles se passent le travail — Product découpe, Implementer épingle les critères en tests rouges puis implémente, QA vérifie, l'Orchestrateur valide et persiste — et l'état durable vit dans un store sur disque, pas dans la mémoire d'un agent.
+Four roles pass the work along — Product decomposes, Implementer pins the criteria as red tests then implements, QA verifies, the Orchestrator validates and persists — and durable state lives in a store on disk, not in an agent's memory.
 
-Tu n'es pas un utilisateur de ce système : tu en es une pièce. Trois décisions ne partent jamais à un agent.
+You are not a user of this system: you are a part of it. Three decisions never go to an agent.
 
-## Comment ça marche
+## How it works
 
-### Un pas, et un seul
+### One step, and only one
 
-L'orchestrateur n'est pas une boucle qui tient une fonctionnalité du début à la fin. Il est rappelé **une fois par transition**, relit l'état sur le disque, fait un pas, et s'arrête. C'est ce qui rend une coupure indolore : ce qui compte est déjà écrit quand elle arrive.
+The orchestrator is not a loop holding a feature from start to finish. It is called back **once per transition**, re-reads the state from disk, takes one step, and stops. That is what makes an interruption painless: what matters is already written when it happens.
 
 ```mermaid
 flowchart TD
@@ -32,13 +32,13 @@ flowchart TD
     style D fill:#bf8700,color:#fff
 ```
 
-Deux points de ce cycle méritent d'être compris, parce que ce sont eux qui distinguent ce pipeline d'un enchaînement de prompts.
+Two points in this cycle are worth understanding, because they are what distinguishes this pipeline from a chain of prompts.
 
-**`verify-scope` confronte le handoff au diff git réel.** Un agent peut déclarer ce qu'il veut ; ce qui est persisté est ce qui a été mesuré. Pour un handoff de passage en QA, la preuve du rouge est **rejouée** contre le commit de test : le rouge doit être observé, jamais déclaré.
+**`verify-scope` confronts the handoff with the real git diff.** An agent can declare whatever it likes; what gets persisted is what was measured. For a handoff moving to QA, the red proof is **replayed** against the test commit: red must be observed, never declared.
 
-**Un seul rôle écrit le store.** Product, Implementer et QA le lisent et ne l'écrivent jamais. C'est ce qui rend le verrou optimiste possible et la reprise après coupure calculable.
+**A single role writes the store.** Product, Implementer and QA read it and never write to it. That is what makes the optimistic lock possible and recovery after an interruption computable.
 
-### Les états d'une issue
+### The states of an issue
 
 ```mermaid
 stateDiagram-v2
@@ -59,9 +59,9 @@ stateDiagram-v2
     operator_escalation --> [*] : tu tranches
 ```
 
-Ces transitions ne sont pas décoratives : elles vivent dans le fichier `rules_path`, et une transition absente de cette liste est refusée à l'écriture. **Trois rejets de code sur la même issue mènent à l'escalade, jamais à un quatrième cycle.**
+These transitions are not decorative: they live in the `rules_path` file, and a transition absent from that list is refused at write time. **Three code rejections on the same issue lead to escalation, never to a fourth cycle.**
 
-### Où vit la vérité
+### Where the truth lives
 
 ```mermaid
 flowchart LR
@@ -95,185 +95,161 @@ flowchart LR
     style N fill:#1f6feb,color:#fff
 ```
 
-La règle qui découle du schéma : **ce qui est généré se régénère, jamais s'édite.** Trois `--check` refusent une cible désynchronisée, et c'est le rôle des crochets git de les déclencher.
+The rule that follows from the diagram: **what is generated is regenerated, never edited.** Three `--check` commands refuse a desynchronised target, and it is the git hooks' job to trigger them.
 
-## Les trois choses qui restent à toi
+## The three things that stay with you
 
-**Installer une dépendance.** Un agent qui peut ajouter un paquet peut contourner n'importe quelle contrainte en important une bibliothèque qui la contourne. Si un rôle en a besoin, il s'arrête et te le demande.
+**Installing a dependency.** An agent that can add a package can bypass any constraint by importing a library that bypasses it. If a role needs one, it stops and asks you.
 
-**Éditer `pipeline.config.json`.** C'est le fichier qui définit les portes. Un agent qui peut les redéfinir peut les rendre vertes. Exception unique : l'installation initiale dans un projet neuf, où l'agent écrit la configuration parce que c'est l'objet de la tâche.
+**Editing `pipeline.config.json`.** It is the file that defines the gates. An agent that can redefine them can make them green. Single exception: the initial installation in a new project, where the agent writes the configuration because that is the task.
 
-**Merger.** QA valide une issue ; elle ne garantit pas la composition entre issues, et personne d'autre que toi ne regarde le résultat d'un merge.
+**Merging.** QA validates one issue; it does not guarantee composition between issues, and nobody but you looks at the result of a merge.
 
-## Prérequis machine
+## Machine prerequisites
 
-Trois prérequis viennent du pipeline lui-même, quelle que soit la stack du projet :
+Three prerequisites come from the pipeline itself, whatever the project's stack:
 
-| Prérequis | Pourquoi |
+| Prerequisite | Why |
 | --- | --- |
-| Node | les scripts du core sont en `.mjs` |
-| git | le pipeline travaille par branches et par commits |
-| Le client de ta forge | Product ouvre les pull requests |
+| Node | the core scripts are `.mjs` |
+| git | the pipeline works by branches and commits |
+| Your forge client | Product opens the pull requests |
 
-### Ce que le framework attend de ton harnais d'agents
+### What the framework expects of your agent harness
 
-`agent-pipeline/` est le framework ; `pipeline/` en est la conséquence dans ce dépôt. Le framework ne suppose donc **rien** de l'outil qui exécute les agents, au-delà de Node, git et le client de forge ci-dessus. Il ne suppose ni qu'un harnais sait héberger une page, ni qu'un navigateur existe, ni qu'un lien peut être rendu à l'humain.
+`agent-pipeline/` is the framework; whatever the config points at is its consequence in this repository. The framework therefore assumes **nothing** about the tool executing the agents beyond Node, git and the forge client above. It does not assume a harness can host a page, that a browser exists, or that a link can be handed to a human.
 
-La règle qui en découle vaut pour toute sortie destinée à un humain : **le framework produit un fichier autonome et nomme ce qu'un harnais capable doit en faire.** La capacité appartient à l'outil, jamais au pipeline. Les deux renderers impriment donc, après le chemin écrit, la ligne qui dit quoi en faire — publier si le harnais sait héberger, rendre le chemin sinon. Elle est imprimée là où le pilote regarde déjà, la sortie de la commande, plutôt qu'enfouie dans un document qu'il peut ne pas avoir lu.
+The rule that follows holds for any output meant for a human: **the framework produces a self-contained file and names what a capable harness should do with it.** The capability belongs to the tool, never to the pipeline. The renderers therefore print, after the path written, the line saying what to do with it — publish if the harness can host, hand over the path otherwise. It is printed where the driver already looks, the command's output, rather than buried in a document it may not have read.
 
-Corollaire à connaître : un harnais qui ne sait pas publier ne dégrade **rien** de garanti. Les pages s'ouvrent seules, sans réseau ni dépendance. Ce qui se perd est le confort d'un lien, pas une preuve.
+Corollary worth knowing: a harness that cannot publish degrades **nothing** that was guaranteed. The pages open on their own, with no network and no dependency. What is lost is the convenience of a link, not a proof.
 
-Les autres viennent de **ta** configuration, et c'est là qu'est le piège.
+The others come from **your** configuration, and that is where the trap is.
 
-Ouvre `commands` dans `pipeline.config.json` et relève tout ce qui n'est pas lancé par le gestionnaire de paquets de ton écosystème. Ces binaires-là ne s'installent pas avec les dépendances du projet : personne ne les apportera à ta place. **L'analyse de secrets est le cas le plus fréquent** — son outil est presque toujours un binaire externe.
+Open `commands` in `pipeline.config.json` and note everything not launched by your ecosystem's package manager. Those binaries do not install with the project's dependencies: nobody will bring them for you. **Secret scanning is the most frequent case** — its tool is almost always an external binary.
 
-Un prérequis manquant ne se manifeste pas par une absence, mais par une porte qui **échoue au lieu de protéger**. Et une porte qui échoue toujours finit par être contournée ou ignorée, ce qui est pire que son absence : le dépôt affirme une protection que personne n'exerce.
+A missing prerequisite does not show up as an absence, but as a gate that **fails instead of protecting**. And a gate that always fails ends up bypassed or ignored, which is worse than its absence: the repository asserts a protection nobody exercises.
 
-Vérifie-les un par un — mais pas à la main :
+Check them one by one — but not by hand:
 
 ```
 node agent-pipeline/scripts/preflight.mjs
 ```
 
-Il exécute chaque porte déclarée et **sépare trois cas que la CI confond** : verte, refusante, ou **injouable faute d'outil**. Une porte qui échoue parce qu'elle a trouvé quelque chose et une porte qui échoue parce que son binaire n'existe pas se ressemblent dans un journal, et ne veulent pas du tout dire la même chose. Confondues, la seconde apprend à ignorer la première.
+It runs every declared gate and **separates three cases the CI conflates**: green, refusing, or **unrunnable for lack of a tool**. A gate that fails because it found something and a gate that fails because its binary does not exist look alike in a log, and mean entirely different things. Conflated, the second teaches you to ignore the first.
 
-Il sort en 1 uniquement quand une porte est **injouable** : une porte qui refuse légitimement ne le fait pas échouer, ce n'est pas son objet. Et il ne propose que deux sorties honnêtes — installer l'outil, ou retirer la clé de `commands`. Jamais laisser une porte rouge en permanence.
+It exits 1 only when a gate is **unrunnable**: a gate that legitimately refuses does not make it fail, that is not its purpose. And it offers only two honest ways out — install the tool, or remove the key from `commands`. Never leave a gate permanently red.
 
-## Ce que tu dois configurer pour que les garanties soient réelles
+## What you must configure for the guarantees to be real
 
-C'est la section qui compte. Le pipeline **décrit** plus de mécanismes qu'un dépôt n'en **exécute** par défaut. Quatre d'entre eux ne s'activent que si tu les installes, et chacun est silencieux tant que tu ne le fais pas.
+This is the section that counts. The pipeline **describes** more mechanisms than a repository **runs** by default. Four of them activate only if you install them, and each is silent until you do.
 
-### Les permissions de la plateforme
+### Platform permissions
 
-`file_policy` interdit à chaque rôle d'écrire hors de son périmètre : l'Implementer ne touche ni au store, ni à la configuration, ni au core du pipeline. Cette politique est injectée dans le fichier `rules_path` et répétée dans chaque prompt.
+`file_policy` forbids each role from writing outside its scope: the Implementer touches neither the store, nor the configuration, nor the pipeline core. That policy is injected into the `rules_path` file and repeated in every prompt.
 
-**Une interdiction écrite dans un prompt n'est pas une barrière de sécurité.** C'est écrit noir sur blanc dans `AGENTS.md` §3, et ça vaut pour celle-ci : si ta plateforme d'agents n'impose pas ces refus elle-même, ils reposent sur la bonne volonté du modèle.
+**A prohibition written in a prompt is not a security boundary.** It is stated plainly in `AGENTS.md` §3, and it holds for this one: if your agent platform does not enforce those refusals itself, they rest on the model's goodwill.
 
-Vérifie que ta plateforme porte bien une politique de refus sur les chemins de `file_policy`, et pas seulement la liste d'outils accordés à chaque rôle. Accorder l'outil d'écriture et espérer que le prompt limite la cible, ce n'est pas une permission, c'est une consigne.
+Check that your platform carries a real refusal policy on the `file_policy` paths, and not merely the list of tools granted to each role. Granting the write tool and hoping the prompt limits the target is not a permission, it is a suggestion.
 
-### Les crochets git
+### Git hooks
 
-`pre-commit` lance le format, `lint` et `secrets_scan`. `pre-push` lance `check`, `lint` et les trois `--check` de cibles générées.
+`pre-commit` runs the formatter, `lint` and `secrets_scan`. `pre-push` runs `check`, `lint` and the three generated-target `--check`.
 
 ```
 ls .git/hooks/ | grep -v sample
 ```
 
-Si cette commande ne rend rien, **aucun crochet ne tourne** — quoi qu'en disent les documents. Une cible générée peut alors se désynchroniser, être poussée et mergée sans que rien ne le signale.
+If that command returns nothing, **no hook runs** — whatever the documents say. A generated target can then desynchronise, be pushed and merged with nothing reporting it.
 
-### La CI, ou son absence assumée
+## The sudocode mirror
 
-Avec `ci.provider` autre que `"none"`, un run vert sur le SHA exact vaut preuve et QA le lit au lieu de relancer. Avec `"none"`, il n'y a pas de run : **QA exécute réellement chaque porte**, et c'est la batterie locale complète qui fait foi à la clôture.
+When the configuration's `sudocode` block is active, the store **is** the sudocode directory: same `issues.jsonl` and `specs.jsonl` files, same ids. `store-update` automatically mirrors every phase change into the `status` field according to `status_map`; the sudocode UI and CLI therefore show progress live with no extra script. The `pipeline_state` block and the `contexts` travel as additional record fields.
 
-Les deux choix sont valides. Ce qui ne l'est pas, c'est de croire à un run qui n'existe pas.
+Three rules hold the integration together: the single-writer principle stays intact, agents never write through the sudocode CLI or MCP; a concurrent write made on the sudocode side changes the line, therefore stales the expected hash, therefore is detected instead of overwritten (re-read, merge deliberately, write again); and if the installed version of sudocode rewrites records dropping fields it does not know, move `store_dir` back to a private directory and treat sudocode as upstream only — losing `pipeline_state` is an integration defect, never an acceptable state.
 
-### Les skills, que tu relis une fois et une seule
+## Putting the pipeline to work
 
-`apply-profile` installe dans `skills_dir` les skills de `agent-pipeline/skills/` et ceux du profil. **Un skill injecte des instructions dans tes agents, au-dessus d'`AGENTS.md` dans l'ordre de priorité** : c'est la surface la plus puissante du dépôt, et la seule que tu doives lire toi-même avant de la laisser tourner.
+State your need in plain language. The session will first ask **pipeline or direct** — and that is a real question, not politeness.
 
-```
-node agent-pipeline/scripts/apply-profile.mjs --check
-```
+**Direct** is legitimate for a tooling fix, a question, an exploration. It loses four things, and it is better to choose them than to discover them: no trace in the store, no Product decomposition (the session decides the contract alone then writes the tests that validate it, so its implementation is judged against itself), no independent QA, and neither `verify-scope` nor optimistic lock nor verification ledger.
 
-Cette commande refuse une copie installée qui a dérivé de sa source — fichier modifié à la main, fichier supprimé, fichier étranger déposé. C'est ce qui rend la relecture durable : tu lis la source une fois, et toute divergence ultérieure est signalée avant qu'un agent ne la lise.
+**Pipeline** is slower and leaves an auditable trace.
 
-Ce que le pipeline ne fait pas, et qu'il faut savoir : **rien ne vérifie qu'un agent a chargé le skill qu'il aurait dû charger.** Un skill est un conseil. Si une règle compte vraiment, elle devient une commande de `commands` — voir `skills.md`.
+## Reviewing a spec before approving it
 
-## Le miroir sudocode
+A spec proposal is tens of kilobytes of JSON. Nobody validates a scope by reading JSON in a terminal, and an operator who does not review approves everything — so phase 1 stops serving any purpose and you are back to discovering the product in the code.
 
-Le pipeline peut refléter l'état de ses issues vers [sudocode](https://github.com/sudocode-ai/sudocode), un système léger d'orchestration d'agents qui s'installe dans le dépôt et offre une visualisation et une interface de suivi.
-
-**L'intégration est optionnelle et pilotée par la configuration.** Le bloc `sudocode` de `pipeline.config.json` porte `enabled` et une table `status_map` qui traduit chaque phase du pipeline en statut sudocode. Quand `enabled` n'est pas vrai, rien n'est écrit et le pipeline fonctionne exactement pareil.
-
-Ce que tu dois comprendre du partage :
-
-- **Le pipeline reste propriétaire de son état.** La phase, la version, les réservations et le registre de vérification vivent dans `pipeline_state`, et c'est `store-update` qui les écrit, sous verrou optimiste.
-- **Le statut sudocode est un reflet, jamais une source.** Il est recalculé depuis la phase à chaque persistance. L'éditer à la main ne change rien au pipeline et sera écrasé au pas suivant.
-- **Le store du pipeline vit dans `store_dir`**, qui pointe par convention vers le répertoire de sudocode pour que ses outils y voient le travail. Les deux cohabitent dans le même dossier sans que l'un dépende de l'autre.
-
-Les commandes d'installation dépendent de ton écosystème : elles sont dans le `README` du dépôt, pas ici — ce document voyage avec le pipeline et ne suppose aucun gestionnaire de paquets.
-
-## Faire travailler le pipeline
-
-Formule ton besoin en langage naturel. La session te demandera d'abord **pipeline ou direct** — et c'est une vraie question, pas une politesse.
-
-Le **direct** est légitime pour un correctif d'outillage, une question, une exploration. Il perd quatre choses, et il vaut mieux les choisir que les découvrir : aucune trace dans le store, pas de découpage Product (la session décide seule du contrat puis écrit les tests qui le valident, donc son implémentation est jugée contre elle-même), pas de QA indépendante, et ni `verify-scope` ni verrou optimiste ni registre de vérification.
-
-Le **pipeline** est plus lent et laisse une trace opposable.
-
-## Relire une spec avant de l'approuver
-
-Une proposition de spec est un JSON de plusieurs dizaines de kilo-octets. Personne ne valide un périmètre en lisant du JSON dans un terminal, et un opérateur qui ne relit pas approuve tout — donc la phase 1 ne sert plus à rien et on revient à découvrir le produit dans le code.
-
-À chaque tour, avant de demander l'arbitrage :
+At every round, before asking for arbitration:
 
 ```
-node agent-pipeline/scripts/render-proposal.mjs <proposition.json> <sortie.html>
+node agent-pipeline/scripts/render-proposal.mjs <proposal.json> <output.html>
 ```
 
-La page rendue ouvre sur **ce qui attend l'arbitrage** — question, recommandation, autres options — puis déroule le périmètre : fonctionnalités et règles numérotées, exclusions, engagements de conception et de PR, découpage envisagé. Elle affiche le tour, le décompte de questions ouvertes et, quand la proposition en porte une, l'empreinte qui liera la phase 2.
+The rendered page opens on **what is waiting for arbitration** — question, recommendation, other options — then unfolds the scope: features and numbered rules, exclusions, design and PR commitments, envisaged decomposition. It shows the round, the count of open questions and, when the proposal carries one, the digest that will bind phase 2.
 
-Trois propriétés qui ne sont pas décoratives. Le **texte est repris verbatim**, jamais reformulé : une relecture obligeante creuserait un écart entre ce que l'opérateur lit et ce que l'empreinte fige. Le rendu est **déterministe**, sans décision de mise en forme au moment de publier : deux tours successifs se comparent à l'œil parce que seule leur substance change. Et le contenu est **échappé** : une proposition est écrite par un agent, donc c'est une donnée, jamais du balisage — sans quoi une spec pourrait injecter du script dans la page qui sert à l'approuver.
+Three properties that are not decorative. The **text is taken verbatim**, never reworded: an obliging re-read would open a gap between what the operator reads and what the digest freezes. The rendering is **deterministic**, with no formatting decision at publish time: two successive rounds compare by eye because only their substance changes. And the content is **escaped**: a proposal is written by an agent, so it is data, never markup — otherwise a spec could inject script into the page used to approve it.
 
-Le script refuse tout mode autre que `spec_proposal`. La session publie ensuite la page et t'en donne le lien.
+The script refuses any mode other than `spec_proposal`. The session then publishes the page and gives you the link.
 
-## Voir ce qui attend ta décision
-
-```
-node agent-pipeline/scripts/render-decisions.mjs <sortie.html> [proposition.json]
-```
-
-Cette page-là n'est pas rédigée, elle est **calculée** depuis le store et `file_policy`. Elle rassemble ce qui ne peut pas avancer sans toi :
-
-- les **questions de spec** ouvertes du tour en cours, avec la recommandation et les autres options, quand une proposition est jointe ;
-- les issues **arrêtées** en phase de blocage, qui tiennent leurs réservations tant qu'elles y restent ;
-- les issues **qu'aucun agent ne peut prendre** — tout leur périmètre est hors de la politique de fichiers de chaque rôle qui écrit. C'est du travail opérateur, qu'elles le disent ou non, et `next-issues` les présente pourtant comme dispatchables parce qu'il calcule la disjonction des réservations sans lire `file_policy`.
-
-Le cas le plus traître est la troisième catégorie quand le périmètre est **partagé** : une issue qui touche à la fois un document de stack et les briefs générés n'est prenable par aucun rôle unique, alors que chaque moitié l'est par quelqu'un. Personne ne le remarque en lisant, et le calcul le voit.
-
-## Les commandes que tu liras
-
-Les scripts du core s'appellent directement, dans tous les projets :
+## Seeing what is waiting on your decision
 
 ```
-node agent-pipeline/scripts/next-step.mjs      # le pas suivant : une issue, un acteur, une action
-node agent-pipeline/scripts/next-issues.mjs    # les issues dispatchables en parallele maintenant
-node agent-pipeline/scripts/metrics.mjs        # debit et echappees
-node agent-pipeline/scripts/store-verify.mjs   # invariants du store
-node agent-pipeline/scripts/render-proposal.mjs <proposition.json> <sortie.html>   # relire une spec avant de l'approuver
-node agent-pipeline/scripts/render-decisions.mjs <sortie.html> [proposition.json]  # ce qui attend ta decision
-node agent-pipeline/scripts/preflight.mjs      # chaque porte est-elle executable ?
-node agent-pipeline/scripts/status.mjs         # les issues par colonne, vue d'ensemble
-node agent-pipeline/scripts/permissions.mjs    # les chemins refuses a chaque role
-node agent-pipeline/scripts/install-hooks.mjs  # poser ou verifier les crochets git
-node --test "agent-pipeline/test/**/*.test.mjs"                                   # prouver le core lui-meme
+node agent-pipeline/scripts/render-decisions.mjs <output.html> [proposal.json]
 ```
 
-La plupart des projets les aliasent dans leur outil de tâches — regarde le `README` du dépôt pour la forme locale.
+That page is not written, it is **computed** from the store and `file_policy`. It gathers what cannot move without you:
 
-Les portes de qualité, elles, ne s'appellent jamais par leur commande mais **par leur clé** : `check`, `lint`, `test_unit`. La commande derrière la clé est dans `pipeline.config.json` et change avec la stack ; la clé, non. C'est ce qui permet aux documents et aux prompts de désigner une porte sans connaître l'outil qui la rend.
+- the **open spec questions** of the current round, with the recommendation and the other options, when a proposal is attached;
+- the issues **stopped** in a blocking phase, which hold their reservations as long as they stay there;
+- the issues **no agent can take** — their whole scope is outside the file policy of every writing role. That is operator work whether they say so or not, and `next-issues` presents them as dispatchable because it computes reservation disjointness without reading `file_policy`.
 
-## Lire les mesures sans se mentir
+The trickiest case is the third one when the scope is **split**: an issue touching both a stack document and the generated briefs is takeable by no single role, while each half is takeable by someone. Nobody notices that by reading, and the computation sees it.
 
-**Zéro échappée ne veut rien dire si le compteur de découvertes est aussi à zéro.** Ça dit que le mécanisme n'a pas servi, pas qu'aucun défaut n'est passé. `pipeline:metrics` te le dit lui-même quand c'est le cas — lis cette phrase au lieu de lire le chiffre.
+## The commands you will read
 
-**Une porte verte ne prouve rien tant que tu ne l'as pas vue échouer.** Une porte peut être verte parce qu'elle ne mesure rien : une couverture qui collecte sur du code qu'elle n'exécute pas, une analyse de mutation qui réutilise son cache, une carte de projet qui ne collecte pas les bons fichiers. Les trois se sont produites.
+The core scripts are called directly, in every project:
 
-**La durée est l'indicateur le plus bruyant et le plus séduisant.** Ceux qui comptent sont les échappées, les cycles par issue, et les critères vérifiés au premier passage. Un run deux fois plus rapide qui laisse échapper un défaut est un run pire.
+```
+node agent-pipeline/scripts/next-step.mjs        # the next step: an issue, an actor, an action
+node agent-pipeline/scripts/next-issues.mjs      # the issues dispatchable in parallel right now
+node agent-pipeline/scripts/metrics.mjs          # throughput and escaped defects
+node agent-pipeline/scripts/store-verify.mjs     # store invariants
+node agent-pipeline/scripts/render-proposal.mjs <proposal.json> <out.html>   # review a spec before approving
+node agent-pipeline/scripts/render-decisions.mjs <out.html> [proposal.json]  # what awaits your decision
+node agent-pipeline/scripts/render-architecture.mjs <out.html> <type> [analysis.json]  # choose how to lay out the code
+node agent-pipeline/scripts/architecture-drift.mjs <graph.json>              # when the layout no longer holds
+node agent-pipeline/scripts/preflight.mjs        # is every gate executable?
+node agent-pipeline/scripts/status.mjs           # issues by column, overview
+node agent-pipeline/scripts/permissions.mjs      # the paths refused to each role
+node agent-pipeline/scripts/install-hooks.mjs    # install or check the git hooks
+node --test "agent-pipeline/test/**/*.test.mjs"  # prove the core itself
+```
 
-## Le point de contrôle de ton installation
+Most projects alias them in their task runner — see the repository `README` for the local form.
 
-Réponds par une commande, jamais par une impression :
+The quality gates, however, are never called by their command but **by their key**: `check`, `lint`, `test_unit`. The command behind the key lives in `pipeline.config.json` and changes with the stack; the key does not. That is what lets documents and prompts designate a gate without knowing the tool that provides it.
 
-1. Chaque binaire exigé par `commands` répond-il, et le client de ta forge est-il authentifié ?
-2. `ls .git/hooks/ | grep -v sample` rend-il quelque chose ?
-3. Ta plateforme refuse-t-elle réellement une écriture hors `file_policy` ?
-4. `apply-profile --check`, `sync-briefs --check` et la carte `--check` sortent-ils tous en 0 ?
-5. As-tu vu chaque porte échouer au moins une fois, sur une casse volontaire ?
-6. `store-verify` est-il vert ?
+## Reading the measurements without fooling yourself
 
-Une réponse « je crois que oui » est une réponse non. C'est la seule règle de ce document qui vaut pour toutes les autres.
+**Zero escaped defects means nothing if the discovery counter is also zero.** It says the mechanism was not exercised, not that no defect got through. `metrics` tells you so itself when that is the case — read that sentence instead of reading the number.
 
-## Installer le pipeline dans un projet neuf
+**A green gate proves nothing until you have seen it fail.** A gate can be green because it measures nothing: a coverage run collecting over code it does not execute, a mutation analysis reusing its cache, a project map not collecting the right files. All three have happened.
 
-Ce document décrit un pipeline déjà installé. Pour l'installer ailleurs, la marche à suivre est dans `nouveau-profil.md`, et elle s'adresse à l'agent qui fait le travail — ton rôle s'y limite à fournir les prérequis ci-dessus et à relire ce qu'il a écrit.
+**Duration is the noisiest and most seductive indicator.** The ones that count are escaped defects, cycles per issue, and criteria verified on the first pass. A run twice as fast that lets a defect escape is a worse run.
+
+## The checkpoint for your installation
+
+Answer with a command, never with an impression:
+
+1. Does every binary required by `commands` respond, and is your forge client authenticated? `preflight` answers this one.
+2. Does `ls .git/hooks/ | grep -v sample` return anything?
+3. Does your platform really refuse a write outside `file_policy`?
+4. Do `apply-profile --check`, `sync-briefs --check` and the map `--check` all exit 0?
+5. Have you seen every gate fail at least once, on a deliberate break?
+6. Is `store-verify` green?
+
+**An "I think so" is a no.** That is the one rule in this document that governs all the others.
+
+## Installing the pipeline in a new project
+
+This document describes a pipeline already installed. To install it elsewhere, the procedure is in `nouveau-profil.md`, and it addresses the agent doing the work — your part is limited to supplying the prerequisites above and reviewing what it wrote.

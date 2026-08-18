@@ -1,46 +1,46 @@
-# Étalonnage du pipeline
+# Benchmarking the pipeline
 
-Une exigence **figée**, rejouée à froid à chaque fois que la configuration du pipeline change. Les mêmes mots, le même point de départ, les mêmes mesures — c'est le seul moyen de savoir si une modification du pipeline a amélioré ou dégradé quoi que ce soit.
+A **frozen** requirement, replayed cold every time the pipeline configuration changes. The same words, the same starting point, the same measurements — that is the only way to know whether a change to the pipeline improved or degraded anything.
 
-Sans elle, un gain observé est inséparable de son facteur confondant le plus lourd : un opérateur qui découvre un dépôt et un opérateur qui le connaît ne produisent pas le même débit, et aucune métrique du store ne distingue les deux.
+Without it, an observed gain is inseparable from its heaviest confounder: an operator discovering a repository and an operator who knows it do not produce the same throughput, and no store metric tells the two apart.
 
-Ce document porte le **protocole**, qui vaut pour tout projet. L'exigence figée, elle, appartient au dépôt : elle vit dans `benchmarks_dir` avec les résultats, et n'a aucun sens ailleurs.
+This document carries the **protocol**, which holds for any project. The frozen requirement belongs to the repository: it lives in `benchmarks_dir` with the results, and means nothing anywhere else.
 
-## Ce qui est figé, et ce qui ne l'est pas
+## What is frozen, and what is not
 
-**Figé** : le texte de l'exigence, mot pour mot. Le commit de départ, par son tag. Les commandes de mesure.
+**Frozen**: the text of the requirement, word for word. The starting commit, by its tag. The measurement commands.
 
-**Libre** : le découpage en issues, l'ordre, le nombre de cycles, l'implémentation. C'est exactement ce qu'on veut mesurer — Product décompose comme il le juge, et sa décomposition fait partie du résultat.
+**Free**: the decomposition into issues, the order, the number of cycles, the implementation. That is exactly what we want to measure — Product decomposes as it sees fit, and its decomposition is part of the result.
 
-Ne jamais réécrire l'exigence pour « aider » un run. Une exigence retouchée invalide toutes les comparaisons antérieures, et la tentation viendra précisément le jour où un run se passe mal.
+Never rewrite the requirement to "help" a run. A retouched requirement invalidates every earlier comparison, and the temptation will come precisely on the day a run goes badly.
 
-## Ce qu'une bonne exigence étalon exige
+## What a good benchmark requirement demands
 
-Elle doit **traverser toute la chaîne** du projet sans introduire de dépendance nouvelle — un blocage opérateur au milieu d'un run rend les durées incomparables.
+It must **cross the project's whole chain** without introducing a new dependency — an operator block in the middle of a run makes the durations incomparable.
 
-Elle doit porter une **vraie décision de conception** plutôt qu'un enchaînement mécanique : un pipeline qui ne fait que suivre des ordres réussirait un CRUD trivial sans rien prouver.
+It must carry a **real design decision** rather than a mechanical sequence: a pipeline that only follows orders would succeed at a trivial CRUD without proving anything.
 
-Et elle doit être **réellement absente** du dépôt au tag de départ, vérifié plutôt que supposé. Une exigence déjà implémentée mesure la capacité à lire du code existant, pas à produire.
+And it must be **genuinely absent** from the repository at the starting tag, verified rather than assumed. A requirement already implemented measures the ability to read existing code, not to produce.
 
-## Protocole
+## Protocol
 
-1. `git checkout -b bench/<date> <tag de depart>` — jamais depuis la branche par défaut, qui bouge.
-2. `node agent-pipeline/scripts/benchmark.mjs --start` — enregistre l'instant, le tag, et l'empreinte de configuration.
-3. Donner l'exigence, mot pour mot, et dérouler le pipeline normalement.
-4. `node agent-pipeline/scripts/benchmark.mjs --finish` — mesure et ajoute une ligne à `runs.jsonl`.
-5. **Récupérer la mesure et les découvertes sur la branche par défaut avant de jeter quoi que ce soit.** `runs.jsonl` est écrit sur la branche de run, donc supprimer celle-ci efface le résultat — le défaut a été trouvé au premier run d'un projet, où la mesure et dix-huit trouvailles allaient disparaître avec le code qu'elles décrivaient. Les découvertes valent souvent plus que la fonctionnalité produite : trois de ce run-là portaient sur des portes qui ne mesuraient pas ce qu'elles annonçaient.
-6. Supprimer la branche. **Le résultat du run n'est pas du code à garder**, c'est une mesure — mais la mesure, elle, se garde.
+1. `git checkout -b bench/<date> <starting tag>` — never from the default branch, which moves.
+2. `node agent-pipeline/scripts/benchmark.mjs --start` — records the instant, the tag, and the configuration fingerprint.
+3. Give the requirement, word for word, and run the pipeline normally.
+4. `node agent-pipeline/scripts/benchmark.mjs --finish` — measures and appends a line to `runs.jsonl`.
+5. **Recover the measurement and the discoveries onto the default branch before discarding anything.** `runs.jsonl` is written on the run branch, so deleting that branch erases the result — the defect was found on a project's first run, where the measurement and eighteen findings were about to disappear with the code they described. The discoveries are often worth more than the feature produced: three from that run concerned gates that did not measure what they announced.
+6. Delete the branch. **A run's output is not code to keep**, it is a measurement — but the measurement is kept.
 
-## Lire les résultats sans se mentir
+## Reading the results without fooling yourself
 
-**Un run est un échantillon de un.** Deux exécutions de la même configuration donneront des chiffres différents — température du modèle, ordre des découvertes, aléas d'outillage. Au minimum deux runs par configuration avant de conclure quoi que ce soit.
+**A run is a sample of one.** Two executions of the same configuration will give different numbers — model temperature, order of discoveries, tooling luck. At least two runs per configuration before concluding anything.
 
-**L'empreinte de configuration est ce qui rend la comparaison possible.** Elle hache les prompts, les documents, les règles et la config du profil. Deux runs d'empreintes différentes ne se comparent pas terme à terme : ils comparent deux pipelines.
+**The configuration fingerprint is what makes comparison possible.** It hashes the prompts, the documents, the rules and the profile config. Two runs with different fingerprints do not compare term by term: they compare two pipelines.
 
-**La durée est l'indicateur le plus bruyant et le plus séduisant.** Les indicateurs qui comptent sont les échappées, les cycles par issue, et les critères vérifiés au premier passage. Un run deux fois plus rapide qui laisse échapper un défaut est un run pire.
+**Duration is the noisiest and most seductive indicator.** The ones that count are escaped defects, cycles per issue, and criteria verified on the first pass. A run twice as fast that lets a defect escape is a worse run.
 
-**Le facteur confondant que le protocole ne supprime pas** : le modèle sous-jacent change avec le temps. Un écart entre deux runs séparés de plusieurs mois mélange l'effet de ta configuration et celui du modèle. Noter la date et le modèle dans chaque run est le minimum ; ne pas conclure sur des runs trop éloignés est la vraie discipline.
+**The confounder the protocol does not remove**: the underlying model changes over time. A gap between two runs months apart mixes the effect of your configuration with the effect of the model. Recording the date and the model in every run is the minimum; not concluding from runs too far apart is the real discipline.
 
-## Au portage
+## When porting
 
-`benchmarks_dir` de la configuration désigne le répertoire des résultats — par défaut `docs/benchmarks`. **Son contenu appartient au projet d'origine** : en installant le pipeline ailleurs, vide-le. Un nouveau dépôt qui démarre avec les `runs.jsonl` d'un autre compare deux projets sans le savoir, et hérite d'une exigence figée qui décrit une application qu'il n'a pas.
+The configuration's `benchmarks_dir` designates the results directory. **Its contents belong to the origin project**: when installing the pipeline elsewhere, empty it. A new repository starting with another's `runs.jsonl` compares two projects without knowing it, and inherits a frozen requirement describing an application it does not have.

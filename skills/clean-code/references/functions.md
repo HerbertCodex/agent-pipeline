@@ -362,7 +362,7 @@ function parseUser(data: unknown): User {
 ```
 
 Acceptable exceptions to avoid `any`:
-- Migrating a large JS codebase to TS progressively → use `any` temporarily, mark with `// TODO: type this`
+- Migrating a large JS codebase to TS progressively → a temporary `any` may be the pragmatic step, but check the profile first: several profiles ban `any` outright with a gate, and a `TODO` without a linked issue is refused by the comment policy. A rule your project enforces beats a rule of thumb read here.
 - Third-party libraries with no types and no `@types/` package available
 
 ---

@@ -126,9 +126,11 @@ function findUserByEmail(email: string) {
 }
 ```
 
-Never let debt accumulate silently — a `TODO` is the minimum, and it must
-contain a concrete next action (not just `// TODO: fix this`). A ticket in
-the backlog is better than a floating TODO.
+Never let debt accumulate silently. A ticket is the answer, not a `TODO`:
+many profiles run a comment policy that refuses a `TODO` carrying no linked
+issue, precisely because a floating marker records an intention nobody owns.
+If you leave one, it names a concrete next action and the issue that will
+carry it.
 
 ---
 
