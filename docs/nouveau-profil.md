@@ -204,6 +204,8 @@ Report, do not invent: an unavailable command is escalated, never replaced by a 
 
 ## Projects with screens declare their design system
 
+A project with screens also declares `commands.accessibility`. It sits here rather than in the general list because a service with no screen has nothing to check. The reason it is a command at all, when the rest of interface design is not, is that it is the measurable half: contrast ratio, focus order, keyboard reachability, what a screen reader announces. Everything else a design skill says is judgement, and judgement is argued in review.
+
 `apply-profile` refuses a `frontend`, `mobile` or `fullstack` project that has no `design_system` block. A back-end project is never asked: putting a question where there is no screen produces an empty key that people learn to skip, and a question people learn to skip ends up hiding the ones that matter.
 
 The reason is the architecture's reason, one level down. Tokens, primitives, product components and screens form an order that cannot be reversed afterwards: primitives written before tokens carry hardcoded values, and a finished mockup drawn before tokens invents a scale the code then copies. Left undeclared, the agent taking the first issue settles all of it alone — it needs a colour and a spacing to write anything — and every issue after inherits a decision nobody approved.

@@ -1,6 +1,7 @@
 import { test, describe, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, cpSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { createSandbox, destroySandbox, run } from "./harness.mjs";
 
@@ -150,5 +151,136 @@ describe("apply-profile: an interface project declares its design system", () =>
     const result = run(sandbox, "apply-profile.mjs", ["--check"]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /primitives/);
+  });
+});
+
+const FRAMEWORK = join(fileURLToPath(new URL(".", import.meta.url)), "..");
+
+/**
+ * Declares the accessibility command a project with screens must carry.
+ *
+ * @param root - sandbox root
+ */
+function withAccessibility(root) {
+  const path = join(root, "pipeline.config.json");
+  const config = JSON.parse(readFileSync(path, "utf8"));
+  config.commands.accessibility = "true";
+  writeFileSync(path, JSON.stringify(config, null, 2));
+}
+
+/**
+ * Copies into a sandbox the framework pieces apply-profile needs to run.
+ *
+ * Without them the script stops on a missing template long before it reaches
+ * the skills, and a test written against its output would be measuring the
+ * absence of a template rather than the behaviour it targets.
+ *
+ * @param root - sandbox root
+ */
+function seedFramework(root) {
+  const into = join(root, "agent-pipeline");
+  for (const directory of ["templates", "prompts", "schemas"]) {
+    cpSync(join(FRAMEWORK, directory), join(into, directory), { recursive: true });
+  }
+  mkdirSync(join(into, "profiles", "test"), { recursive: true });
+  writeFileSync(join(into, "profiles", "test", "invariants.md"), "- The clock is injected.\n");
+  mkdirSync(join(root, "pipeline"), { recursive: true });
+  writeFileSync(join(root, "pipeline", "project-context.md"), "<!-- claude:summary -->\nx\n<!-- /claude -->\n<!-- claude:commands -->\nx\n<!-- /claude -->\n<!-- claude:context -->\nx\n<!-- /claude -->\n");
+}
+
+describe("apply-profile: a skill can name the project types it applies to", () => {
+  /**
+   * Writes a core skill carrying an optional `applies_to` line.
+   *
+   * @param root - sandbox root
+   * @param name - skill directory name
+   * @param appliesTo - value of the frontmatter line, or null to omit it
+   */
+  function writeSkill(root, name, appliesTo) {
+    const dir = join(root, "agent-pipeline", "skills", name);
+    mkdirSync(dir, { recursive: true });
+    const header = appliesTo == null ? "" : `applies_to: ${appliesTo}\n`;
+    writeFileSync(join(dir, "SKILL.md"), `---\nname: ${name}\ndescription: x\n${header}---\n\nbody\n`);
+  }
+
+  const DESIGN = { tokens: "src/tokens.css", primitives: "own", decided_at: "2026-08-19" };
+
+  test("wants a screen skill installed on a frontend project", () => {
+    sandbox = withProject("frontend", DESIGN);
+    seedFramework(sandbox);
+    withAccessibility(sandbox);
+    writeSkill(sandbox, "ui-design", "frontend, mobile, fullstack");
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.match(result.output, /skills\/ui-design/);
+  });
+
+  test("leaves it out of a back-end project, which has no screen", () => {
+    sandbox = withProject("backend");
+    seedFramework(sandbox);
+    writeSkill(sandbox, "ui-design", "frontend, mobile, fullstack");
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.doesNotMatch(
+      result.output,
+      /skills\/ui-design/,
+      "advice about screens dropped into a service that has none is not inert: an agent reads it and follows it",
+    );
+  });
+
+  test("leaves out every file of a skipped skill, not only its SKILL.md", () => {
+    sandbox = withProject("backend");
+    seedFramework(sandbox);
+    writeSkill(sandbox, "ui-design", "frontend");
+    writeFileSync(join(sandbox, "agent-pipeline", "skills", "ui-design", "layout.md"), "x\n");
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.doesNotMatch(result.output, /ui-design/);
+  });
+
+  test("a skill that names no type is wanted everywhere, as before", () => {
+    sandbox = withProject("backend");
+    seedFramework(sandbox);
+    writeSkill(sandbox, "always", null);
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.match(result.output, /skills\/always/);
+  });
+
+  test("refuses a project type no skill could ever match", () => {
+    sandbox = withProject("backend");
+    seedFramework(sandbox);
+    writeSkill(sandbox, "ui-design", "frontend, embarque");
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /embarque/, "a typo in applies_to silently hides a skill forever");
+  });
+});
+
+describe("apply-profile: a project with screens is checked for accessibility", () => {
+  const DESIGN = { tokens: "src/tokens.css", primitives: "own", decided_at: "2026-08-19" };
+
+  test("refuses a frontend project that declares no accessibility command", () => {
+    sandbox = withProject("frontend", DESIGN);
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /commands\.accessibility/);
+    assert.match(
+      result.output,
+      /measur|contrast|number/i,
+      "the refusal says why this one is a command and the rest of the design advice is not",
+    );
+  });
+
+  test("asks nothing of a back-end project", () => {
+    sandbox = withProject("backend");
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.doesNotMatch(result.output, /commands\.accessibility/);
+  });
+
+  test("accepts any tool, as with every other command", () => {
+    sandbox = withProject("frontend", DESIGN);
+    const path = join(sandbox, "pipeline.config.json");
+    const config = JSON.parse(readFileSync(path, "utf8"));
+    config.commands.accessibility = "axe --exit";
+    writeFileSync(path, JSON.stringify(config, null, 2));
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.doesNotMatch(result.output, /accessibility/, "the core does not judge the tool, only the presence of the key");
   });
 });

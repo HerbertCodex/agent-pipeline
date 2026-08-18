@@ -14,7 +14,11 @@ Read a skill when the task is the one it names, and prefer the project's own gat
 
 One question decides: **would this skill still be right in a project using another stack?**
 
-If yes it belongs to `agent-pipeline/skills/` and travels with the framework. If no it belongs to the profile. A web-interface skill sitting in the core would make the core wrong for a Go project — and `apply-profile` refuses the same name on both sides, so the ambiguity cannot survive silently.
+If yes it belongs to `agent-pipeline/skills/` and travels with the framework. If no it belongs to the profile. `apply-profile` refuses the same name on both sides, so the ambiguity cannot survive silently.
+
+**A third case exists, and it is not the same question.** A skill can depend on no stack and still be irrelevant to most projects: interface design applies to a browser or a phone, never to a service with no screen. Such a skill declares `applies_to: frontend, mobile, fullstack` in its frontmatter, and `apply-profile` leaves it out entirely where the declared `architecture.project_type` does not match — files and all, so `--check` does not report the absence as drift.
+
+Without that, the only choices were a core wrong for a Go project, or a profile that a fresh project never receives. A name in `applies_to` that matches no known type is refused rather than ignored: a typo there would hide the skill on every project, and the failure would look exactly like the skill not existing.
 
 A skill that names a tool as an *example* is not coupled, provided it says so and gives the transposition. The `tdd` skill uses one test framework in its examples and carries a map to six other languages: that is teaching, not coupling.
 

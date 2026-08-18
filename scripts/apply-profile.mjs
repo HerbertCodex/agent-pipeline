@@ -156,7 +156,44 @@ function walkRelative(root, prefix = "") {
 }
 
 /**
+ * Reads the project types a skill declares itself relevant to.
+ *
+ * A skill that names none applies everywhere, which is what every skill did
+ * before this line existed. One that names some is installed only where they
+ * match: advice about screens, dropped into a service that has none, is not
+ * inert — an agent reads it and tries to follow it.
+ *
+ * A name that matches no known project type is refused rather than ignored.
+ * A typo in this field would otherwise hide a skill forever, and the failure
+ * would look exactly like the skill not existing.
+ *
+ * @param body - content of the skill's SKILL.md
+ * @param source - path of that file, for the error message
+ * @returns the declared types, or null when the skill names none
+ */
+function appliesTo(body, source) {
+  const match = body.match(/^applies_to:\s*(.+)$/m);
+  if (match == null) return null;
+  const declared = match[1]
+    .split(",")
+    .map((entry) => entry.trim().replace(/^\[|\]$/g, ""))
+    .filter((entry) => entry.length > 0);
+  for (const type of declared) {
+    if (PROJECT_TYPES[type] == null) {
+      fail(
+        `${source}: applies_to names "${type}", which is no known project type. ` +
+          `Known: ${Object.keys(PROJECT_TYPES).join(", ")}. A typo here hides the skill on every project.`,
+      );
+    }
+  }
+  return declared;
+}
+
+/**
  * Collects the skills to install: the core's, then the profile's.
+ *
+ * A skill may declare the project types it applies to; one that does not
+ * match this project is left out entirely, files and all.
  *
  * The two sources are disjoint by construction: the core carries only what
  * depends on no stack, the profile what does. The same name on both sides is
@@ -175,8 +212,20 @@ function collectSkills(config) {
     [SKILLS_SRC, "core"],
     [profileSkills, `profile ${config.profile}`],
   ]) {
+    const skipped = new Set();
     for (const relative of walkRelative(source)) {
       const skill = relative.split("/")[0];
+      if (skipped.has(skill)) continue;
+      if (relative === `${skill}/SKILL.md`) {
+        const declared = appliesTo(readFileSync(join(source, relative), "utf8"), join(source, relative));
+        if (declared != null && !declared.includes(config.architecture?.project_type)) {
+          skipped.add(skill);
+          for (const already of [...wanted.keys()]) {
+            if (already.startsWith(`${skill}/`)) wanted.delete(already);
+          }
+          continue;
+        }
+      }
       const previous = origin.get(skill);
       if (previous != null && previous !== label) {
         fail(
@@ -258,6 +307,9 @@ function applySkills(config, checkMode) {
  * and a spacing to write anything, and every issue after inherits a decision
  * nobody approved.
  *
+ * It also requires an accessibility command here rather than in the general
+ * list, because a service with no screen has nothing to check.
+ *
  * The core does not judge the system retained: writing your own primitives
  * and taking a library are both defensible answers. It requires ONE source of
  * truth for the tokens, and that the fate of the primitives be stated. A
@@ -287,6 +339,14 @@ function checkDesignSystem(config) {
     fail(
       'design_system.primitives missing: say "own" or name the library. It is the layer where duplication ' +
         "starts \u2014 an agent that finds no button writes one, then another.",
+    );
+  }
+  if (typeof config.commands?.accessibility !== "string") {
+    fail(
+      "commands.accessibility missing: this project has screens. Everything else a design skill " +
+        "says is judgement, and judgement is argued in review. Contrast ratio, focus order, keyboard " +
+        "reachability and what a screen reader announces are numbers, and numbers are checked. The core " +
+        "does not know your tool \u2014 axe, pa11y, lighthouse, a linter \u2014 it requires that one fails.",
     );
   }
 }

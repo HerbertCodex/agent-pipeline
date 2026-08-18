@@ -354,8 +354,8 @@ Ses deux refus sont le cœur : **aucun fichier trouvé**, et **aucune déclarati
 | `prompts/` | les quatre rôles |
 | `docs/` | **en anglais** — les modèles suivent mieux l'anglais. `nouveau-profil.md` pour installer, `operateur.md` pour vous |
 | `templates/` | les fichiers de politique, le workflow CI |
-| `skills/` | conseils de code, indépendants de toute stack |
-| `test/` | **215 tests** sur le framework lui-même |
+| `skills/` | conseils de code, indépendants de toute stack. Un skill peut déclarer `applies_to` : celui sur l'interface n'est pas installé sur un service sans écran |
+| `test/` | **223 tests** sur le framework lui-même |
 
 **Prérequis** : Node, git, et le client de votre forge (`gh`, `glab`). Rien d'autre.
 
