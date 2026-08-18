@@ -301,7 +301,7 @@ node agent-pipeline/scripts/status.mjs           # 👁️ où en est-on ?
 
 - **Les profils ne voyagent pas.** Cloner ce dépôt vous donne le framework, pas les portes d'une stack donnée. Pour un second projet du même type, elles se réécrivent.
 - **Aucune mesure comparative.** Ce framework compte ses propres défauts échappés. Il ne prouve pas encore qu'il fait mieux qu'une session sans lui.
-- **Ouvert-fermé et Liskov ne sont pas vérifiables automatiquement.** Ils restent en revue humaine, et c'est écrit plutôt que sous-entendu.
+- **Ouvert-fermé et Liskov ne sont vérifiés qu'en partie.** Deux formes sont attrapées par une porte — une méthode de classe dérivée qui lève inconditionnellement, une chaîne d'`instanceof` qui décide du comportement. Une précondition resserrée, elle, reste invisible à toute requête syntaxique : ça reste en revue humaine, et c'est écrit plutôt que sous-entendu.
 
 ---
 

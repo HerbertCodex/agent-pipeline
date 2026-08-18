@@ -193,7 +193,16 @@ Report, do not invent: an unavailable command is escalated, never replaced by a 
 
 **These are not SOLID.** They are measurable approximations of what SOLID protects: a two-hundred-line function almost always violates single responsibility, the converse is not true. An imperfect gate that really refuses something beats a principle nobody checks — and without it, single responsibility applies to nothing, the code being good only if the model is.
 
-**Open-closed and Liskov are not approximable** and stay in human review. Write that in the profile invariants rather than letting anyone believe they are covered.
+**Open-closed and Liskov are partly approximable**, and the two forms worth catching are visible in the syntax alone:
+
+| Form | Which principle | Why it is a real signal |
+| --- | --- | --- |
+| a method of a derived class that throws unconditionally | Liskov | a caller holding the base breaks on the subclass; the inheritance is a lie |
+| a chain of `instanceof` deciding behaviour | open-closed | adding a case forces reopening that function |
+
+In an ESLint profile they are two `no-restricted-syntax` selectors: `ClassDeclaration[superClass] MethodDefinition > FunctionExpression > BlockStatement > ThrowStatement`, and `IfStatement > IfStatement.alternate > BinaryExpression[operator='instanceof']`. Transpose them to whatever your ecosystem uses to query a syntax tree.
+
+**They do not prove the principles.** A Liskov violation through a narrowed precondition, or through a return that no longer honours the contract, is invisible to any syntax query — that part stays in human review, and the profile invariants should say so rather than let anyone believe the gate covers it. What these two buy is the same thing the four bounds above buy: the cases where the violation is written down plainly stop passing.
 
 Three requirements of form, learned while putting this gate in place:
 
