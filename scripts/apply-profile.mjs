@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { loadConfig, loadRules, fail } from "./lib.mjs";
+import { ARCHITECTURES, PROJECT_TYPES } from "./architectures.mjs";
 
 const CI_TEMPLATE = "agent-pipeline/templates/ci.template.yml";
 const AGENTS_TEMPLATE = "agent-pipeline/templates/AGENTS.template.md";
@@ -251,6 +252,61 @@ function applySkills(config, checkMode) {
 }
 
 /**
+ * Refuse une configuration qui ne declare pas comment le code est range.
+ *
+ * `render-architecture` explique les options et l'operateur tranche, mais un
+ * choix qui reste dans une page HTML n'engage personne : l'agent qui installe
+ * le profil range comme il l'entend, et le suivant range autrement. Le choix
+ * n'existe que s'il est ecrit quelque part qu'une porte relit.
+ *
+ * Le core ne juge pas l'architecture retenue — `custom` est une reponse
+ * valable. Il exige qu'elle soit nommee, et qu'elle vaille pour le type de
+ * projet declare : proposer des ports et des adaptateurs a une interface web
+ * est un catalogue recopie, pas une decision.
+ *
+ * @param config - configuration du projet hote
+ */
+function checkArchitecture(config) {
+  const chosen = config.architecture;
+  if (chosen == null || typeof chosen !== "object") {
+    fail(
+      "architecture manquante : declarez { id, project_type }. Le cadre ne choisit pas a votre place, " +
+        "mais un choix qui ne vit que dans une page HTML n'engage aucun agent — chacun rangera le code " +
+        "a sa facon, et la derive sera invisible parce que rien ne dit de quoi elle derive. " +
+        "Lancez render-architecture.mjs pour trancher, puis ecrivez le resultat ici.",
+    );
+  }
+  if (typeof chosen.project_type !== "string" || PROJECT_TYPES[chosen.project_type] == null) {
+    fail(
+      `architecture.project_type invalide : attendu l'un de ${Object.keys(PROJECT_TYPES).join(", ")}. ` +
+        "Le type change la reponse, pas seulement le vocabulaire.",
+    );
+  }
+  if (typeof chosen.id !== "string" || chosen.id.length === 0) {
+    fail("architecture.id manquant : nommez le rangement retenu, ou \"custom\" s'il n'est dans aucun catalogue.");
+  }
+  if (chosen.id === "custom") {
+    if (typeof chosen.note !== "string" || chosen.note.trim().length === 0) {
+      fail("architecture.id vaut \"custom\" : la note qui decrit le rangement retenu devient la seule reference. Elle est obligatoire.");
+    }
+    return;
+  }
+  const known = ARCHITECTURES.find((item) => item.id === chosen.id);
+  if (known == null) {
+    fail(
+      `architecture.id inconnu : "${chosen.id}". Connus : ${ARCHITECTURES.map((item) => item.id).join(", ")}, ` +
+        "ou \"custom\" avec une note.",
+    );
+  }
+  if (!known.applies.includes(chosen.project_type)) {
+    fail(
+      `architecture "${chosen.id}" ne s'applique pas a un projet ${chosen.project_type} ` +
+        `(elle vaut pour : ${known.applies.join(", ")}). Un choix hors type est un nom recopie, pas une decision.`,
+    );
+  }
+}
+
+/**
  * Applique le profil au depot : file_policy injectee dans les regles,
  * `AGENTS.md` rendu depuis son template et les invariants du profil,
  * `CLAUDE.md` rendu depuis son template et le contexte du projet,
@@ -275,6 +331,7 @@ function main() {
         "sans porte, elles s'auto-annulent et le code n'est bon que si le modele l'est.",
     );
   }
+  checkArchitecture(config);
   for (const role of Object.keys(config.file_policy)) {
     if (!ROLES.includes(role)) fail(`file_policy: role inconnu "${role}"`);
   }

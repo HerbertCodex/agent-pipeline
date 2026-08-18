@@ -4,6 +4,7 @@ import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { createSandbox, destroySandbox, run } from "./harness.mjs";
 import { fileURLToPath } from "node:url";
+import { ARCHITECTURES, PROJECT_TYPES } from "../scripts/architectures.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FRAMEWORK = join(here, "..");
@@ -140,5 +141,106 @@ describe("le cadre exige une porte sur les bornes de conception", () => {
     } finally {
       destroySandbox(root);
     }
+  });
+});
+
+describe("le cadre exige que le rangement du code soit declare", () => {
+  /**
+   * Ecrit une configuration bac a sable dont le bloc architecture est impose.
+   *
+   * @param root - racine du bac a sable
+   * @param architecture - valeur a poser, ou null pour retirer la cle
+   */
+  function withArchitecture(root, architecture) {
+    const path = join(root, "pipeline.config.json");
+    const config = JSON.parse(readFileSync(path, "utf8"));
+    config.commands = {
+      check: "true", lint: "true", build: "true", test_unit: "true",
+      audit: "true", secrets_scan: "true", project_map: "true", design_limits: "true",
+    };
+    if (architecture == null) delete config.architecture;
+    else config.architecture = architecture;
+    writeFileSync(path, JSON.stringify(config));
+  }
+
+  test("apply-profile refuse une configuration sans bloc architecture", () => {
+    const root = createSandbox();
+    try {
+      withArchitecture(root, null);
+      const result = run(root, "apply-profile.mjs", ["--check"]);
+      assert.notEqual(result.status, 0);
+      assert.match(result.output, /architecture manquante/);
+      assert.match(
+        result.output,
+        /page HTML n'engage aucun agent/,
+        "le refus dit pourquoi la cle existe, pas seulement qu'elle manque",
+      );
+    } finally {
+      destroySandbox(root);
+    }
+  });
+
+  test("un rangement inconnu est refuse, et les connus sont nommes", () => {
+    const root = createSandbox();
+    try {
+      withArchitecture(root, { id: "microservices", project_type: "backend" });
+      const result = run(root, "apply-profile.mjs", ["--check"]);
+      assert.notEqual(result.status, 0);
+      assert.match(result.output, /architecture\.id inconnu/);
+      assert.match(result.output, /feature-modules/, "le refus liste ce qui est accepte");
+    } finally {
+      destroySandbox(root);
+    }
+  });
+
+  test("un rangement hors du type de projet est refuse", () => {
+    const root = createSandbox();
+    try {
+      withArchitecture(root, { id: "hexagonal", project_type: "frontend" });
+      const result = run(root, "apply-profile.mjs", ["--check"]);
+      assert.notEqual(result.status, 0);
+      assert.match(result.output, /ne s'applique pas a un projet frontend/);
+    } finally {
+      destroySandbox(root);
+    }
+  });
+
+  test("custom est accepte, mais seulement avec la note qui devient la reference", () => {
+    const root = createSandbox();
+    try {
+      withArchitecture(root, { id: "custom", project_type: "backend" });
+      const sansNote = run(root, "apply-profile.mjs", ["--check"]);
+      assert.notEqual(sansNote.status, 0);
+      assert.match(sansNote.output, /note qui decrit le rangement retenu/);
+
+      withArchitecture(root, { id: "custom", project_type: "backend", note: "un acteur par flux, rien de standard" });
+      const avecNote = run(root, "apply-profile.mjs", ["--check"]);
+      assert.doesNotMatch(avecNote.output, /architecture/, "le core ne juge pas un rangement qu'il ne connait pas");
+    } finally {
+      destroySandbox(root);
+    }
+  });
+
+  test("un type de projet invalide est refuse avant tout choix de rangement", () => {
+    const root = createSandbox();
+    try {
+      withArchitecture(root, { id: "feature-modules", project_type: "embarque" });
+      const result = run(root, "apply-profile.mjs", ["--check"]);
+      assert.notEqual(result.status, 0);
+      assert.match(result.output, /project_type invalide/);
+    } finally {
+      destroySandbox(root);
+    }
+  });
+
+  test("chaque rangement du catalogue porte un type de projet reel", () => {
+    const types = new Set(Object.keys(PROJECT_TYPES));
+    const offenders = [];
+    for (const item of ARCHITECTURES) {
+      for (const applies of item.applies) {
+        if (!types.has(applies)) offenders.push(`${item.id} : ${applies}`);
+      }
+    }
+    assert.deepEqual(offenders, [], "la porte compare a PROJECT_TYPES : un type fantome rendrait un choix valide irrefusable");
   });
 });

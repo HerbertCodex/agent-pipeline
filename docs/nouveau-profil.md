@@ -41,6 +41,10 @@ Start from the origin project's file and replace every value. The `commands` key
 
 Mandatory keys, refused if absent: `check`, `lint`, `build`, `test_unit`, `audit`, `secrets_scan`, `project_map`, `design_limits`.
 
+Also mandatory, outside `commands`: an `architecture` block, `{ id, project_type }`. The operator chooses it — `render-architecture.mjs` lays out the options for their project type — but the choice has to be **written down**, because a decision that lives only in a rendered page binds nobody. The agent installing the profile lays the code out one way, the next agent lays it out another, and drift is undetectable because nothing states what it drifts from.
+
+`apply-profile` refuses an unknown id, and refuses an id that does not apply to the declared `project_type`: hexagonal ports and adapters proposed for a browser interface is a catalogue copied out, not a decision. `"custom"` is a valid answer and requires a `note` — that note then **is** the reference.
+
 Mandatory paths, refused if absent: `profiles_dir`, `docs_dirs`, `briefs_dir`, `prompts_dir`, `skills_dir`, `rules_path`, `project_context`, `store_dir`.
 
 You are free to place them where you want, and that is the point: none of it is fixed in the core. Grouping the machinery under a single directory — `pipeline/profiles`, `pipeline/briefs`, `pipeline/store`, `pipeline/rules.json` — avoids fighting the host project for names it wants for itself, `docs/` and `scripts/` first among them. Only `AGENTS.md`, `CLAUDE.md`, the prompts directory and `pipeline.config.json` stay at the root: the platform looks for them there.
@@ -122,6 +126,8 @@ For every command in `commands`, deliberately break what it is meant to catch an
 | `lint` | a badly formatted file | exit ≠ 0 |
 | `test_unit` | invert an assertion | exit ≠ 0 |
 | `design_limits` | a function with one parameter too many | exit ≠ 0 |
+
+And check the `architecture` block the same way: change its `id` to `hexagonal` on a `frontend` project and confirm `apply-profile --check` refuses. A key nobody validates is a key that will be wrong one day without anyone noticing.
 | `coverage` | check that it runs **all** the suites it measures | a file proven only end to end must not count as uncovered |
 | `mutation` | check it has not reused its cache | a report saying "n of n reused" measured nothing |
 | `project_map` | add an export without regenerating | exit ≠ 0 |

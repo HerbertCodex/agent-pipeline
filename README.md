@@ -197,6 +197,10 @@ Donnez-lui ceci, en remplaçant `<votre stack>` :
 Ce dépôt contient un framework d'agents dans agent-pipeline/. Il n'est pas
 encore configuré pour ce projet, qui est en <votre stack>.
 
+J'ai choisi le rangement du code à l'étape précédente : <id vu sur la page>,
+pour un projet de type <backend|frontend|mobile|fullstack>. Déclare-le dans
+le bloc architecture de pipeline.config.json et range le code comme ça.
+
 Lis agent-pipeline/docs/nouveau-profil.md et suis-le du début à la fin.
 
 Ne me rends la main qu'après avoir répondu aux sept questions du contrôle
@@ -205,6 +209,8 @@ final — chacune par une commande et sa sortie réelle, pas par un avis.
 Deux choses restent à moi : installer une dépendance, et modifier la
 configuration une fois le pipeline en service. Demande-les moi.
 ```
+
+> 🔒 **Le choix de l'étape 3 n'est pas qu'une indication.** Il est écrit dans la configuration, et `apply-profile` refuse de démarrer sans lui — comme il refuse un rangement qui ne vaut pas pour votre type de projet. Sans ça, le choix ne vivrait que dans une page HTML : l'agent qui installe rangerait à sa façon, le suivant autrement, et personne ne pourrait dire qu'il y a dérive puisque rien ne dirait de quoi ça dérive.
 
 ### 5️⃣ Vérifier avant de croire
 
