@@ -63,7 +63,7 @@ For every bullet, ask: **which gate makes it fail?** If the answer is "none", ei
 
 Start from the origin project's file and replace every value. The `commands` keys are a contract: prompts and documents designate gates **by their key**, never by the command. `check` must remain type checking whatever tool provides it.
 
-Mandatory keys, refused if absent: `check`, `lint`, `build`, `test_unit`, `audit`, `secrets_scan`, `project_map`, `design_limits`.
+Mandatory keys, refused if absent: `check`, `lint`, `build`, `test_unit`, `audit`, `secrets_scan`, `project_map`, `design_limits`, `duplication`.
 
 Also mandatory, outside `commands`: an `architecture` block, `{ id, project_type }`. The operator chooses it — `render-architecture.mjs` lays out the options for their project type — but the choice has to be **written down**, because a decision that lives only in a rendered page binds nobody. The agent installing the profile lays the code out one way, the next agent lays it out another, and drift is undetectable because nothing states what it drifts from.
 
@@ -201,6 +201,18 @@ Before handing back, answer these questions with a command, never with a reading
 Three things stay with the human operator, in every profile: **installing a dependency**, **editing `pipeline.config.json`** once the pipeline is running, and **merging**. During the initial installation you write the configuration — that is its purpose — but as soon as the pipeline runs, it passes into the operator's hands.
 
 Report, do not invent: an unavailable command is escalated, never replaced by a substitute pretending to prove the real system.
+
+## The `duplication` gate, required of every profile
+
+Every prompt already demands a **reuse note** for any new component, module or helper, and that note is judged against the project map. Judged by a human, in review — which means judged when someone remembers to look. On a codebase with two hundred small components, nobody looks.
+
+`apply-profile` therefore refuses a configuration without `commands.duplication`. The gate refuses a block repeated across the codebase, and it is to reuse what `design_limits` is to single responsibility: an approximation that actually refuses something.
+
+The framework ships one implementation, `agent-pipeline/scripts/duplication.mjs`, so that no project is blocked waiting for a tool. It is deliberately crude: it compares **significant lines with indentation normalised**, because a paste is almost always reindented on arrival, and it does not strip comments — that would mean knowing the language, and the core knows none. Point the key at `jscpd`, `pmd cpd` or anything else the moment you want a token-level analysis.
+
+It reads a `duplication` block: `roots` (required, because a scan of the wrong tree is green for the wrong reason), `min_lines` (default 6) and `skip`. Below about six lines you are not finding rewrites, you are finding shared conventions, and a gate that cries wolf gets ignored.
+
+**Expect it to be red on its first run**, and read what it found before touching the threshold. On this repository it found three real clones on day one: the whole e2e bootstrap copied across three suites — while the project map advertised nine reusable test harnesses — and the same fixture literal asserted in a unit spec and an e2e spec. Loosening the threshold would have hidden all three. A threshold loosened once loosens again.
 
 ## The `design_limits` gate, required of every profile
 

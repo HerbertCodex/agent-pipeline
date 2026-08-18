@@ -366,6 +366,16 @@ function main() {
   for (const role of Object.keys(config.file_policy)) {
     if (!ROLES.includes(role)) fail(`file_policy: role inconnu "${role}"`);
   }
+  if (typeof config.commands.duplication !== "string") {
+    fail(
+      "commands.duplication missing: the core does not know your tool, but it requires a gate that " +
+        "refuses a block repeated across the codebase. Every prompt already demands a reuse note, and " +
+        "that note is judged in review against the project map \u2014 which means it is judged when someone " +
+        "remembers to look. A copy-paste detector is to reuse what design_limits is to single " +
+        "responsibility: an approximation that refuses something. agent-pipeline/scripts/duplication.mjs " +
+        "is one implementation, and any other is fine.",
+    );
+  }
   for (const role of ["implementer"]) {
     if (config.file_policy[role] == null) fail(`file_policy.${role} is required`);
   }

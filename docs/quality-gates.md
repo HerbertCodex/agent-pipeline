@@ -41,6 +41,8 @@ The trap is not a red gate, it is a green one: **a `--check` that compares an em
 
 `doc_lint` requires a contract on every exported symbol — description, one entry per parameter, a return when the function yields one. Renaming a parameter without its documentation fails.
 
+`duplication` refuses a block repeated across the codebase. It is the reuse note made checkable: every prompt demands one for any creation, and until this gate existed that note was judged in review, which means it was judged when someone remembered to look. Read what it finds before touching its threshold — on this repository the first run surfaced an e2e bootstrap copied into three suites, while the project map already advertised the harnesses as reusable.
+
 `comment_policy` refuses the opposite: describing what the code does, banners, section dividers, commented-out code, a `TODO` with no linked issue. **Narration describes today's implementation and lies tomorrow.** The why goes into the commit message; a trap already paid for goes into the profile's pitfalls document.
 
 A non-exported function carries neither contract nor narration. If its body needs to be told, its name or its decomposition is what is wrong.

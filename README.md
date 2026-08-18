@@ -281,6 +281,21 @@ node agent-pipeline/scripts/status.mjs           # 👁️ où en est-on ?
 
 ---
 
+## 🧬 La porte qui empêche l'agent de réécrire la même chose
+
+Chaque prompt exige une **note de réutilisation** pour toute création. Jusqu'ici elle était jugée en revue — donc quand quelqu'un pensait à regarder. Sur deux cents petits composants, personne ne regarde.
+
+```console
+$ npm run duplication
+11 lines repeated in 2 places:
+  test/catalog.e2e-spec.ts:22
+  test/health.e2e-spec.ts:19
+```
+
+Le framework fournit le détecteur, sans aucune dépendance, pour qu'aucun projet n'attende un outil. Pointez la clé sur `jscpd` ou `pmd cpd` quand vous voulez une analyse par jetons.
+
+> 💡 **Attendez-vous à ce qu'elle soit rouge au premier lancement**, et lisez avant de toucher au seuil. Sur ce dépôt elle a trouvé trois vraies copies dès le premier jour — dont tout l'amorçage e2e recopié dans trois suites, alors que la carte du projet annonçait ces harnais comme réutilisables.
+
 ## 🔑 Trois décisions ne partent jamais à un agent
 
 | | Pourquoi |
@@ -300,7 +315,7 @@ node agent-pipeline/scripts/status.mjs           # 👁️ où en est-on ?
 | `docs/` | **en anglais** — les modèles suivent mieux l'anglais. `nouveau-profil.md` pour installer, `operateur.md` pour vous |
 | `templates/` | les fichiers de politique, le workflow CI |
 | `skills/` | conseils de code, indépendants de toute stack |
-| `test/` | **132 tests** sur le framework lui-même |
+| `test/` | **173 tests** sur le framework lui-même |
 
 **Prérequis** : Node, git, et le client de votre forge (`gh`, `glab`). Rien d'autre.
 
