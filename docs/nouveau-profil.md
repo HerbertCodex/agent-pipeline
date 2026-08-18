@@ -168,6 +168,29 @@ Trois choses restent à l'opérateur humain, dans tous les profils : **installer
 
 Signale, n'invente pas : une commande indisponible se remonte, elle ne se remplace jamais par un substitut qui prétend prouver le système réel.
 
+## La porte `design_limits`, exigée de tout profil
+
+`apply-profile` refuse une configuration sans `commands.design_limits`. Le core ne connaît pas votre outil, mais il exige qu'une porte borne quatre choses :
+
+| Borne | Ce qu'elle approxime |
+| --- | --- |
+| complexité cyclomatique | KISS, et un proxy de responsabilité unique |
+| longueur d'une fonction | responsabilité unique |
+| nombre de paramètres | ségrégation d'interface |
+| profondeur d'imbrication | KISS |
+
+**Ce ne sont pas SOLID.** Ce sont des approximations mesurables de ce que SOLID protège : une fonction de deux cents lignes viole presque toujours la responsabilité unique, l'inverse n'est pas vrai. Une porte imparfaite qui mord vaut mieux qu'un principe que personne ne vérifie — et sans elle, la responsabilité unique s'auto-annule, le code n'étant bon que si le modèle l'est.
+
+**Ouvert-fermé et Liskov ne sont pas approximables** et restent en revue humaine. Écrivez-le dans les invariants du profil plutôt que de laisser croire qu'ils sont couverts.
+
+Trois exigences de forme, apprises en la posant :
+
+- **Calibrez sur le code réel avant de figer les seuils.** Mesurez les maximums constatés, placez la borne au-dessus. Un chiffre rond choisi d'avance casse au premier passage, puis se desserre — et une porte desserrée une fois se desserre toujours.
+- **Séparez-la de la porte de style.** Une fonction devenue trop complexe n'est pas une faute de formatage ; les confondre fait lire les deux de la même façon, c'est-à-dire distraitement.
+- **Exemptez les blocs de test de la limite de longueur.** Un scénario long décrit un parcours, ce n'est pas une dette.
+
+L'outil est libre : `eslint` pour TypeScript, `pylint` avec `max-complexity` pour Python, `gocyclo` pour Go. Le core ne voit qu'une clé et un code de sortie.
+
 ## Ce que la porte d'agnosticité refuse
 
 Porter le pipeline vers une autre stack révèle les couplages qu'on n'a pas vus en l'écrivant. Cinq d'entre eux sont désormais refusés par `agent-pipeline/test/agnosticite.test.mjs`, donc constatés avant le portage et non pendant :

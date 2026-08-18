@@ -1,7 +1,8 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { createSandbox, destroySandbox, run } from "./harness.mjs";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -107,5 +108,37 @@ describe("agnosticite : la CI separe le core de la stack", () => {
   test("les etapes de la stack restent un emplacement a remplir, jamais une commande ecrite", () => {
     assert.match(template, /\{\{steps\}\}/, "les portes du projet viennent de commands, pas du template");
     assert.match(template, /\{\{install\}\}/, "l'installation appartient a l'ecosysteme du projet");
+  });
+});
+
+describe("le cadre exige une porte sur les bornes de conception", () => {
+  test("apply-profile refuse une configuration sans design_limits", () => {
+    const root = createSandbox();
+    try {
+      const path = join(root, "pipeline.config.json");
+      const config = JSON.parse(readFileSync(path, "utf8"));
+      config.commands = { check: "true", lint: "true", build: "true", test_unit: "true", audit: "true", secrets_scan: "true", project_map: "true" };
+      writeFileSync(path, JSON.stringify(config));
+      const result = run(root, "apply-profile.mjs", ["--check"]);
+      assert.notEqual(result.status, 0);
+      assert.match(result.output, /design_limits manquante/);
+      assert.match(result.output, /s'auto-annulent/, "le refus dit pourquoi la porte existe, pas seulement qu'elle manque");
+    } finally {
+      destroySandbox(root);
+    }
+  });
+
+  test("elle est acceptee des qu'elle est declaree, quel que soit l'outil", () => {
+    const root = createSandbox();
+    try {
+      const path = join(root, "pipeline.config.json");
+      const config = JSON.parse(readFileSync(path, "utf8"));
+      config.commands = { check: "true", lint: "true", build: "true", test_unit: "true", audit: "true", secrets_scan: "true", project_map: "true", design_limits: "gocyclo -over 8 ." };
+      writeFileSync(path, JSON.stringify(config));
+      const result = run(root, "apply-profile.mjs", ["--check"]);
+      assert.doesNotMatch(result.output, /design_limits/, "le core ne juge pas l'outil, seulement la presence de la cle");
+    } finally {
+      destroySandbox(root);
+    }
   });
 });

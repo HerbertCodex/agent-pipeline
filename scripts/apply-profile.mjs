@@ -267,6 +267,14 @@ function main() {
   for (const key of ["check", "lint", "build", "test_unit", "audit", "secrets_scan", "project_map"]) {
     if (typeof config.commands[key] !== "string") fail(`commands.${key} manquante ou invalide`);
   }
+  if (typeof config.commands.design_limits !== "string") {
+    fail(
+      "commands.design_limits manquante : le core ne connait pas votre outil, mais il exige qu'une porte " +
+        "borne complexite, longueur de fonction, nombre de parametres et profondeur d'imbrication. " +
+        "Ce sont des approximations mesurables de ce que la responsabilite unique et KISS protegent ; " +
+        "sans porte, elles s'auto-annulent et le code n'est bon que si le modele l'est.",
+    );
+  }
   for (const role of Object.keys(config.file_policy)) {
     if (!ROLES.includes(role)) fail(`file_policy: role inconnu "${role}"`);
   }

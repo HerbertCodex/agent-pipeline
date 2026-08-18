@@ -135,6 +135,23 @@ node agent-pipeline/scripts/status.mjs               # état d'ensemble
 
 `architecture-drift` **se tait sur un projet jeune** et l'annonce, parce qu'un détecteur qui crie sur trois modules apprend surtout à être ignoré.
 
+### 6. Ce que le cadre exige de votre profil, quel que soit votre langage
+
+`apply-profile` refuse une configuration dont une clé de `commands` manque. Huit sont obligatoires — dont **`design_limits`**, qui doit borner quatre choses :
+
+| Borne | Ce qu'elle approxime |
+| --- | --- |
+| complexité cyclomatique | KISS, et un proxy de responsabilité unique |
+| longueur d'une fonction | responsabilité unique |
+| nombre de paramètres | ségrégation d'interface |
+| profondeur d'imbrication | KISS |
+
+L'outil est libre : `eslint` pour TypeScript, `pylint --max-complexity` pour Python, `gocyclo` pour Go. Le cadre ne voit qu'une clé et un code de sortie.
+
+**Ce ne sont pas SOLID** — ce sont des approximations mesurables de ce qu'il protège. Une fonction de deux cents lignes viole presque toujours la responsabilité unique ; l'inverse n'est pas vrai. Une porte imparfaite qui mord vaut mieux qu'un principe que personne ne vérifie. **Ouvert-fermé et Liskov ne sont pas approximables** et restent en revue humaine : écrivez-le dans vos invariants plutôt que de laisser croire qu'ils sont couverts.
+
+Trois exigences de forme, apprises en posant cette porte : **calibrez les seuils sur le code réel** avant de les figer, **séparez-la de la porte de style** — une fonction trop complexe n'est pas une faute de formatage —, et **exemptez les blocs de test** de la limite de longueur.
+
 ---
 
 ## Ce qui reste à vous, toujours
@@ -156,7 +173,7 @@ node agent-pipeline/scripts/status.mjs               # état d'ensemble
 | `docs/` | dont **`nouveau-profil.md`**, le guide de portage, et `operateur.md`, le manuel humain |
 | `templates/` | `AGENTS.md`, `CLAUDE.md`, le workflow CI |
 | `skills/` | ce qui ne dépend d'aucune stack |
-| `test/` | 120 tests sur le cadre lui-même |
+| `test/` | 122 tests sur le cadre lui-même |
 | `schemas/` | la forme des handoffs |
 
 Une **porte d'agnosticité** refuse qu'un couplage à une stack entre ici : aucun script n'invoque de lanceur de tâches, aucun n'importe un paquet installé, aucun n'écrit en dur un chemin que la configuration possède, et chaque étape CI du cadre s'exécute par `node` en direct.
