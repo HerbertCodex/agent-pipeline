@@ -129,7 +129,15 @@ Ouvre `commands` dans `pipeline.config.json` et relève tout ce qui n'est pas la
 
 Un prérequis manquant ne se manifeste pas par une absence, mais par une porte qui **échoue au lieu de protéger**. Et une porte qui échoue toujours finit par être contournée ou ignorée, ce qui est pire que son absence : le dépôt affirme une protection que personne n'exerce.
 
-Vérifie-les un par un, en lançant la commande de la config, pas en supposant.
+Vérifie-les un par un — mais pas à la main :
+
+```
+node agent-pipeline/scripts/preflight.mjs
+```
+
+Il exécute chaque porte déclarée et **sépare trois cas que la CI confond** : verte, refusante, ou **injouable faute d'outil**. Une porte qui échoue parce qu'elle a trouvé quelque chose et une porte qui échoue parce que son binaire n'existe pas se ressemblent dans un journal, et ne veulent pas du tout dire la même chose. Confondues, la seconde apprend à ignorer la première.
+
+Il sort en 1 uniquement quand une porte est **injouable** : une porte qui refuse légitimement ne le fait pas échouer, ce n'est pas son objet. Et il ne propose que deux sorties honnêtes — installer l'outil, ou retirer la clé de `commands`. Jamais laisser une porte rouge en permanence.
 
 ## Ce que tu dois configurer pour que les garanties soient réelles
 
@@ -234,6 +242,10 @@ node agent-pipeline/scripts/metrics.mjs        # debit et echappees
 node agent-pipeline/scripts/store-verify.mjs   # invariants du store
 node agent-pipeline/scripts/render-proposal.mjs <proposition.json> <sortie.html>   # relire une spec avant de l'approuver
 node agent-pipeline/scripts/render-decisions.mjs <sortie.html> [proposition.json]  # ce qui attend ta decision
+node agent-pipeline/scripts/preflight.mjs      # chaque porte est-elle executable ?
+node agent-pipeline/scripts/status.mjs         # les issues par colonne, vue d'ensemble
+node agent-pipeline/scripts/permissions.mjs    # les chemins refuses a chaque role
+node agent-pipeline/scripts/install-hooks.mjs  # poser ou verifier les crochets git
 node --test "agent-pipeline/test/**/*.test.mjs"                                   # prouver le core lui-meme
 ```
 

@@ -156,11 +156,12 @@ Avant de rendre la main, réponds à ces questions par une commande, jamais par 
 1. `apply-profile --check`, `sync-briefs --check` et la carte `--check` sortent-ils tous en 0 ?
 2. **As-tu écrit le générateur de carte, et cite-t-il réellement le code ?** Compte les fichiers sous `roots` face aux entrées rendues. Un `--check` vert sur une carte vide est vert.
 3. Chaque porte de `commands` a-t-elle échoué au moins une fois, sur une casse volontaire ?
-4. Les crochets sont-ils installés et se déclenchent-ils ?
-5. `store-verify` est-il vert ?
-6. Chaque invariant du profil a-t-il une porte qui le fait échouer ?
+4. `preflight` confirme-t-il que **chaque porte déclarée est exécutable** ? Une porte injouable échoue au lieu de protéger.
+5. Les crochets sont-ils installés et se déclenchent-ils ?
+6. `store-verify` est-il vert ?
+7. Chaque invariant du profil a-t-il une porte qui le fait échouer ?
 
-Une réponse « je pense que oui » à l'une de ces six questions est une réponse non.
+Une réponse « je pense que oui » à l'une de ces sept questions est une réponse non.
 
 ## Ce que tu ne décides pas
 
@@ -203,29 +204,29 @@ Porter le pipeline vers une autre stack révèle les couplages qu'on n'a pas vus
 
 La comparaison porte sur le code privé de ses commentaires : une consigne peut légitimement citer `npm` en prose, seule une invocation est un couplage. Le fichier de la porte s'exclut lui-même, et c'est nommé plutôt que contourné — un motif tordu pour ne pas se voir finit par ne plus voir ce qu'il cherche.
 
-## Choisir l'architecture, a la configuration
+## Choisir l'architecture, à la configuration
 
 ```
 node agent-pipeline/scripts/render-architecture.mjs <sortie.html> <backend|frontend|mobile|fullstack>
 ```
 
-Sans analyse jointe, la page pose d'abord **huit questions en langue ordinaire** — une sorte de cahier des charges non definitif. C'est l'ordre qui compte : presenter huit options a quelqu'un qui n'a pas encore decrit son produit, c'est un catalogue, pas une aide a la decision.
+Sans analyse jointe, la page pose d'abord **huit questions en langue ordinaire** — une sorte de cahier des charges non définitif. C'est l'ordre qui compte : présenter huit options à quelqu'un qui n'a pas encore décrit son produit, c'est un catalogue, pas une aide à la décision.
 
-**B3 est la question qui detecte le metier** : *y a-t-il des situations ou le systeme doit REFUSER quelque chose ?* Pas un champ obligatoire ni un format — un vrai refus, « ce livre est deja sorti », « ce compte n'a pas assez ». Un systeme qui ne refuse jamais rien pour une raison venue du monde reel n'a pas de metier, il a un schema. **B4 verifie** que les refus cites en sont : un professionnel du metier les comprendrait-il sans qu'on parle informatique ?
+**B3 est la question qui détecte le métier** : *y a-t-il des situations où le système doit REFUSER quelque chose ?* Pas un champ obligatoire ni un format — un vrai refus, « ce livre est déjà sorti », « ce compte n'a pas assez ». Un système qui ne refuse jamais rien pour une raison venue du monde réel n'a pas de métier, il a un schéma. **B4 vérifie** que les refus cités en sont : un professionnel du métier les comprendrait-il sans qu'on parle informatique ?
 
-Les reponses deviennent une analyse structuree, jointe en troisieme argument. La page rend alors un **conseil argumente** : chaque option recoit un verdict et ses raisons, tirees de l'analyse et citees. « Aucune integration declaree remplacable : les ports seraient une assurance dont vous n'encaisserez jamais l'interet » se discute ; un classement sans motif s'accepte.
+Les réponses deviennent une analyse structurée, jointe en troisième argument. La page rend alors un **conseil argumenté** : chaque option reçoit un verdict et ses raisons, tirées de l'analyse et citées. « Aucune intégration déclarée remplaçable : les ports seraient une assurance dont vous n'encaisserez jamais l'intérêt » se discute ; un classement sans motif s'accepte.
 
-L'analyse doit porter `business_rules`, meme vide : dire qu'il n'y en a aucune est une conclusion, pas un oubli, et le validateur refuse le champ absent.
+L'analyse doit porter `business_rules`, même vide : dire qu'il n'y en a aucune est une conclusion, pas un oubli, et le validateur refuse le champ absent.
 
-Le framework **ne choisit pas** l'architecture : ce serait imposer une reponse a une question qui depend du produit. Il rend le choix explicable, puis opposable.
+Le framework **ne choisit pas** l'architecture : ce serait imposer une réponse à une question qui dépend du produit. Il rend le choix explicable, puis opposable.
 
-Le type de projet filtre le catalogue, et ce n'est pas cosmetique — il change la reponse. Un service back-end voit l'hexagonale et Clean ; une interface web voit le decoupage en tranches et MVVM, et ne voit pas les ports, qui repondent a une contrainte qu'elle n'a pas. Un depot full-stack recoit en plus la seule question qui compte vraiment chez lui : **ce qui traverse la frontiere entre les deux cotes**, parce que c'est elle qui decide de ce qui casse quand un cote bouge.
+Le type de projet filtre le catalogue, et ce n'est pas cosmétique — il change la réponse. Un service back-end voit l'hexagonale et Clean ; une interface web voit le découpage en tranches et MVVM, et ne voit pas les ports, qui répondent à une contrainte qu'elle n'a pas. Un depot full-stack reçoit en plus la seule question qui compte vraiment chez lui : **ce qui traverse la frontière entre les deux côtés**, parce que c'est elle qui décide de ce qui casse quand un côté bouge.
 
-La page ouvre sur les **questions qui decident** avant tout nom d'architecture. La premiere elimine le plus d'options a elle seule : *combien d'adaptateurs allez-vous reellement remplacer ?* Si la reponse est zero — et pour une base de donnees c'est presque toujours zero — les ports sont une ceremonie que chaque nouvelle route paie.
+La page ouvre sur les **questions qui décident** avant tout nom d'architecture. La première élimine le plus d'options à elle seule : *combien d'adaptateurs allez-vous réellement remplacer ?* Si la réponse est zéro — et pour une base de données c'est presque toujours zéro — les ports sont une cérémonie que chaque nouvelle route paie.
 
-Chaque option publie **la declaration que la configuration portera** : ses couches et le sens autorise des dependances. L'operateur lit donc exactement ce que la porte appliquera, au lieu de choisir un nom et de decouvrir la contrainte a l'implementation.
+Chaque option publie **la déclaration que la configuration portera** : ses couches et le sens autorisé des dépendances. L'opérateur lit donc exactement ce que la porte appliquera, au lieu de choisir un nom et de découvrir la contrainte à l'implémentation.
 
-Le profil traduit ensuite cette declaration en porte pour sa stack — zones d'import pour TypeScript, equivalent ailleurs — et la regle rejoint `invariants.md`, ou chaque puce nomme la porte qui la refuse. Une architecture qui ne serait ecrite que dans un document ne serait pas une architecture : ce serait une intention.
+Le profil traduit ensuite cette déclaration en porte pour sa stack — zones d'import pour TypeScript, équivalent ailleurs — et la règle rejoint `invariants.md`, où chaque puce nomme la porte qui la refuse. Une architecture qui ne serait écrite que dans un document ne serait pas une architecture : ce serait une intention.
 
 ## Savoir quand l'architecture ne tient plus
 
@@ -233,13 +234,13 @@ Le profil traduit ensuite cette declaration en porte pour sa stack — zones d'i
 node agent-pipeline/scripts/architecture-drift.mjs <graphe.json>
 ```
 
-Le choix initial n'a pas a etre definitif ; encore faut-il savoir quand il a cesse de convenir. Le detecteur confronte le graphe de dependances aux signes ecrits dans le catalogue : un module qui en importe trois autres, deux modules qui s'importent mutuellement, un fichier partage a un seul consommateur, un partage devenu fourre-tout, un module trois fois plus gros que les autres. Chaque signal dit ce qu'il **signifie** et ce qu'il faut **regarder ensuite** — un signal sans suite est une alarme, pas un diagnostic.
+Le choix initial n'a pas à être définitif ; encore faut-il savoir quand il a cessé de convenir. Le détecteur confronte le graphe de dépendances aux signes écrits dans le catalogue : un module qui en importe trois autres, deux modules qui s'importent mutuellement, un fichier partagé à un seul consommateur, un partage devenu fourre-tout, un module trois fois plus gros que les autres. Chaque signal dit ce qu'il **signifie** et ce qu'il faut **regarder ensuite** — un signal sans suite est une alarme, pas un diagnostic.
 
-**Le framework juge, il n'extrait pas.** Lire des imports demande de connaitre un langage ; le core n'en connait aucun. Le projet fournit donc le graphe sous une forme neutre — `modules`, leurs `files` et leurs `imports`, les fichiers `shared` avec leurs consommateurs, et la `composition_root` — et cette frontiere est ce qui rend le detecteur portable. Sur ce depot, l'extracteur est `scripts/import-graph.mjs`, propre a TypeScript.
+**Le framework juge, il n'extrait pas.** Lire des imports demande de connaître un langage ; le core n'en connaît aucun. Le projet fournit donc le graphe sous une forme neutre — `modules`, leurs `files` et leurs `imports`, les fichiers `shared` avec leurs consommateurs, et la `composition_root` — et cette frontière est ce qui rend le détecteur portable. L'extracteur, lui, appartient au projet : il connaît le langage, donc il ne peut pas vivre dans le cadre.
 
-Deux precautions valent d'etre connues, parce qu'elles decident si le detecteur sera lu ou ignore :
+Deux précautions valent d'être connues, parce qu'elles décident si le détecteur sera lu ou ignoré :
 
-- **il se tait sur un projet jeune.** En dessous de quatre modules et vingt fichiers, un partage a un seul consommateur se declenche systematiquement et a tort — le second module n'existe simplement pas encore. Il l'annonce au lieu de se taire en silence ;
-- **la racine de composition est exclue.** Le fichier qui assemble l'application importe legitimement tout le monde ; le compter comme un couplage produirait une alarme permanente, et une alarme permanente ne se lit plus.
+- **il se tait sur un projet jeune.** En dessous de quatre modules et vingt fichiers, un partage à un seul consommateur se déclenche systématiquement et à tort — le second module n'existe simplement pas encore. Il l'annonce au lieu de se taire en silence ;
+- **la racine de composition est exclue.** Le fichier qui assemble l'application importe légitimement tout le monde ; le compter comme un couplage produirait une alarme permanente, et une alarme permanente ne se lit plus.
 
-Ce qu'il **ne voit pas**, et qu'il ecrit a chaque execution : deux modules qui appliquent la **meme regle metier** avec un code different. Un graphe d'imports ne voit pas le sens. Ce declencheur-la se constate en relisant, jamais en calculant, et le pretendre couvert serait pire que de ne pas le chercher.
+Ce qu'il **ne voit pas**, et qu'il écrit à chaque exécution : deux modules qui appliquent la **même règle métier** avec un code différent. Un graphe d'imports ne voit pas le sens. Ce déclencheur-là se constate en relisant, jamais en calculant, et le prétendre couvert serait pire que de ne pas le chercher.
