@@ -65,7 +65,9 @@ describe("preflight: what it returns to the operator", () => {
   });
 
   test("a gate that refuses does NOT fail the check", () => {
-    const root = withCommands({ check: "true", lint: "exit 1" });
+    // `exit 1` alone no longer models a refusing gate: a gate that found
+    // something says so, and silence is now read as "it did not run".
+    const root = withCommands({ check: "true", lint: "echo 'two style errors' && exit 1" });
     const result = run(root, "preflight.mjs");
     assert.equal(result.status, 0, "preflight verifie l'executabilite, il ne rejoue pas les portes");
     assert.match(result.output, /refuse/);
@@ -89,5 +91,24 @@ describe("preflight: what it returns to the operator", () => {
     const result = run(root, "preflight.mjs");
     assert.notEqual(result.status, 0);
     assert.match(result.output, /no command declared/);
+  });
+});
+
+describe("preflight: a gate that fails without saying anything is not reporting a finding", () => {
+  test("classes a silent non-zero exit as unavailable, not as refusing", () => {
+    const root = withCommands({ check: "exit 254" });
+    const result = run(root, "preflight.mjs", ["--json"]);
+    assert.deepEqual(
+      JSON.parse(result.stdout).missing,
+      ["check"],
+      "a task runner given --silent prints nothing when its manifest is missing: exit 254, zero output. " +
+        "Classed as refusing, preflight then reports that every gate can run in a project where none can.",
+    );
+  });
+
+  test("a gate that refuses and says why stays a finding", () => {
+    const root = withCommands({ check: "echo 'two type errors' && exit 1" });
+    const result = run(root, "preflight.mjs", ["--json"]);
+    assert.deepEqual(JSON.parse(result.stdout).missing, [], "silence is the signal, not failure");
   });
 });

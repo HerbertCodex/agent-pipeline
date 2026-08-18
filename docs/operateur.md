@@ -221,6 +221,8 @@ node agent-pipeline/scripts/render-decisions.mjs <out.html> [proposal.json]  # w
 node agent-pipeline/scripts/render-architecture.mjs <out.html> <type> [analysis.json]  # choose how to lay out the code
 node agent-pipeline/scripts/architecture-drift.mjs <graph.json>              # when the layout no longer holds
 node agent-pipeline/scripts/preflight.mjs        # is every gate executable?
+node agent-pipeline/scripts/export-profile.mjs <dir>  # bundle this stack's gates for another project
+node agent-pipeline/scripts/import-profile.mjs <dir>  # install one, then recalibrate its thresholds
 node agent-pipeline/scripts/status.mjs           # issues by column, overview
 node agent-pipeline/scripts/permissions.mjs      # the paths refused to each role
 node agent-pipeline/scripts/install-hooks.mjs    # install or check the git hooks

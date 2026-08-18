@@ -252,6 +252,36 @@ function applySkills(config, checkMode) {
 }
 
 /**
+ * Refuse un profil importe tant que ses seuils n'ont pas ete remesures.
+ *
+ * Un profil emporte des bornes calibrees sur le code d'un autre projet.
+ * Reprises telles quelles, elles sont soit trop larges — la porte ne mord
+ * plus — soit trop serrees, et la premiere execution les fait desserrer.
+ * Le cadre demande partout ailleurs de calibrer sur du code constate ; un
+ * profil importe est precisement le cas ou l'on saute cette etape sans
+ * s'en apercevoir.
+ *
+ * La sortie est d'une ligne : passer `calibration_required` a `false`. Ce
+ * n'est pas une formalite, c'est une declaration — quelqu'un affirme avoir
+ * mesure. Une porte sans sortie satisfaisable se supprime le lendemain.
+ *
+ * @param config - configuration du projet hote
+ */
+function checkCalibration(config) {
+  const path = join(config.profiles_dir, config.profile, "profile.json");
+  if (!existsSync(path)) return;
+  const manifest = JSON.parse(readFileSync(path, "utf8"));
+  if (manifest.calibration_required === true) {
+    fail(
+      `${path} carries calibration_required: true. The thresholds in this profile were measured on ` +
+        "another codebase, not on yours: too loose and the gate stops refusing anything, too tight and " +
+        "the first run gets it loosened. Measure them here, adjust the tool files, then set the flag to " +
+        "false to state that you did.",
+    );
+  }
+}
+
+/**
  * Refuse une configuration qui ne declare pas comment le code est range.
  *
  * `render-architecture` explique les options et l'operateur tranche, mais un
@@ -332,6 +362,7 @@ function main() {
     );
   }
   checkArchitecture(config);
+  checkCalibration(config);
   for (const role of Object.keys(config.file_policy)) {
     if (!ROLES.includes(role)) fail(`file_policy: role inconnu "${role}"`);
   }

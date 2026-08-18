@@ -1,0 +1,11 @@
+{
+  "profiles_dir": "agent-pipeline/profiles",
+  "docs_dirs": ["agent-pipeline/docs"],
+  "briefs_dir": "pipeline/briefs",
+  "prompts_dir": ".claude/agents",
+  "skills_dir": ".claude/skills",
+  "rules_path": "pipeline/rules.json",
+  "project_context": "pipeline/project-context.md",
+  "store_dir": "pipeline/store",
+  "ci": { "provider": "none" }
+}

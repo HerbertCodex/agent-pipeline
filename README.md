@@ -189,6 +189,19 @@ node agent-pipeline/scripts/render-architecture.mjs archi.html backend
 
 Le framework **ne choisit pas à votre place**. Et il vous met en garde contre l'erreur la plus fréquente : prendre l'architecture la plus lourde par précaution, c'est payer une assurance qu'on n'utilisera peut-être jamais — prélevée sur chaque fichier écrit, pendant des années.
 
+### ♻️ Si un projet de la même stack tourne déjà
+
+Ne réécrivez pas ses portes. Exportez-les :
+
+```bash
+node agent-pipeline/scripts/export-profile.mjs mon-profil/ eslint.config.mjs knip.json
+node agent-pipeline/scripts/import-profile.mjs mon-profil/ .    # dans le nouveau dépôt
+```
+
+Le paquet emporte les **commandes, les politiques et les fichiers d'outils** — pas l'endroit où l'autre projet range son état, ni sa forge, ni l'architecture qu'il a choisie.
+
+> ⚠️ **Il n'est pas utilisable tel quel.** `apply-profile` refuse tant que `calibration_required` vaut `true`. Les seuils ont été mesurés sur un *autre* code : trop larges, la porte ne mord plus ; trop serrés, la première exécution les fait desserrer. Mesurez-les chez vous, puis passez le drapeau à `false` — c'est une affirmation, pas une case à cocher.
+
 ### 4️⃣ Laisser un agent l'installer
 
 Donnez-lui ceci, en remplaçant `<votre stack>` :
@@ -299,7 +312,6 @@ node agent-pipeline/scripts/status.mjs           # 👁️ où en est-on ?
 
 Écrit ici plutôt que découvert par vous.
 
-- **Les profils ne voyagent pas.** Cloner ce dépôt vous donne le framework, pas les portes d'une stack donnée. Pour un second projet du même type, elles se réécrivent.
 - **Aucune mesure comparative.** Ce framework compte ses propres défauts échappés. Il ne prouve pas encore qu'il fait mieux qu'une session sans lui.
 - **Ouvert-fermé et Liskov ne sont vérifiés qu'en partie.** Deux formes sont attrapées par une porte — une méthode de classe dérivée qui lève inconditionnellement, une chaîne d'`instanceof` qui décide du comportement. Une précondition resserrée, elle, reste invisible à toute requête syntaxique : ça reste en revue humaine, et c'est écrit plutôt que sous-entendu.
 

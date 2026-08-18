@@ -8,6 +8,14 @@ import { loadConfig, fail } from "./lib.mjs";
  * sortie universel pour « binaire absent ». Un faux negatif se traduit par
  * une porte classee refusante alors qu'elle est indisponible — c'est-a-dire
  * l'etat qu'on a aujourd'hui, jamais pire.
+ *
+ * Le silence est le second signal, et lui n'est pas heuristique : une porte
+ * qui a trouve quelque chose le dit. Une porte qui echoue sans ecrire un
+ * caractere ne rapporte rien, elle n'a pas tourne. Le cas s'est produit le
+ * 2026-08-18 sur un projet fraichement importe : un lanceur de taches en
+ * mode silencieux, prive de son manifeste, sort en 254 sans un mot. Les
+ * seize portes etaient classees refusantes, et preflight concluait que
+ * toutes etaient executables dans un projet ou aucune ne l'etait.
  */
 const ABSENT =
   /command not found|not found|No such file or directory|is not recognized|ENOENT|Cannot find module|MODULE_NOT_FOUND|executable file not found/i;
@@ -35,7 +43,7 @@ export function classify(key, command) {
     return { key, verdict: "trop-longue", status: null, detail: "depasse dix minutes" };
   }
   if (result.status === 0) return { key, verdict: "verte", status: 0, detail: "" };
-  if (result.status === 127 || ABSENT.test(output)) {
+  if (result.status === 127 || ABSENT.test(output) || output.trim().length === 0) {
     return { key, verdict: "indisponible", status: result.status, detail: telling.trim().slice(0, 120) };
   }
   return { key, verdict: "refuse", status: result.status, detail: telling.trim().slice(0, 120) };

@@ -6,6 +6,28 @@ It is not an introduction to the pipeline. For what it does and why, read `AGENT
 
 Throughout this document, **a gate** means a command that either passes or fails. If it fails, the work does not move on. Gates are named by key — `check`, `lint`, `test_unit` — in `pipeline.config.json`; the key stays the same across projects, the command behind it changes with the stack. That is what lets these documents point at a gate without knowing your tools.
 
+## Starting from a profile that already exists
+
+If a project of the same stack already runs this pipeline, do not rewrite its gates. Export them there:
+
+```
+node agent-pipeline/scripts/export-profile.mjs <bundle-dir> [tool-file...]
+```
+
+The bundle carries the **stack half** of the configuration — `commands`, `project_map`, `doc_policy`, `comment_policy`, `secrets_scan`, `file_policy` — plus the invariants, the profile skills, and the tool files the commands name. It deliberately leaves behind `store_dir`, `ci` and `architecture.id`: those describe where that project keeps its state, which forge it lives on, and a layout decided for it. Carrying them would install decisions the new project never took.
+
+Then, in the new repository:
+
+```
+node agent-pipeline/scripts/import-profile.mjs <bundle-dir> [host-dir]
+```
+
+It seeds the profile directory and writes `pipeline.config.json` **only when there is none**. If the project already has one, it refuses and prints the block to merge — that file belongs to the operator and is never rewritten by a script. Tool files that already exist are kept, and named in the output.
+
+**The imported profile does not run yet.** `apply-profile` refuses while `calibration_required` is `true` in the profile's `profile.json`. That flag is not ceremony: the thresholds in those tool files were measured on another codebase. Too loose and the gate stops refusing anything; too tight and the first run gets it loosened, and a gate loosened once loosens again. Measure them here, adjust the files, then set the flag to `false` — which is a claim that you did.
+
+You still write the invariants and the pitfalls document yourself. A profile carries what a stack does; it does not know what this repository has already learned.
+
 ## What you configure, and what you do not touch
 
 `agent-pipeline/scripts/` is **agnostic**: those scripts know no language, no framework, no package manager. They read the store, compute the schedule, validate handoffs. You do not touch them, and you introduce no stack dependency there — the same rule holds for `agent-pipeline/prompts/`, `agent-pipeline/docs/` and `agent-pipeline/templates/`.
