@@ -191,6 +191,8 @@ Three properties that are not decorative. The **text is taken verbatim**, never 
 
 The script refuses any mode other than `spec_proposal`. The session then publishes the page and gives you the link.
 
+**You do not have to remember to ask for it.** Since 2026-08-18 the page is not a courtesy: `render-proposal` stamps into it the digest of what it displays, and `validate-handoff` refuses a proposal that declares no `review_page`, one whose page came from somewhere else, or one whose page was rendered before the scope moved. If you never got a page, no round was ever submitted.
+
 ## Seeing what is waiting on your decision
 
 ```

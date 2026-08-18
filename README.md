@@ -248,6 +248,8 @@ flowchart LR
 
 À l'étape 1, il vous soumet **chaque choix que vous pourriez faire autrement** — la durée d'un prêt, faut-il valider le format d'un email, que se passe-t-il si on rend deux fois le même livre. Avec sa recommandation et les autres options.
 
+La page n'est pas une politesse : `render-proposal` y grave l'empreinte de ce qu'elle affiche, et `validate-handoff` **refuse un tour qui n'en déclare aucune** — ou dont la page a été rendue avant que le périmètre bouge. Si vous n'avez jamais reçu de page, aucun tour n'a été soumis.
+
 Quand vous validez, le document est **figé par une empreinte**. Si le découpage de l'étape 2 s'appuie sur autre chose, ou sur ce document modifié après coup, il est refusé. On ne peut pas vous faire approuver 14 jours et en programmer 30.
 
 ---
@@ -298,7 +300,6 @@ node agent-pipeline/scripts/status.mjs           # 👁️ où en est-on ?
 Écrit ici plutôt que découvert par vous.
 
 - **Les profils ne voyagent pas.** Cloner ce dépôt vous donne le framework, pas les portes d'une stack donnée. Pour un second projet du même type, elles se réécrivent.
-- **Rien ne déclenche automatiquement les pages de relecture.** Le framework les produit ; c'est à la session d'y penser. *Une habitude, pas une porte — donc une faiblesse, selon la règle énoncée plus haut.*
 - **Aucune mesure comparative.** Ce framework compte ses propres défauts échappés. Il ne prouve pas encore qu'il fait mieux qu'une session sans lui.
 - **Ouvert-fermé et Liskov ne sont pas vérifiables automatiquement.** Ils restent en revue humaine, et c'est écrit plutôt que sous-entendu.
 
