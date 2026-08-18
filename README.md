@@ -67,7 +67,7 @@ Si la suite passe au vert à ce commit-là, les tests ont été écrits après. 
 
 | Mot | Ce que ça veut dire ici |
 | :-- | :-- |
-| **une porte** | une commande qui passe ou qui échoue. `npm test`, `eslint`, un scan de secrets. Si elle échoue, le travail ne passe pas. C'est tout. |
+| **une commande** | déclarée dans la configuration : `npm test`, `eslint`, un scan de secrets. Elle passe ou elle échoue. Si elle échoue, le travail ne passe pas. C'est tout. |
 | **un rôle** | un agent avec un seul métier et des droits limités. Celui qui code ne peut pas modifier la configuration. Celui qui vérifie ne peut rien écrire du tout. |
 | **un handoff** | le rapport qu'un rôle rend en terminant. Un fichier JSON, validé avant d'être accepté. |
 | **le store** | deux fichiers sur disque où vit l'état d'avancement. Pas dans la mémoire d'un agent : si la session s'arrête, rien n'est perdu. |
@@ -98,7 +98,7 @@ flowchart LR
 | Rôle | Peut écrire | Ne peut pas |
 | :-- | :-- | :-- |
 | 📋 Product | rien dans le code | ni code, ni tests |
-| 🔨 Implementer | le code et les tests | ni la config, ni les portes |
+| 🔨 Implementer | le code et les tests | ni la config, ni les commandes |
 | 🔍 QA | **rien du tout** | lecture seule, elle ne corrige jamais |
 | 🎛️ Orchestrateur | l'état d'avancement | ni code, ni tests |
 
@@ -215,7 +215,7 @@ La page porte, pour chaque candidat : licence, poids transitif, date de dernièr
 
 ### ♻️ Si un projet de la même stack tourne déjà
 
-Ne réécrivez pas ses portes. Exportez-les :
+Ne réécrivez pas ses commandes. Exportez-les :
 
 ```bash
 node agent-pipeline/scripts/export-profile.mjs mon-profil/ eslint.config.mjs knip.json
@@ -224,7 +224,7 @@ node agent-pipeline/scripts/import-profile.mjs mon-profil/ .    # dans le nouvea
 
 Le paquet emporte les **commandes, les politiques et les fichiers d'outils** — pas l'endroit où l'autre projet range son état, ni sa forge, ni l'architecture qu'il a choisie.
 
-> ⚠️ **Il n'est pas utilisable tel quel.** `apply-profile` refuse tant que `calibration_required` vaut `true`. Les seuils ont été mesurés sur un *autre* code : trop larges, la porte ne mord plus ; trop serrés, la première exécution les fait desserrer. Mesurez-les chez vous, puis passez le drapeau à `false` — c'est une affirmation, pas une case à cocher.
+> ⚠️ **Il n'est pas utilisable tel quel.** `apply-profile` refuse tant que `calibration_required` vaut `true`. Les seuils ont été mesurés sur un *autre* code : trop larges, la commande ne refuse plus rien ; trop serrés, la première exécution les fait desserrer. Mesurez-les chez vous, puis passez le drapeau à `false` — c'est une affirmation, pas une case à cocher.
 
 ### 4️⃣ Laisser un agent l'installer
 
@@ -258,13 +258,13 @@ $ node agent-pipeline/scripts/preflight.mjs
   ABSENT secrets_scan    /bin/sh: gitleaks: command not found
 ```
 
-Une porte dont l'outil n'est pas installé **échoue au lieu de protéger** — et une porte toujours rouge finit par être ignorée. `preflight` distingue « cette porte a trouvé un problème » de « cette porte ne peut pas tourner ».
+Une commande dont l'outil n'est pas installé **échoue au lieu de protéger** — et une commande toujours rouge finit par être ignorée. `preflight` distingue « cette commande a trouvé un problème » de « cette commande ne peut pas tourner ».
 
 Puis la question qui compte le plus :
 
-> ⭐ **Avez-vous vu chaque porte échouer au moins une fois ?**
+> ⭐ **Avez-vous vu chaque commande échouer au moins une fois ?**
 >
-> Cassez volontairement ce qu'elle est censée attraper. Une porte verte sur du code sain ne prouve rien — elle peut être verte parce qu'elle ne mesure rien. Ça s'est produit trois fois sur ce dépôt en une journée.
+> Cassez volontairement ce qu'elle est censée attraper. Une commande qui passe sur du code sain ne prouve rien — elle peut passer parce qu'elle ne mesure rien. Ça s'est produit trois fois sur ce dépôt en une journée.
 
 ---
 
@@ -296,7 +296,7 @@ Quand vous validez, le document est **figé par une empreinte**. Si le découpag
 ```bash
 node agent-pipeline/scripts/next-step.mjs        # 📍 quelle est la prochaine étape ?
 node agent-pipeline/scripts/render-decisions.mjs q.html  # ⚖️ qu'est-ce qui attend ma décision ?
-node agent-pipeline/scripts/preflight.mjs        # 🚦 mes portes tournent-elles vraiment ?
+node agent-pipeline/scripts/preflight.mjs        # 🚦 mes commandes tournent-elles vraiment ?
 node agent-pipeline/scripts/metrics.mjs          # 📊 combien de défauts sont passés ?
 node agent-pipeline/scripts/status.mjs           # 👁️ où en est-on ?
 ```
@@ -305,7 +305,7 @@ node agent-pipeline/scripts/status.mjs           # 👁️ où en est-on ?
 
 ---
 
-## 🧬 La porte qui empêche l'agent de réécrire la même chose
+## 🧬 La commande qui empêche l'agent de réécrire la même chose
 
 Chaque prompt exige une **note de réutilisation** pour toute création. Jusqu'ici elle était jugée en revue — donc quand quelqu'un pensait à regarder. Sur deux cents petits composants, personne ne regarde.
 
@@ -328,7 +328,7 @@ written: docs/project-map.md (23 file(s), 40 declaration(s))
   5 file(s) with no recognised declaration — the map lists them and says so.
 ```
 
-Elle répond à **« est-ce que ça existe déjà ? »** — la question que la note de réutilisation oblige à poser, et que la porte de duplication fait respecter.
+Elle répond à **« est-ce que ça existe déjà ? »** — la question que la note de réutilisation oblige à poser, et que la commande de duplication fait respecter.
 
 Le générateur reconnaît les déclarations **par motif**, sans analyser aucune syntaxe : `export function`, `export class`, `pub fn`, `def`, `func`. Il marche sur du React, du Python, du Go, du Rust.
 
@@ -341,7 +341,7 @@ Ses deux refus sont le cœur : **aucun fichier trouvé**, et **aucune déclarati
 | | Pourquoi |
 | :-- | :-- |
 | 📦 **Installer une dépendance** | un agent qui peut ajouter une bibliothèque peut contourner n'importe quelle règle en important quelque chose qui la contourne |
-| ⚙️ **Modifier la configuration** | c'est le fichier qui définit les portes. Qui peut les redéfinir peut les rendre vertes |
+| ⚙️ **Modifier la configuration** | c'est le fichier qui définit les commandes. Qui peut les redéfinir peut les faire passer |
 | 🔀 **Merger** | QA valide une tâche à la fois ; elle ne garantit pas que l'ensemble tient debout |
 
 ---
@@ -368,7 +368,7 @@ Ses deux refus sont le cœur : **aucun fichier trouvé**, et **aucune déclarati
 Écrit ici plutôt que découvert par vous.
 
 - **Aucune mesure comparative.** Ce framework compte ses propres défauts échappés. Il ne prouve pas encore qu'il fait mieux qu'une session sans lui.
-- **Ouvert-fermé et Liskov ne sont vérifiés qu'en partie.** Deux formes sont attrapées par une porte — une méthode de classe dérivée qui lève inconditionnellement, une chaîne d'`instanceof` qui décide du comportement. Une précondition resserrée, elle, reste invisible à toute requête syntaxique : ça reste en revue humaine, et c'est écrit plutôt que sous-entendu.
+- **Ouvert-fermé et Liskov ne sont vérifiés qu'en partie.** Deux formes sont attrapées par une commande — une méthode de classe dérivée qui lève inconditionnellement, une chaîne d'`instanceof` qui décide du comportement. Une précondition resserrée, elle, reste invisible à toute requête syntaxique : ça reste en revue humaine, et c'est écrit plutôt que sous-entendu.
 
 ---
 
