@@ -2,15 +2,15 @@ import { join } from "node:path";
 import { loadConfig, loadRules, readJsonl, patternsMayOverlap, fail } from "./lib.mjs";
 
 /**
- * Refuse le dispatch d'une issue en conflit de reservations.
+ * Refuses to dispatch an issue whose reservations conflict.
  *
- * Une issue tient ses chemins dans toute phase listee par
- * reservation_holding_phases, phases bloquees comprises. Une issue sans
- * reservation declaree est signalee comme non gardee, jamais comme
- * sure. Le chevauchement est calcule par patternsMayOverlap, regle
- * conservatrice qui peut sur-bloquer mais jamais sous-bloquer.
+ * An issue holds its paths in every phase listed by
+ * reservation_holding_phases, blocked phases included. An issue with no
+ * declared reservation is reported as unguarded, never as safe. The overlap
+ * is computed by patternsMayOverlap, a conservative rule that can over-block
+ * but never under-block.
  *
- * Usage : node check-reservations.mjs <issue-id>
+ * Usage: node check-reservations.mjs <issue-id>
  */
 function main() {
   const issueId = process.argv[2];

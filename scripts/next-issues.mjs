@@ -3,23 +3,23 @@ import { pathToFileURL } from "node:url";
 import { loadConfig, loadRules, readJsonl, patternsMayOverlap, fail } from "./lib.mjs";
 
 /**
- * Calcule la vague d'issues dispatchables maintenant, et celles qui ne le sont
- * pas encore avec leur motif.
+ * Computes the wave of issues dispatchable now, and those that are not yet,
+ * with the reason.
  *
- * L'ordre de travail se calcule, il ne se juge pas : une issue est prete
- * quand elle est `planned`, que toutes ses dependances sont `closed`, et que
- * ses reservations ne croisent ni celles d'une issue en cours ni celles d'une
- * autre issue de la meme vague. Le tri est topologique par construction — une
- * dependance non fermee exclut — puis par priorite, puis par identifiant pour
- * que deux executions rendent la meme vague.
+ * The order of work is computed, not judged: an issue is ready when it is
+ * `planned`, when all its dependencies are `closed`, and when its
+ * reservations cross neither those of an issue in progress nor those of
+ * another issue in the same wave. The sort is topological by construction, an
+ * unclosed dependency excludes, then by priority, then by identifier so that
+ * two runs return the same wave.
  *
- * La vague est un ensemble deux a deux disjoint : toutes ses issues peuvent
- * partir en parallele sans qu'une ecriture en ecrase une autre.
+ * The wave is a pairwise disjoint set: all its issues can start in parallel
+ * without one write overwriting another.
  *
- * @param records - Les enregistrements d'issues du store.
- * @param rules - Les regles machine, pour les phases tenant reservation.
- * @param specId - Restreint a une spec, ou `null` pour toutes.
- * @returns Les issues pretes et celles en attente avec leur motif.
+ * @param records - The store's issue records.
+ * @param rules - The machine rules, for the reservation-holding phases.
+ * @param specId - Restrict to one spec, or `null` for all.
+ * @returns The ready issues and the waiting ones with their reason.
  */
 export function computeWave(records, rules, specId = null) {
   const phaseOf = new Map(records.map((r) => [r.id, r.pipeline_state?.phase]));
@@ -87,9 +87,9 @@ export function computeWave(records, rules, specId = null) {
 }
 
 /**
- * Rend la vague dispatchable sur la sortie standard.
+ * Prints the dispatchable wave on standard output.
  *
- * Usage : node next-issues.mjs [--spec <spec-id>] [--json]
+ * Usage: node next-issues.mjs [--spec <spec-id>] [--json]
  */
 function main() {
   const args = process.argv.slice(2);
@@ -120,11 +120,11 @@ function main() {
 }
 
 /**
- * Compare deux identifiants pour un ordre stable.
+ * Compares two identifiers for a stable order.
  *
- * @param a - Premier identifiant.
- * @param b - Second identifiant.
- * @returns Un entier negatif, nul ou positif, comme un comparateur de tri.
+ * @param a - First identifier.
+ * @param b - Second identifier.
+ * @returns A negative, zero or positive integer, like a sort comparator.
  */
 function compare(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;

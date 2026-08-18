@@ -339,7 +339,7 @@ Le framework fournit le détecteur, sans aucune dépendance, pour qu'aucun proje
 | `docs/` | **en anglais** — les modèles suivent mieux l'anglais. `nouveau-profil.md` pour installer, `operateur.md` pour vous |
 | `templates/` | les fichiers de politique, le workflow CI |
 | `skills/` | conseils de code, indépendants de toute stack |
-| `test/` | **201 tests** sur le framework lui-même |
+| `test/` | **202 tests** sur le framework lui-même |
 
 **Prérequis** : Node, git, et le client de votre forge (`gh`, `glab`). Rien d'autre.
 

@@ -7,11 +7,11 @@ const OPEN_RE = /<!--\s*brief:([a-z-,\s]+?)\s*-->/g;
 const CLOSE_TAG = "<!-- /brief -->";
 
 /**
- * Extrait les blocs balises brief d'un document, avec garde anti-imbrication.
+ * Extracts a document's brief-tagged blocks, guarding against nesting.
  *
- * @param source - chemin du document, pour les messages d'erreur
- * @param text - contenu du document
- * @returns les blocs avec leurs roles cibles
+ * @param source - document path, for error messages
+ * @param text - document content
+ * @returns the blocks with their target roles
  */
 function extractBlocks(source, text) {
   const blocks = [];
@@ -35,11 +35,11 @@ function extractBlocks(source, text) {
 }
 
 /**
- * Compile un brief par role depuis les documents balises et la config.
+ * Compiles one brief per role from the tagged documents and the config.
  *
- * Chaque brief ouvre sur la table des commandes du profil, puis empile
- * les sections balisees pour ce role, dans l'ordre des repertoires puis
- * des fichiers. Mode --check : compare sans ecrire, code 1 en derive.
+ * Each brief opens on the profile's command table, then stacks the sections
+ * tagged for that role, in directory order then file order. In --check mode
+ * it compares without writing, exiting 1 on drift.
  */
 function main() {
   const checkMode = process.argv.includes("--check");

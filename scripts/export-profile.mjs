@@ -3,34 +3,32 @@ import { join, basename } from "node:path";
 import { loadConfig, fail } from "./lib.mjs";
 
 /**
- * Cles de configuration qui decrivent la stack et non ce depot.
+ * Configuration keys that describe the stack, not this repository.
  *
- * Le partage entre les deux n'est pas cosmetique. `commands` nomme les
- * outils d'un ecosysteme et vaut pour tout projet qui l'emploie ;
- * `store_dir` ou `ci` decrivent l'endroit ou ce projet-ci range son etat et
- * chez quelle forge il vit. Emporter les seconds installerait chez le
- * suivant des decisions qu'il n'a pas prises.
+ * The split between the two is not cosmetic. `commands` names an ecosystem's
+ * tools and holds for any project using it; `store_dir` or `ci` describe
+ * where THIS project keeps its state and which forge it lives on. Carrying
+ * the second kind would install decisions the next project never took.
  */
 const STACK_KEYS = ["commands", "project_map", "doc_policy", "comment_policy", "secrets_scan", "file_policy"];
 
 /**
- * Repere les fichiers d'outils qu'une commande designe par leur nom.
+ * Spots the tool files a command names as arguments.
  *
- * Une commande exportee sans le fichier qu'elle passe en argument est une
- * commande qui echoue chez le suivant, et l'echec ressemblera a une porte
- * qui refuse alors que c'est un fichier absent — la confusion que
- * `preflight` existe pour lever.
+ * A command exported without the file it passes as an argument is a command
+ * that fails at the next project, and the failure will look like a gate
+ * refusing when it is a file missing, the confusion `preflight` exists to
+ * lift.
  *
- * Le reperage est volontairement litteral : un jeton qui designe un
- * FICHIER existant est emporte, les autres sont ignores. La nuance a coute
- * un tour : `eslint --config <fichier> .` finit par un point, qui existe et
- * qui est un repertoire. Une commande qui passe par
- * un lanceur de taches ne nomme aucun fichier, et ses fichiers se
- * completent alors en arguments.
+ * The spotting is deliberately literal: a token designating an existing FILE
+ * is carried, the rest are ignored. That nuance cost one round: `eslint
+ * --config <file> .` ends with a dot, which exists and is a directory. A
+ * command going through a task runner names no file, and its files are then
+ * completed as arguments.
  *
- * @param commands - bloc `commands` de la configuration
- * @param root - racine du projet exporte
- * @returns les chemins relatifs reperes, sans doublon
+ * @param commands - the configuration's `commands` block
+ * @param root - root of the exported project
+ * @returns the relative paths spotted, without duplicates
  */
 function toolingFrom(commands, root) {
   const found = new Set();
@@ -48,7 +46,7 @@ function toolingFrom(commands, root) {
 }
 
 /**
- * Exporte le profil actif en paquet reutilisable.
+ * Exports the active profile as a reusable bundle.
  */
 function main() {
   const [target, ...extra] = process.argv.slice(2);

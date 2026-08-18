@@ -2,14 +2,14 @@ import { readFileSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 
 /**
- * Charge et valide minimalement la configuration de profil du projet.
+ * Loads and minimally validates the project's profile configuration.
  *
- * Une configuration incomplete arrete le processus par un message, jamais par
- * une trace de pile : ces scripts s'adressent a un operateur, et un chemin
- * manquant dans un fichier de config n'est pas un defaut de programmation.
+ * An incomplete configuration stops the process with a message, never with a
+ * stack trace: these scripts address an operator, and a missing path in a
+ * config file is not a programming defect.
  *
- * @param path - chemin du fichier de config, racine du projet par defaut
- * @returns la configuration parsee, ou jamais si elle est invalide
+ * @param path - config file path, project root by default
+ * @returns the parsed configuration, or never if it is invalid
  */
 export function loadConfig(path = "pipeline.config.json") {
   if (!existsSync(path)) fail(`not found: ${path} (run it from the project root)`);
@@ -26,14 +26,14 @@ export function loadConfig(path = "pipeline.config.json") {
 }
 
 /**
- * Charge la source machine des regles du pipeline.
+ * Loads the machine source of the pipeline rules.
  *
- * Sans argument, le chemin vient de `rules_path` dans la configuration : le
- * projet hote decide donc ou ranger ce fichier, comme pour tous les autres
- * repertoires du pipeline.
+ * With no argument the path comes from `rules_path` in the configuration: the
+ * host project therefore decides where this file lives, as it does for every
+ * other pipeline directory.
  *
- * @param path - chemin du fichier de regles, `rules_path` de la config par defaut
- * @returns les regles parsees, ou jamais si le fichier manque
+ * @param path - rules file path, config `rules_path` by default
+ * @returns the parsed rules, or never if the file is missing
  */
 export function loadRules(path) {
   const resolved = path ?? loadConfig().rules_path;
@@ -42,14 +42,14 @@ export function loadRules(path) {
 }
 
 /**
- * Lit un fichier JSONL en preservant chaque ligne brute.
+ * Reads a JSONL file, preserving every raw line.
  *
- * La ligne brute est la cle du verrou optimiste : son hash change au
- * moindre octet, y compris un reformatage sans effet semantique.
+ * The raw line is the key to the optimistic lock: its hash changes on the
+ * slightest byte, including a reformat with no semantic effect.
  *
- * @param path - chemin du fichier JSONL
- * @returns une entree par ligne non vide, avec la ligne brute et le record parse
- * @throws {SyntaxError} si une ligne n'est pas un JSON valide
+ * @param path - JSONL file path
+ * @returns one entry per non-empty line, with the raw line and the parsed record
+ * @throws {SyntaxError} if a line is not valid JSON
  */
 export function readJsonl(path) {
   if (!existsSync(path)) return [];
@@ -60,22 +60,22 @@ export function readJsonl(path) {
 }
 
 /**
- * Calcule le hash SHA-256 hexadecimal d'une chaine.
+ * Computes the hexadecimal SHA-256 hash of a string.
  *
- * @param text - contenu a hacher
- * @returns le hash en hexadecimal minuscule
+ * @param text - content to hash
+ * @returns the hash in lowercase hexadecimal
  */
 export function sha256(text) {
   return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
 /**
- * Convertit un motif glob en expression reguliere ancree.
+ * Converts a glob pattern into an anchored regular expression.
  *
- * Supporte `**` (traverse les segments), `*` (dans un segment) et `?`.
+ * Supports `**` (crosses segments), `*` (within a segment) and `?`.
  *
- * @param glob - motif de chemin
- * @returns l'expression reguliere equivalente
+ * @param glob - path pattern
+ * @returns the equivalent regular expression
  */
 export function globToRegex(glob) {
   const escaped = glob
@@ -90,26 +90,26 @@ export function globToRegex(glob) {
 }
 
 /**
- * Teste si un chemin correspond a au moins un motif de la liste.
+ * Tests whether a path matches at least one pattern in the list.
  *
- * @param path - chemin de fichier relatif au depot
- * @param globs - motifs glob
- * @returns vrai si au moins un motif correspond
+ * @param path - file path relative to the repository
+ * @param globs - glob patterns
+ * @returns true if at least one pattern matches
  */
 export function matchAny(path, globs) {
   return globs.some((glob) => globToRegex(glob).test(path));
 }
 
 /**
- * Applique la politique de fichiers d'un role a un chemin constate.
+ * Applies a role's file policy to an observed path.
  *
- * `allow` present : seul ce qui correspond est permis. `deny` present :
- * ce qui correspond est refuse. `allow` et `deny` presents : il faut
- * correspondre a `allow` sans correspondre a `deny`.
+ * `allow` present: only what matches is permitted. `deny` present: what
+ * matches is refused. Both present: the path must match `allow` without
+ * matching `deny`.
  *
- * @param path - chemin de fichier relatif au depot
- * @param policy - politique du role, ou absence de politique
- * @returns vrai si le chemin est permis pour ce role
+ * @param path - file path relative to the repository
+ * @param policy - the role's policy, or no policy at all
+ * @returns true if the path is permitted for this role
  */
 export function pathAllowed(path, policy) {
   if (policy == null) return true;
@@ -119,10 +119,10 @@ export function pathAllowed(path, policy) {
 }
 
 /**
- * Extrait le prefixe litteral d'un motif glob, jusqu'au premier joker.
+ * Extracts a glob pattern's literal prefix, up to the first wildcard.
  *
- * @param glob - motif de chemin
- * @returns le prefixe sans joker
+ * @param glob - path pattern
+ * @returns the prefix with no wildcard
  */
 export function literalPrefix(glob) {
   const cut = glob.search(/[*?[]/);
@@ -130,16 +130,15 @@ export function literalPrefix(glob) {
 }
 
 /**
- * Decide si deux motifs de reservation peuvent designer un meme fichier.
+ * Decides whether two reservation patterns can designate the same file.
  *
- * Regle volontairement conservatrice : deux motifs se chevauchent si le
- * prefixe litteral de l'un commence par celui de l'autre. Elle peut
- * sur-bloquer, jamais sous-bloquer, ce qui est le bon defaut pour une
- * serialisation.
+ * Deliberately conservative: two patterns overlap when the literal prefix of
+ * one starts with that of the other. It can over-block, never under-block,
+ * which is the right default for a serialisation decision.
  *
- * @param a - premier motif
- * @param b - second motif
- * @returns vrai si un chevauchement est possible
+ * @param a - first pattern
+ * @param b - second pattern
+ * @returns true if an overlap is possible
  */
 export function patternsMayOverlap(a, b) {
   const pa = literalPrefix(a);
@@ -148,10 +147,10 @@ export function patternsMayOverlap(a, b) {
 }
 
 /**
- * Termine le processus avec un message d'erreur.
+ * Ends the process with an error message.
  *
- * @param message - message affiche sur stderr
- * @returns jamais
+ * @param message - message printed on stderr
+ * @returns never
  */
 export function fail(message) {
   console.error(message);
@@ -159,15 +158,15 @@ export function fail(message) {
 }
 
 /**
- * Resout le statut sudocode a refleter pour une phase du pipeline.
+ * Resolves the sudocode status to mirror for a pipeline phase.
  *
- * Resolution : cle exacte, puis joker de familles bloquees, puis joker
- * global. Retourne null quand l'integration est desactivee ou que la
- * table ne couvre pas la phase.
+ * Resolution order: exact key, then the blocked-family wildcard, then the
+ * global wildcard. Returns null when the integration is disabled or the table
+ * does not cover the phase.
  *
- * @param phase - phase courante du pipeline
- * @param sudocode - bloc sudocode de la configuration, ou absence
- * @returns le statut a ecrire, ou null pour ne rien refleter
+ * @param phase - current pipeline phase
+ * @param sudocode - the configuration's sudocode block, or none
+ * @returns the status to write, or null to mirror nothing
  */
 export function sudocodeStatus(phase, sudocode) {
   if (sudocode?.enabled !== true) return null;

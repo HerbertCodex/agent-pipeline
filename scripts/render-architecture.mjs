@@ -6,14 +6,14 @@ import { readFileSync, existsSync } from "node:fs";
 import { BRIEF_QUESTIONS, judge, summarise } from "./discovery.mjs";
 
 /**
- * Rend le sens des dependances en chaine de boites flechees.
+ * Renders the dependency direction as a chain of arrowed boxes.
  *
- * Une fleche se lit en une seconde la ou une phrase demande un paragraphe :
- * c'est la seule information de structure qui doit etre saisie avant de lire
- * quoi que ce soit d'autre.
+ * An arrow reads in a second where a sentence needs a paragraph: it is the
+ * one piece of structural information that must land before anything else is
+ * read.
  *
- * @param chain - couches, de la plus exterieure a la plus interieure
- * @returns le fragment HTML de la chaine
+ * @param chain - layers, from the outermost to the innermost
+ * @returns the chain's HTML fragment
  */
 function arrows(chain) {
   const boxes = chain
@@ -29,16 +29,16 @@ function arrows(chain) {
 }
 
 /**
- * Rend une architecture en carte lisible d'un coup d'oeil.
+ * Renders an architecture as a card readable at a glance.
  *
- * L'ordre est deliberé : en clair, puis l'arborescence, puis le cout reel en
- * fichiers, puis seulement les nuances. Qui s'arrete apres les trois premiers
- * blocs a deja de quoi choisir.
+ * The order is deliberate: plain language, then the file tree, then the real
+ * cost in files, and only then the nuances. Whoever stops after the first
+ * three blocks already has enough to choose.
  *
- * @param entry - architecture du catalogue
- * @param index - rang d'affichage
- * @param example - action concrete servant d'unite de cout
- * @returns le fragment HTML de la carte
+ * @param entry - catalogue architecture
+ * @param index - display rank
+ * @param example - concrete action used as the unit of cost
+ * @returns the card's HTML fragment
  */
 function card(entry, index, example) {
   return `<article class="feature">
@@ -74,14 +74,14 @@ ${arrows(entry.chain)}
 }
 
 /**
- * Rend le tableau de comparaison place avant les fiches detaillees.
+ * Renders the comparison table placed before the detailed cards.
  *
- * Il existe pour qu'on puisse choisir sans tout lire : le detail vient
- * apres, pour celui qui hesite entre deux lignes.
+ * It exists so a choice can be made without reading everything: the detail
+ * comes after, for whoever hesitates between two rows.
  *
- * @param retained - architectures retenues pour ce type de projet
- * @param example - action concrete servant d'unite de cout
- * @returns le fragment HTML du tableau
+ * @param retained - architectures retained for this project type
+ * @param example - concrete action used as the unit of cost
+ * @returns the table's HTML fragment
  */
 function table(retained, example) {
   const rows = retained
@@ -97,14 +97,14 @@ function table(retained, example) {
 }
 
 /**
- * Rend la page qui explique les architectures et demande un choix.
+ * Renders the page that explains the architectures and asks for a choice.
  *
- * Le framework n'impose aucune architecture : il rend le choix explicable,
- * puis opposable. Le type de projet filtre le catalogue parce qu'il change
- * la reponse — un catalogue non filtre transforme une decision en revision
- * de litterature.
+ * The framework imposes no architecture: it makes the choice explainable,
+ * then enforceable. The project type filters the catalogue because it changes
+ * the answer, and an unfiltered catalogue turns a decision into a literature
+ * review.
  *
- * Usage : node render-architecture.mjs <sortie.html> <backend|frontend|mobile|fullstack>
+ * Usage: node render-architecture.mjs <output.html> <backend|frontend|mobile|fullstack>
  */
 function questionnaire() {
   const items = BRIEF_QUESTIONS.map(
@@ -121,11 +121,11 @@ function questionnaire() {
 }
 
 /**
- * Rend la recommandation fondee sur l'analyse du projet.
+ * Renders the recommendation grounded in the project analysis.
  *
- * @param retained - architectures pertinentes pour le type de projet
- * @param analysis - analyse issue du cahier des charges
- * @returns le fragment HTML de la recommandation
+ * @param retained - architectures relevant to the project type
+ * @param analysis - analysis drawn from the rough brief
+ * @returns the recommendation's HTML fragment
  */
 function recommendation(retained, analysis) {
   const judged = retained

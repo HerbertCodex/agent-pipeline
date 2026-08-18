@@ -5,21 +5,21 @@ import { computeWave } from "./next-issues.mjs";
 const ESCALATION = "operator_escalation";
 
 /**
- * Ordonne les phases non fermees par urgence de traitement.
+ * Orders the non-closed phases by how urgently they need handling.
  *
- * Une escalade passe avant tout : elle attend un humain, et rien d'autre ne
- * doit partir tant qu'elle tient. Vient ensuite ce qui est deja engage —
- * blocages puis roles en cours — parce qu'ouvrir un nouveau front pendant
- * qu'une issue est a mi-cycle multiplie les reservations tenues sans rien
- * fermer. Le travail neuf part en dernier.
+ * An escalation comes first: it waits on a human, and nothing else should
+ * start while it stands. Then comes what is already engaged, blocks then
+ * roles in progress, because opening a new front while an issue sits
+ * mid-cycle multiplies held reservations without closing anything. New work
+ * goes last.
  */
 const PRECEDENCE = [ESCALATION, "blocked_", "in_progress", "qa_in_progress", "ready_for_qa", "planned"];
 
 /**
- * Rend le rang de precedence d'une phase.
+ * Returns a phase's precedence rank.
  *
- * @param phase - La phase de l'issue.
- * @returns Son rang, ou la longueur de la table si la phase est inconnue.
+ * @param phase - The issue's phase.
+ * @returns Its rank, or the table length if the phase is unknown.
  */
 function rankOf(phase) {
   const index = PRECEDENCE.findIndex((entry) =>
@@ -29,17 +29,17 @@ function rankOf(phase) {
 }
 
 /**
- * Decrit ce qu'un pas doit faire sur une issue, et qui l'execute.
+ * Describes what a step must do on an issue, and who runs it.
  *
- * Le store enregistre quelle phase une issue occupe, donc quel role la tient.
- * Il n'enregistre pas si ce role est vivant. Une issue en `in_progress` depuis
- * une seconde et une issue laissee la par un agent mort sont le meme
- * enregistrement, et aucune lecture ne les separe : c'est pourquoi une phase
- * tenue par un role se redispatche au lieu de s'attendre.
+ * The store records which phase an issue occupies, therefore which role holds
+ * it. It does not record whether that role is alive. An issue in
+ * `in_progress` for one second and an issue left there by a dead agent are
+ * the same record, and no reading separates them: that is why a phase held by
+ * a role is redispatched rather than waited on.
  *
- * @param record - L'enregistrement d'issue.
- * @param rules - Les regles machine, source des proprietaires de phase.
- * @returns L'action a executer, son acteur et son motif.
+ * @param record - The issue record.
+ * @param rules - The machine rules, source of the phase owners.
+ * @returns The action to run, its actor and its reason.
  */
 function actionFor(record, rules) {
   const phase = record.pipeline_state?.phase;
@@ -63,18 +63,18 @@ function actionFor(record, rules) {
 }
 
 /**
- * Verifie qu'un pas n'a persiste qu'une seule transition.
+ * Checks that a step persisted exactly one transition.
  *
- * C'est la porte du pas unique. Sans elle, la consigne « une invocation, une
- * transition » n'est qu'une phrase dans un prompt : un orchestrateur qui
- * enchaine dix transitions dans la meme conversation ne fait echouer personne,
- * et le contexte non borne que le decoupage devait supprimer revient intact.
- * `pipeline_state.version` s'incremente de un a chaque persistance, donc un
- * ecart different de un est un pas qui a deborde.
+ * This is the single-step gate. Without it, the instruction "one invocation,
+ * one transition" is only a sentence in a prompt: an orchestrator chaining
+ * ten transitions in the same conversation makes nobody fail, and the
+ * unbounded context the decomposition was meant to remove comes back intact.
+ * `pipeline_state.version` increments by one on every write, so any gap other
+ * than one is a step that overflowed.
  *
- * @param records - Les enregistrements d'issues du store.
- * @param id - L'issue sur laquelle le pas portait.
- * @param before - La version lue avant le pas.
+ * @param records - The store's issue records.
+ * @param id - The issue the step was about.
+ * @param before - The version read before the step.
  */
 function assertAdvanced(records, id, before) {
   const record = records.find((r) => r.id === id);
@@ -98,15 +98,15 @@ function assertAdvanced(records, id, before) {
 }
 
 /**
- * Rend le pas suivant du pipeline : une issue, un acteur, une action.
+ * Returns the pipeline's next step: one issue, one actor, one action.
  *
- * L'etat durable du pipeline est sur le disque, pas dans la conversation d'un
- * agent. Ce script le relit et recalcule quoi faire maintenant, ce qui permet
- * d'invoquer un orchestrateur neuf par transition plutot qu'un seul pour toute
- * une spec. Une coupure coute alors un pas, pas un run.
+ * The pipeline's durable state is on disk, not in an agent's conversation.
+ * This script reads it back and recomputes what to do now, which allows a
+ * fresh orchestrator per transition rather than one for a whole spec. An
+ * interruption then costs a step, not a run.
  *
- * Usage : node next-step.mjs [--spec <spec-id>] [--json]
- *         node next-step.mjs --assert-advanced <issue-id> <version-avant>
+ * Usage: node next-step.mjs [--spec <spec-id>] [--json]
+ *        node next-step.mjs --assert-advanced <issue-id> <version-before>
  */
 function main() {
   const args = process.argv.slice(2);

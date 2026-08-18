@@ -2,36 +2,35 @@ import { spawnSync } from "node:child_process";
 import { loadConfig, fail } from "./lib.mjs";
 
 /**
- * Motifs par lesquels un interpreteur annonce qu'un outil n'existe pas.
+ * Patterns by which an interpreter announces that a tool does not exist.
  *
- * La detection est heuristique et l'assume : il n'existe pas de code de
- * sortie universel pour « binaire absent ». Un faux negatif se traduit par
- * une porte classee refusante alors qu'elle est indisponible — c'est-a-dire
- * l'etat qu'on a aujourd'hui, jamais pire.
+ * The detection is heuristic and says so: there is no universal exit code for
+ * "binary missing". A false negative shows up as a gate classed refusing when
+ * it is unavailable, which is the state we have today, never worse.
  *
- * Le silence est le second signal, et lui n'est pas heuristique : une porte
- * qui a trouve quelque chose le dit. Une porte qui echoue sans ecrire un
- * caractere ne rapporte rien, elle n'a pas tourne. Le cas s'est produit le
- * 2026-08-18 sur un projet fraichement importe : un lanceur de taches en
- * mode silencieux, prive de son manifeste, sort en 254 sans un mot. Les
- * seize portes etaient classees refusantes, et preflight concluait que
- * toutes etaient executables dans un projet ou aucune ne l'etait.
+ * Silence is the second signal, and that one is not heuristic: a gate that
+ * found something says so. A gate that fails without writing a character
+ * reports nothing, it did not run. The case occurred on 2026-08-18 on a
+ * freshly imported project: a task runner in silent mode, deprived of its
+ * manifest, exits 254 without a word. The sixteen gates were classed
+ * refusing, and preflight concluded that all were executable in a project
+ * where none was.
  */
 const ABSENT =
   /command not found|not found|No such file or directory|is not recognized|ENOENT|Cannot find module|MODULE_NOT_FOUND|executable file not found/i;
 
 /**
- * Classe le resultat d'une porte : disponible et verte, disponible et
- * refusante, ou indisponible.
+ * Classes a gate's result: available and green, available and refusing, or
+ * unavailable.
  *
- * La distinction est le point : une porte qui echoue parce qu'elle a trouve
- * quelque chose et une porte qui echoue parce que son outil manque se
- * ressemblent dans un journal, et ne veulent pas du tout dire la meme chose.
- * Confondues, la seconde apprend a ignorer la premiere.
+ * The distinction is the point: a gate failing because it found something and
+ * a gate failing because its tool is missing look alike in a log, and mean
+ * nothing like the same thing. Confused, the second teaches people to ignore
+ * the first.
  *
- * @param key - cle de la porte dans `commands`
- * @param command - commande a executer
- * @returns le verdict, le code de sortie et la premiere ligne utile
+ * @param key - the gate's key in `commands`
+ * @param command - command to run
+ * @returns the verdict, the exit code and the first useful line
  */
 export function classify(key, command) {
   const result = spawnSync(command, { shell: true, encoding: "utf8", timeout: 600000 });
@@ -50,14 +49,14 @@ export function classify(key, command) {
 }
 
 /**
- * Verifie que chaque porte declaree est reellement executable.
+ * Checks that every declared gate can actually run.
  *
- * Une porte dont l'outil manque echoue au lieu de proteger, et une porte qui
- * echoue toujours finit contournee : le depot affirme alors une protection
- * que personne n'exerce. Ce controle separe donc les deux cas avant qu'ils se
- * confondent dans un journal de CI.
+ * A gate whose tool is missing fails instead of protecting, and a gate that
+ * always fails ends up bypassed: the repository then claims a protection
+ * nobody exercises. This control separates the two cases before they blur
+ * together in a CI log.
  *
- * Usage : node preflight.mjs [--json]
+ * Usage: node preflight.mjs [--json]
  */
 function main() {
   const json = process.argv.includes("--json");

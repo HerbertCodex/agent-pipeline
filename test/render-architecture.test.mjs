@@ -12,10 +12,10 @@ afterEach(() => {
 });
 
 /**
- * Rend la page d'architecture pour un type de projet.
+ * Renders the architecture page for a project type.
  *
- * @param type - type de projet passe au script
- * @returns le resultat d'execution et le HTML produit
+ * @param type - project type passed to the script
+ * @returns the execution result and the HTML produced
  */
 function render(type) {
   sandbox ??= createSandbox();
@@ -153,11 +153,11 @@ describe("render-architecture: with no analysis, it asks the questions", () => {
 
 describe("render-architecture: with an analysis, the advice is grounded", () => {
   /**
-   * Rend la page avec une analyse de projet donnee.
+   * Renders the page with a given project analysis.
    *
-   * @param type - type de projet
-   * @param analysis - analyse a joindre
-   * @returns le resultat d'execution et le HTML produit
+   * @param type - project type
+   * @param analysis - analysis to attach
+   * @returns the execution result and the HTML produced
    */
   function advise(type, analysis) {
     sandbox ??= createSandbox();

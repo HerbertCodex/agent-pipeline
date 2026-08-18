@@ -3,13 +3,13 @@ import { execFileSync } from "node:child_process";
 import { loadRules, pathAllowed, fail } from "./lib.mjs";
 
 /**
- * Confronte les fichiers declares d'un handoff au diff git reel.
+ * Confronts a handoff's declared files with the real git diff.
  *
- * Signale les deux sens : un fichier modifie mais non declare, et un
- * fichier declare mais jamais touche. Applique la politique de
- * fichiers du role aux chemins constates, pas aux chemins declares.
+ * Reports both directions: a file modified but undeclared, and a file
+ * declared but never touched. Applies the role's file policy to the observed
+ * paths, not to the declared ones.
  *
- * Usage : node verify-scope.mjs <handoff.json> <base-ref>
+ * Usage: node verify-scope.mjs <handoff.json> <base-ref>
  */
 function main() {
   const [handoffPath, baseRef] = process.argv.slice(2);

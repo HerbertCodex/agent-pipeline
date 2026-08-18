@@ -2,37 +2,37 @@ import { readFileSync, existsSync } from "node:fs";
 import { fail } from "./lib.mjs";
 
 /**
- * Confronte un graphe de dependances aux signes qui annoncent un changement
- * d'architecture.
+ * Confronts a dependency graph with the signs announcing an architecture
+ * change.
  *
- * Le framework juge, il n'extrait pas : lire des imports demande de connaitre
- * un langage, et le core n'en connait aucun. Le projet fournit donc le graphe
- * sous une forme neutre — des modules, leurs fichiers, ce qu'ils importent —
- * et cette frontiere est ce qui rend le detecteur portable.
+ * The framework judges, it does not extract: reading imports means knowing a
+ * language, and the core knows none. The project therefore supplies the graph
+ * in a neutral form, modules with their files and what they import, and that
+ * boundary is what makes the detector portable.
  *
- * Ce qu'il ne voit PAS, et qu'il dit : la duplication SEMANTIQUE d'une regle
- * metier. Deux modules qui appliquent la meme regle avec un code different
- * sont invisibles a un graphe d'imports. Ce declencheur-la reste humain, et
- * le pretendre couvert serait pire que de ne pas le chercher.
+ * What it does NOT see, and says so: SEMANTIC duplication of a business rule.
+ * Two modules applying the same rule with different code are invisible to an
+ * import graph. That trigger stays human, and claiming it covered would be
+ * worse than not looking for it.
  *
- * Usage : node architecture-drift.mjs <graphe.json>
+ * Usage: node architecture-drift.mjs <graph.json>
  */
 
 /**
- * Taille en dessous de laquelle les signaux de partage ne veulent rien dire.
+ * Size below which sharing signals mean nothing.
  *
- * Un fichier partage n'ayant qu'un consommateur est un signe seulement si le
- * projet compte assez de modules pour qu'il ait PU en avoir plusieurs. Sur
- * trois modules, ce signal se declenche systematiquement et a tort — et un
- * detecteur qui crie sur un projet jeune apprend surtout a etre ignore.
+ * A shared file with a single consumer is a sign only if the project has
+ * enough modules that it COULD have had several. On three modules that signal
+ * fires systematically and wrongly, and a detector that cries on a young
+ * project mostly teaches people to ignore it.
  */
 const MATURITE = { modules: 4, files: 20 };
 
 /**
- * Detecte les cycles de dependance entre modules.
+ * Detects dependency cycles between modules.
  *
- * @param modules - graphe des modules
- * @returns les paires en cycle, chacune une seule fois
+ * @param modules - graph of the modules
+ * @returns the cycling pairs, each one only once
  */
 function cycles(modules) {
   const found = [];
@@ -47,10 +47,10 @@ function cycles(modules) {
 }
 
 /**
- * Rend les signaux constates sur un graphe.
+ * Returns the signals observed on a graph.
  *
- * @param graph - graphe fourni par le projet
- * @returns la liste des signaux, chacun avec son declencheur et sa suite
+ * @param graph - graph supplied by the project
+ * @returns the list of signals, each with its trigger and what to do next
  */
 export function drift(graph) {
   const all = graph.modules ?? {};

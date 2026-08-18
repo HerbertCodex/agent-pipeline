@@ -11,11 +11,11 @@ afterEach(() => {
 });
 
 /**
- * Rend la file d'arbitrage d'un store donne et relit la page produite.
+ * Renders the arbitration queue for a given store and reads the page back.
  *
- * @param issues - records d'issues a placer dans le store
- * @param proposal - proposition facultative a joindre
- * @returns le resultat d'execution et le HTML produit
+ * @param issues - issue records to place in the store
+ * @param proposal - optional proposal to attach
+ * @returns the execution result and the HTML produced
  */
 function render(issues, proposal = null) {
   sandbox = createSandbox({ issues });

@@ -11,11 +11,11 @@ afterEach(() => {
 });
 
 /**
- * Pose une architecture et, optionnellement, un design system.
+ * Sets an architecture and, optionally, a design system.
  *
- * @param projectType - type de projet declare
- * @param design - bloc design_system, ou null pour l'omettre
- * @returns la racine du bac a sable
+ * @param projectType - declared project type
+ * @param design - design_system block, or null to omit it
+ * @returns the sandbox root
  */
 function withProject(projectType, design = null) {
   const root = createSandbox();
@@ -40,11 +40,11 @@ function withProject(projectType, design = null) {
 }
 
 /**
- * Relit la page produite par le renderer.
+ * Reads back the page produced by the renderer.
  *
- * @param root - racine du bac a sable
- * @param args - arguments passes au script
- * @returns le resultat d'execution et le HTML produit
+ * @param root - sandbox root
+ * @param args - arguments passed to the script
+ * @returns the execution result and the HTML produced
  */
 function render(root, args) {
   const target = join(root, "design.html");

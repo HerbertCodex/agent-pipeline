@@ -2,20 +2,20 @@ import { join } from "node:path";
 import { loadConfig, loadRules, readJsonl, fail } from "./lib.mjs";
 
 /**
- * Verifie que les decouvertes declarees ont bien donne une issue.
+ * Checks that declared discoveries really produced an issue.
  *
- * Une trouvaille declaree dans un handoff mais jamais creee retombe dans la
- * prose de PR, ou elle meurt. Le champ `discoveries_declared`, ecrit par
- * l'orchestrateur en persistant le handoff, rend cette dette opposable :
- * l'issue ne peut pas se fermer tant que chaque decouverte n'a pas son issue
- * reliee par `discovered-from`. Sans cette verification, le mecanisme serait
- * une consigne que rien ne fait mordre, donc une consigne qui s'auto-annule.
+ * A finding declared in a handoff but never created falls back into PR prose,
+ * where it dies. The `discoveries_declared` field, written by the
+ * orchestrator when persisting the handoff, makes that debt enforceable: the
+ * issue cannot close until every discovery has its issue linked by
+ * `discovered-from`. Without this check the mechanism would be an instruction
+ * no command can refuse, and so an instruction that never applies.
  *
- * @param record - Issue lue depuis le store.
- * @param all - Tous les records d'issues, pour retrouver les liens.
- * @param rules - Regles chargees, portant le type de relation.
- * @param path - Chemin du fichier, pour le message d'erreur.
- * @returns Le nombre d'invariants violes.
+ * @param record - Issue read from the store.
+ * @param all - Every issue record, to find the links.
+ * @param rules - Loaded rules, carrying the relation type.
+ * @param path - File path, for the error message.
+ * @returns The number of invariants violated.
  */
 function verifyDiscoveries(record, all, rules, path) {
   const declared = record.discoveries_declared ?? [];
@@ -37,18 +37,18 @@ function verifyDiscoveries(record, all, rules, path) {
 }
 
 /**
- * Verifie le registre de verification d'une issue.
+ * Checks an issue's verification ledger.
  *
- * Le registre porte, pour chaque critere d'acceptation, ce qui est CONNU
- * comme vrai plutot que ce qui a ete declare : un critere n'est `verified`
- * que si un audit l'a constate dans l'environnement, avec sa preuve. Une
- * issue fermee dont un critere reste non verifie est un mensonge du store,
- * et c'est l'invariant que cette fonction refuse.
+ * The ledger carries, for each acceptance criterion, what is KNOWN to be true
+ * rather than what was declared: a criterion is `verified` only if an audit
+ * observed it in the environment, with its evidence. A closed issue with a
+ * criterion still unverified is a lie in the store, and that is the invariant
+ * this function refuses.
  *
- * @param record - Issue lue depuis le store.
- * @param rules - Regles chargees, portant le vocabulaire des statuts.
- * @param path - Chemin du fichier, pour le message d'erreur.
- * @returns Le nombre d'invariants violes.
+ * @param record - Issue read from the store.
+ * @param rules - Loaded rules, carrying the status vocabulary.
+ * @param path - File path, for the error message.
+ * @returns The number of invariants violated.
  */
 function verifyLedger(record, rules, path) {
   const vocabulary = rules.criterion_status;
@@ -98,12 +98,12 @@ function verifyLedger(record, rules, path) {
 }
 
 /**
- * Verifie les invariants du store apres une ecriture.
+ * Checks the store invariants after a write.
  *
- * Chaque ligne est un JSON valide, chaque id est unique dans son
- * fichier, chaque issue porte un etat valide au regard des regles.
+ * Every line is valid JSON, every id is unique within its file, and every
+ * issue carries a state valid against the rules.
  *
- * Usage : node store-verify.mjs
+ * Usage: node store-verify.mjs
  */
 function main() {
   const config = loadConfig();

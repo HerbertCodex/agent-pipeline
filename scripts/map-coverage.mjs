@@ -3,10 +3,10 @@ import { join } from "node:path";
 import { loadConfig, fail } from "./lib.mjs";
 
 /**
- * Rend tous les fichiers d'une racine, recursivement.
+ * Returns all files under a root, recursively.
  *
- * @param dir - repertoire a parcourir
- * @returns les chemins relatifs au depot
+ * @param dir - directory to walk
+ * @returns the paths relative to the repository
  */
 function walk(dir) {
   if (!existsSync(dir)) return [];
@@ -20,28 +20,27 @@ function walk(dir) {
 }
 
 /**
- * Verifie que la carte du projet cite reellement le code qu'elle pretend couvrir.
+ * Checks that the project map really cites the code it claims to cover.
  *
- * La porte `project_map` compare la carte rendue a sa regeneration : elle
- * attrape une carte perimee, jamais une carte vide. Un generateur qui ne
- * collecte pas les bons fichiers — celui du projet d'origine cherchait `*.ts`,
- * inutilisable des que la stack change — rend un document quasi vide, et
- * `--check` compare vide a vide et sort en 0. On obtient une porte verte qui
- * n'affirme rien, pire qu'une porte absente puisqu'on cesse de verifier.
+ * The `project_map` gate compares the rendered map with its regeneration: it
+ * catches a stale map, never an empty one. A generator that does not collect
+ * the right files, and the original project's looked for `*.ts`, unusable as
+ * soon as the stack changes, produces a near-empty document; `--check` then
+ * compares empty with empty and exits 0. The result is a green gate that
+ * asserts nothing, worse than a missing gate since checking stops.
  *
- * Ce controle ferme ce cas sans rien connaitre du langage : pour chaque
- * fichier de source sous `project_map.roots`, il exige que son nom apparaisse
- * quelque part dans la carte rendue. Il ne lit pas le format de la carte, il
- * n'analyse aucun code.
+ * This control closes that case while knowing nothing of the language: for
+ * every source file under `project_map.roots`, it requires the file name to
+ * appear somewhere in the rendered map. It does not read the map's format and
+ * analyses no code.
  *
- * L'appariement porte sur le nom de fichier et non sur le chemin complet,
- * parce qu'une carte peut legitimement grouper par repertoire et ne citer que
- * les noms — c'est le cas de celle du profil d'origine. Deux fichiers homonymes
- * dans deux repertoires rendent donc le controle indulgent plutot que faux :
- * pour une porte dont le role est d'attraper une carte vide, une fausse alerte
- * couterait plus cher qu'une indulgence.
+ * The matching is on the file name rather than the full path, because a map
+ * may legitimately group by directory and cite only names, which is what the
+ * original profile's map does. Two same-named files in two directories
+ * therefore make the control lenient rather than wrong: for a gate whose job
+ * is to catch an empty map, a false alarm would cost more than leniency.
  *
- * Usage : node map-coverage.mjs [--json]
+ * Usage: node map-coverage.mjs [--json]
  */
 function main() {
   const config = loadConfig();

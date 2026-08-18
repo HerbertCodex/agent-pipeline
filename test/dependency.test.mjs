@@ -37,11 +37,11 @@ const ASSESSMENT = {
 };
 
 /**
- * Rend une evaluation en page de relecture dans le bac a sable.
+ * Renders an assessment as a review page inside the sandbox.
  *
- * @param handoff - evaluation a rendre
- * @param name - nom de base des fichiers produits
- * @returns le chemin de la page produite
+ * @param handoff - assessment to render
+ * @param name - base name of the files produced
+ * @returns the path of the page produced
  */
 function renderPage(handoff, name = "page") {
   const source = writeJson(sandbox, `${name}.json`, handoff);
@@ -52,11 +52,11 @@ function renderPage(handoff, name = "page") {
 }
 
 /**
- * Soumet une evaluation au validateur.
+ * Submits an assessment to the validator.
  *
- * @param overrides - champs a fusionner
- * @param page - chemin de la page a declarer, ou null
- * @returns le resultat de validate-handoff
+ * @param overrides - fields to merge
+ * @param page - path of the page to declare, or null
+ * @returns validate-handoff's result
  */
 function validate(overrides = {}, page = undefined) {
   sandbox ??= createSandbox();
@@ -145,8 +145,8 @@ describe("validate-handoff: a dependency is not requested, it is argued", () => 
   });
 
   test("refuses a request that never says what writing it would cost", () => {
-    // Le champ est efface explicitement : le repandre depuis une copie
-    // amputee le restaurerait, l'original etant repandu en premier.
+    // The field is cleared explicitly: spreading it from an amputated copy
+    // would restore it, the original being spread first.
     const result = validate({ hand_rolled_cost: undefined }, null);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /hand_rolled_cost/);

@@ -16,20 +16,19 @@ const PORTING_GUIDE = "agent-pipeline/docs/nouveau-profil.md";
 const ROLES = ["orchestrator", "product", "implementer", "qa"];
 
 /**
- * Rend `AGENTS.md` depuis son template et les invariants du profil.
+ * Renders `AGENTS.md` from its template and the profile invariants.
  *
- * Le document s'annonce assemble depuis son template depuis toujours, mais
- * rien ne l'assemblait : il etait ecrit a la main, libre de deriver de sa
- * source sans que rien ne le signale. C'est le niveau 2 de l'ordre de
- * priorite, au-dessus des prompts — le dernier endroit ou une derive
- * silencieuse est acceptable.
+ * The document had always announced itself as assembled from its template,
+ * yet nothing assembled it: it was written by hand, free to drift from its
+ * source with nothing to report it. It is level 2 of the priority order,
+ * above the prompts, and the last place where a silent drift is acceptable.
  *
- * Les invariants vivent par profil et non dans le template, parce qu'ils sont
- * la seule partie du document qui parle de la stack. Changer de stack, c'est
- * ecrire ce fichier-la, et rien d'autre.
+ * The invariants live per profile rather than in the template, because they
+ * are the only part of the document that speaks of the stack. Changing stack
+ * means writing that one file, and nothing else.
  *
- * @param config - configuration du projet
- * @returns le contenu rendu de AGENTS.md
+ * @param config - project configuration
+ * @returns the rendered content of AGENTS.md
  */
 function renderAgents(config) {
   if (!existsSync(AGENTS_TEMPLATE)) fail(`not found: ${AGENTS_TEMPLATE}`);
@@ -57,16 +56,16 @@ function renderAgents(config) {
 }
 
 /**
- * Extrait un bloc nomme de la source de contexte du projet.
+ * Extracts a named block from the project's context source.
  *
- * Meme idiome que les balises `<!-- brief:<roles> -->` lues par sync-briefs :
- * un document reste lisible pour un humain tout en portant des sections
- * destinees a une cible generee.
+ * Same idiom as the `<!-- brief:<roles> -->` tags read by sync-briefs: a
+ * document stays readable to a human while carrying sections destined for a
+ * generated target.
  *
- * @param text - contenu de la source de contexte
- * @param name - nom du bloc, sans son prefixe
- * @param source - chemin du document, pour les messages d'erreur
- * @returns le contenu du bloc, balises retirees
+ * @param text - content of the context source
+ * @param name - block name, without its prefix
+ * @param source - document path, for error messages
+ * @returns the block content, tags removed
  */
 function projectBlock(text, name, source) {
   const open = `<!-- claude:${name} -->\n`;
@@ -81,19 +80,19 @@ function projectBlock(text, name, source) {
 }
 
 /**
- * Rend `CLAUDE.md` depuis son template et le contexte du projet.
+ * Renders `CLAUDE.md` from its template and the project context.
  *
- * Ce fichier est charge a chaque session : c'est lui qui porte l'obligation de
- * demander « pipeline ou direct » avant d'agir. Rien ne le rendait et aucun
- * document ne l'exigeait, alors qu'il compte dans l'empreinte de
- * configuration : un depot ou le pipeline venait d'etre porte demarrait donc
- * sans point d'entree, et cette obligation n'avait lieu pour personne.
+ * This file is loaded on every session: it is the one carrying the obligation
+ * to ask "pipeline or direct" before acting. Nothing rendered it and no
+ * document required it, although it counts in the configuration fingerprint:
+ * a repository where the pipeline had just been ported therefore started with
+ * no entry point, and that obligation happened for nobody.
  *
- * Le contexte vit hors du template parce qu'il est la seule partie du document
- * qui parle du depot et non du pipeline — meme partage que les invariants de
- * profil pour `AGENTS.md`.
+ * The context lives outside the template because it is the only part of the
+ * document that speaks of the repository rather than the pipeline, the same
+ * split as the profile invariants for `AGENTS.md`.
  *
- * @returns le contenu rendu de CLAUDE.md
+ * @returns the rendered content of CLAUDE.md
  */
 function renderClaude(config) {
   if (!existsSync(CLAUDE_TEMPLATE)) fail(`not found: ${CLAUDE_TEMPLATE}`);
@@ -119,11 +118,11 @@ function renderClaude(config) {
 }
 
 /**
- * Rend les prompts de roles depuis leurs sources, chemin des briefs
- * injecte depuis la config.
+ * Renders the role prompts from their sources, with the briefs path injected
+ * from the configuration.
  *
- * @param config - configuration du projet
- * @returns le contenu rendu par nom de fichier de prompt
+ * @param config - project configuration
+ * @returns the rendered content, keyed by prompt file name
  */
 function renderPrompts(config) {
   if (!existsSync(PROMPTS_SRC)) fail(`not found: ${PROMPTS_SRC}`);
@@ -138,11 +137,11 @@ function renderPrompts(config) {
 }
 
 /**
- * Rend les fichiers d'une racine, recursivement, chemins relatifs a elle.
+ * Returns a root's files, recursively, as paths relative to it.
  *
- * @param root - racine a parcourir
- * @param prefix - prefixe accumule pendant la descente
- * @returns les chemins relatifs, separateurs normalises
+ * @param root - root to walk
+ * @param prefix - prefix accumulated during the descent
+ * @returns the relative paths, separators normalised
  */
 function walkRelative(root, prefix = "") {
   if (!existsSync(root)) return [];
@@ -157,15 +156,15 @@ function walkRelative(root, prefix = "") {
 }
 
 /**
- * Collecte les skills a installer : ceux du core, puis ceux du profil.
+ * Collects the skills to install: the core's, then the profile's.
  *
- * Les deux sources sont disjointes par construction — le core ne porte que ce
- * qui ne depend d'aucune stack, le profil ce qui en depend. Un meme nom des
- * deux cotes est une erreur de rangement, pas une surcharge : elle est refusee
- * plutot que resolue silencieusement.
+ * The two sources are disjoint by construction: the core carries only what
+ * depends on no stack, the profile what does. The same name on both sides is
+ * a filing error, not an override, and it is refused rather than silently
+ * resolved.
  *
- * @param config - configuration du projet
- * @returns le contenu a installer, par chemin relatif a skills_dir
+ * @param config - project configuration
+ * @returns the content to install, keyed by path relative to skills_dir
  */
 function collectSkills(config) {
   const profileSkills = join(config.profiles_dir, config.profile, "skills");
@@ -193,16 +192,15 @@ function collectSkills(config) {
 }
 
 /**
- * Installe les skills dans `skills_dir`, ou constate la derive.
+ * Installs the skills into `skills_dir`, or reports the drift.
  *
- * Un skill injecte des instructions dans un agent. L'installer comme une cible
- * generee est ce qui rend cette injection auditable : la source est relue une
- * fois, et toute divergence de la copie installee est signalee avant qu'un
- * agent ne la lise.
+ * A skill injects instructions into an agent. Installing it as a generated
+ * target is what makes that injection auditable: the source is read once, and
+ * any divergence in the installed copy is reported before an agent reads it.
  *
- * @param config - configuration du projet
- * @param checkMode - vrai pour comparer sans ecrire
- * @returns vrai si une derive a ete constatee en mode verification
+ * @param config - project configuration
+ * @param checkMode - true to compare without writing
+ * @returns true if a drift was observed in check mode
  */
 function applySkills(config, checkMode) {
   const wanted = collectSkills(config);
@@ -252,21 +250,21 @@ function applySkills(config, checkMode) {
 }
 
 /**
- * Refuse un projet a ecrans qui ne declare pas son design system.
+ * Refuses a project with screens that declares no design system.
  *
- * Le probleme est celui de l'architecture, un cran plus bas : jetons,
- * primitives et composants forment un ordre qu'on ne remonte pas apres
- * coup. L'agent de la premiere issue le tranchera de toute facon — il lui
- * faut bien une couleur et un espacement — et tous les suivants en
- * heriteront sans que personne ne l'ait valide.
+ * It is the architecture's problem, one level down: tokens, primitives and
+ * components form an order that cannot be reversed afterwards. The agent
+ * taking the first issue will settle it regardless, since it needs a colour
+ * and a spacing to write anything, and every issue after inherits a decision
+ * nobody approved.
  *
- * Le core ne juge pas le systeme retenu : ecrire ses primitives ou prendre
- * une bibliotheque sont deux reponses defendables. Il exige qu'il y ait
- * UNE source de verite pour les jetons, et que le sort des primitives soit
- * dit. Un projet sans ecran n'est pas concerne : lui poser la question
- * produirait une cle vide qu'on apprend a ignorer.
+ * The core does not judge the system retained: writing your own primitives
+ * and taking a library are both defensible answers. It requires ONE source of
+ * truth for the tokens, and that the fate of the primitives be stated. A
+ * project with no screen is not concerned: asking there would produce an
+ * empty key that people learn to ignore.
  *
- * @param config - configuration du projet hote
+ * @param config - host project configuration
  */
 function checkDesignSystem(config) {
   if (!["frontend", "mobile", "fullstack"].includes(config.architecture?.project_type)) return;
@@ -294,20 +292,19 @@ function checkDesignSystem(config) {
 }
 
 /**
- * Refuse un profil importe tant que ses seuils n'ont pas ete remesures.
+ * Refuses an imported profile until its thresholds are measured again.
  *
- * Un profil emporte des bornes calibrees sur le code d'un autre projet.
- * Reprises telles quelles, elles sont soit trop larges — la porte ne mord
- * plus — soit trop serrees, et la premiere execution les fait desserrer.
- * Le cadre demande partout ailleurs de calibrer sur du code constate ; un
- * profil importe est precisement le cas ou l'on saute cette etape sans
- * s'en apercevoir.
+ * A profile carries bounds calibrated on another project's code. Taken as
+ * they are, they are either too loose, and the gate stops refusing anything,
+ * or too tight, and the first run gets them loosened. The framework asks
+ * everywhere else that thresholds be calibrated on observed code; an imported
+ * profile is precisely the case where that step is skipped unnoticed.
  *
- * La sortie est d'une ligne : passer `calibration_required` a `false`. Ce
- * n'est pas une formalite, c'est une declaration — quelqu'un affirme avoir
- * mesure. Une porte sans sortie satisfaisable se supprime le lendemain.
+ * The way out is one line: set `calibration_required` to `false`. That is not
+ * a formality, it is a claim that someone measured. A gate with no
+ * satisfiable exit gets deleted the next day.
  *
- * @param config - configuration du projet hote
+ * @param config - host project configuration
  */
 function checkCalibration(config) {
   const path = join(config.profiles_dir, config.profile, "profile.json");
@@ -324,19 +321,20 @@ function checkCalibration(config) {
 }
 
 /**
- * Refuse une configuration qui ne declare pas comment le code est range.
+ * Refuses a configuration that does not declare how the code is laid out.
  *
- * `render-architecture` explique les options et l'operateur tranche, mais un
- * choix qui reste dans une page HTML n'engage personne : l'agent qui installe
- * le profil range comme il l'entend, et le suivant range autrement. Le choix
- * n'existe que s'il est ecrit quelque part qu'une porte relit.
+ * `render-architecture` explains the options and the operator decides, but a
+ * choice that stays in a rendered page binds nobody: the agent installing the
+ * profile lays the code out as it sees fit, and the next one lays it out
+ * differently. The choice only exists once it is written somewhere a gate
+ * reads back.
  *
- * Le core ne juge pas l'architecture retenue — `custom` est une reponse
- * valable. Il exige qu'elle soit nommee, et qu'elle vaille pour le type de
- * projet declare : proposer des ports et des adaptateurs a une interface web
- * est un catalogue recopie, pas une decision.
+ * The core does not judge the architecture retained: `custom` is a valid
+ * answer. It requires that one be named, and that it apply to the declared
+ * project type. Offering ports and adapters to a web interface is a catalogue
+ * copied out, not a decision.
  *
- * @param config - configuration du projet hote
+ * @param config - host project configuration
  */
 function checkArchitecture(config) {
   const chosen = config.architecture;
@@ -379,14 +377,14 @@ function checkArchitecture(config) {
 }
 
 /**
- * Applique le profil au depot : file_policy injectee dans les regles,
- * `AGENTS.md` rendu depuis son template et les invariants du profil,
- * `CLAUDE.md` rendu depuis son template et le contexte du projet,
- * workflow CI rendu depuis le template et les commandes du profil,
- * prompts de roles rendus dans prompts_dir avec le chemin des briefs.
+ * Applies the profile to the repository: file_policy injected into the rules,
+ * `AGENTS.md` rendered from its template and the profile invariants,
+ * `CLAUDE.md` rendered from its template and the project context, the CI
+ * workflow rendered from the template and the profile commands, and the role
+ * prompts rendered into prompts_dir with the briefs path.
  *
- * Mode --check : compare sans ecrire, code 1 en derive. Toute commande
- * ajoutee a la config devient automatiquement une etape CI.
+ * In --check mode it compares without writing, exiting 1 on drift. Any
+ * command added to the configuration automatically becomes a CI step.
  */
 function main() {
   const checkMode = process.argv.includes("--check");

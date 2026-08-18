@@ -14,13 +14,13 @@ const PHASE_ORDER = [
 const BLOCKED_PREFIX = "blocked_";
 
 /**
- * Regroupe les issues du store par colonne d'affichage.
+ * Groups the store's issues by display column.
  *
- * Les phases bloquees et l'escalade forment deux colonnes dediees pour
- * rester visibles quel que soit leur nombre.
+ * Blocked phases and escalation form two dedicated columns so they stay
+ * visible whatever their number.
  *
- * @param entries - entrees du store issues.jsonl
- * @returns les colonnes ordonnees avec leurs issues
+ * @param entries - entries of the issues.jsonl store
+ * @returns the ordered columns with their issues
  */
 function groupByColumn(entries) {
   const columns = new Map(PHASE_ORDER.map((phase) => [phase, []]));
@@ -35,10 +35,10 @@ function groupByColumn(entries) {
 }
 
 /**
- * Construit la ligne de resume d'une issue pour la vue CLI.
+ * Builds an issue's summary line for the CLI view.
  *
- * @param record - record d'issue
- * @returns la ligne formatee
+ * @param record - issue record
+ * @returns the formatted line
  */
 function cliLine(record) {
   const state = record.pipeline_state ?? {};
@@ -49,22 +49,22 @@ function cliLine(record) {
 }
 
 /**
- * Echappe le contenu injecte dans la page HTML.
+ * Escapes the content injected into the HTML page.
  *
- * @param text - texte brut issu du store
- * @returns le texte sur pour un noeud HTML
+ * @param text - raw text from the store
+ * @returns the text safe for an HTML node
  */
 function esc(text) {
   return String(text ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
 
 /**
- * Rend la page HTML autonome du tableau de bord.
+ * Renders the dashboard's self-contained HTML page.
  *
- * @param columns - issues groupees par colonne
- * @param specs - records de specs
- * @param profile - nom du profil actif
- * @returns le document HTML complet
+ * @param columns - issues grouped by column
+ * @param specs - spec records
+ * @param profile - name of the active profile
+ * @returns the complete HTML document
  */
 function renderHtml(columns, specs, profile) {
   const labels = {
@@ -132,10 +132,10 @@ ul.specs{list-style:none;padding:0;display:flex;gap:1rem;flex-wrap:wrap}
 }
 
 /**
- * Affiche l'etat du pipeline sur la sortie standard et, avec --html,
- * ecrit une page autonome dans le repertoire du store.
+ * Prints the pipeline state on standard output and, with --html, writes a
+ * self-contained page into the store directory.
  *
- * Usage : node status.mjs [--html]
+ * Usage: node status.mjs [--html]
  */
 function main() {
   const config = loadConfig();

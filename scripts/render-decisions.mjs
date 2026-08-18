@@ -4,16 +4,16 @@ import { loadConfig, loadRules, readJsonl, pathAllowed, fail } from "./lib.mjs";
 import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
 
 /**
- * Dit si un role peut prendre en charge toutes les reservations d'une issue.
+ * Says whether a role can take on all of an issue's reservations.
  *
- * Approximation assumee : la comparaison porte sur le motif de reservation
- * lui-meme et non sur les fichiers qu'il designera, qui n'existent pas
- * encore. Elle suffit a distinguer un perimetre entierement interdit d'un
- * perimetre ouvert, et c'est la seule question posee ici.
+ * An accepted approximation: the comparison is on the reservation pattern
+ * itself, not on the files it will designate, which do not exist yet. It is
+ * enough to tell an entirely forbidden scope from an open one, and that is
+ * the only question asked here.
  *
- * @param reservations - motifs reserves par l'issue
- * @param policy - politique de fichiers du role
- * @returns vrai si aucun motif reserve n'est hors de la politique
+ * @param reservations - patterns reserved by the issue
+ * @param policy - the role's file policy
+ * @returns true if no reserved pattern falls outside the policy
  */
 function roleCanTake(reservations, policy) {
   if (reservations.length === 0) return false;
@@ -21,10 +21,10 @@ function roleCanTake(reservations, policy) {
 }
 
 /**
- * Rend une carte de decision.
+ * Renders one decision card.
  *
- * @param entry - contenu de la carte
- * @returns le fragment HTML de la carte
+ * @param entry - the card's content
+ * @returns the card's HTML fragment
  */
 function card(entry) {
   const alts = (entry.options ?? []).map((option) => `<li><span>${esc(option)}</span></li>`).join("");
@@ -40,13 +40,13 @@ ${alts ? `<p class="lbl">Autres options</p><ul class="alts">${alts}</ul>` : ""}
 }
 
 /**
- * Rend une section de cartes, ou une phrase quand il n'y a rien.
+ * Renders a section of cards, or one sentence when there is nothing.
  *
- * @param heading - titre de la section
- * @param blurb - phrase de cadrage
- * @param entries - cartes a rendre
- * @param empty - phrase affichee quand la liste est vide
- * @returns le fragment HTML de la section
+ * @param heading - section title
+ * @param blurb - framing sentence
+ * @param entries - cards to render
+ * @param empty - sentence shown when the list is empty
+ * @returns the section's HTML fragment
  */
 function section(heading, blurb, entries, empty) {
   const body = entries.length > 0
@@ -56,16 +56,15 @@ function section(heading, blurb, entries, empty) {
 }
 
 /**
- * Rend la file des arbitrages qui attendent l'operateur.
+ * Renders the queue of arbitrations waiting on the operator.
  *
- * Ce que l'operateur doit trancher se derive du store et de la politique de
- * fichiers : une issue dont aucun role ne peut prendre le perimetre est du
- * travail operateur, qu'elle le dise ou non. `next-issues` la presente
- * pourtant comme dispatchable, parce qu'il calcule la disjonction des
- * reservations sans lire `file_policy` — cette page comble cet ecart au lieu
- * de demander a chacun de s'en souvenir.
+ * What the operator must decide is derived from the store and the file
+ * policy: an issue whose scope no role can take is operator work, whether it
+ * says so or not. `next-issues` presents it as dispatchable all the same,
+ * because it computes reservation disjointness without reading `file_policy`.
+ * This page fills that gap instead of asking everyone to remember it.
  *
- * Usage : node render-decisions.mjs <sortie.html> [proposition.json]
+ * Usage: node render-decisions.mjs <output.html> [proposal.json]
  */
 function main() {
   const [target, proposalPath] = process.argv.slice(2);

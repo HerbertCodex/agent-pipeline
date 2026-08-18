@@ -4,15 +4,15 @@ import { execSync } from "node:child_process";
 import { loadConfig, loadRules, readJsonl, sha256, fail } from "./lib.mjs";
 
 /**
- * Repertoire des resultats d'etalonnage.
+ * Directory of benchmark results.
  *
- * Il vit hors de `agent-pipeline/`, et c'est deliberé : le PROTOCOLE
- * d'etalonnage est reutilisable et voyage avec le pipeline, les RESULTATS
- * appartiennent a un depot et n'ont aucun sens ailleurs. Les melanger faisait
- * qu'une copie du pipeline dans un projet neuf emportait les mesures et les
- * decouvertes d'un autre, et une exigence figee decrivant une API etrangere.
+ * It lives outside `agent-pipeline/`, deliberately: the benchmark PROTOCOL is
+ * reusable and travels with the pipeline, the RESULTS belong to one
+ * repository and mean nothing elsewhere. Mixing them meant a copy of the
+ * pipeline into a fresh project carried another project's measurements and
+ * discoveries, plus a frozen requirement describing a foreign API.
  *
- * `benchmarks_dir` de la configuration le deplace ; par defaut `docs/benchmarks`.
+ * The configuration's `benchmarks_dir` moves it; `docs/benchmarks` by default.
  */
 const DIR = loadConfig().benchmarks_dir ?? "docs/benchmarks";
 
@@ -29,14 +29,14 @@ const FINGERPRINT_SOURCES = [
 ];
 
 /**
- * Rend l'empreinte de la configuration du pipeline.
+ * Returns the fingerprint of the pipeline configuration.
  *
- * Deux runs d'empreintes differentes ne se comparent pas terme a terme : ils
- * comparent deux pipelines. Sans cette empreinte, une serie de mesures ne dit
- * rien, puisque rien ne rattache un chiffre a la configuration qui l'a
- * produit.
+ * Two runs with different fingerprints do not compare term by term: they
+ * compare two pipelines. Without this fingerprint a series of measurements
+ * says nothing, since nothing ties a number to the configuration that
+ * produced it.
  *
- * @returns Les douze premiers caracteres du hash des sources de configuration.
+ * @returns The first twelve characters of the configuration sources' hash.
  */
 function fingerprint() {
   const parts = [];
@@ -56,10 +56,10 @@ function fingerprint() {
 }
 
 /**
- * Execute une commande git et rend sa sortie, ou une valeur de repli.
+ * Runs a git command and returns its output, or a fallback value.
  *
- * @param command - Commande git complete.
- * @returns La sortie sans espaces de bord, ou `null` en cas d'echec.
+ * @param command - Full git command.
+ * @returns The output trimmed, or `null` on failure.
  */
 function git(command) {
   try {
@@ -70,7 +70,7 @@ function git(command) {
 }
 
 /**
- * Ouvre un run : fige l'instant de depart et l'etat mesurable.
+ * Opens a run: freezes the starting instant and the measurable state.
  *
  * @param args - Arguments de ligne de commande.
  */
@@ -101,7 +101,7 @@ function start(args) {
 }
 
 /**
- * Ferme un run : mesure et ajoute une ligne a l'historique.
+ * Closes a run: measures it and appends a line to the history.
  */
 function finish() {
   if (!existsSync(PENDING)) fail(`no run open. Start one first: benchmark.mjs --start`);
@@ -164,7 +164,7 @@ function finish() {
 }
 
 /**
- * Compare les runs enregistres, groupes par empreinte de configuration.
+ * Compares the recorded runs, grouped by configuration fingerprint.
  */
 function report() {
   if (!existsSync(RUNS)) fail(`no run recorded in ${RUNS}`);

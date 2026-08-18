@@ -4,28 +4,26 @@ import { reviewDigest } from "./render-proposal.mjs";
 import { dependencyDigest } from "./render-dependency.mjs";
 
 /**
- * Confronte un document a la page que l'operateur est cense avoir lue.
+ * Confronts a document with the page the operator is supposed to have read.
  *
- * Le cadre produisait ces pages sans que rien n'oblige a les produire :
- * une habitude, donc une regle qui ne s'applique que les jours ou l'on y
- * pense. Elle est adossee a une commande qui echoue, comme
- * `approved_proposal` l'est deja pour la phase 2.
+ * The framework produced these pages with nothing requiring that they be
+ * produced: a habit, therefore a rule that applied only on the days someone
+ * thought of it. It is now backed by a command that fails, as
+ * `approved_proposal` already is for phase 2.
  *
- * La page porte l'empreinte de ce qu'elle affiche ; on la recalcule ici
- * depuis le document. Une page rendue depuis un contenu plus ancien ne
- * correspond donc plus, et un document que personne n'a rendu n'a rien a
- * presenter.
+ * The page carries the digest of what it displays; it is recomputed here from
+ * the document. A page rendered from older content therefore no longer
+ * matches, and a document nobody rendered has nothing to present.
  *
- * Le mecanisme est partage entre les propositions de spec et les demandes
- * de dependance parce que le probleme l'est : dans les deux cas un agent
- * soumet un choix, et dans les deux cas le choix ne vaut que si quelqu'un
- * a pu le lire.
+ * The mechanism is shared between spec proposals and dependency requests
+ * because the problem is shared: in both cases an agent submits a choice, and
+ * in both cases the choice is only worth something if someone could read it.
  *
- * @param handoff - document soumis
- * @param errors - liste d'erreurs a completer
- * @param digestOf - calcul d'empreinte propre au mode
- * @param meta - nom de la balise portee par la page
- * @param label - nom du document dans les messages
+ * @param handoff - the submitted document
+ * @param errors - list of errors to append to
+ * @param digestOf - digest computation specific to the mode
+ * @param meta - name of the tag the page carries
+ * @param label - name of the document in the messages
  */
 function checkPage(handoff, errors, digestOf, meta, label) {
   const page = handoff.review_page;
@@ -59,21 +57,21 @@ function checkPage(handoff, errors, digestOf, meta, label) {
 }
 
 /**
- * Confronte une demande de dependance a ce qu'elle doit prouver.
+ * Confronts a dependency request with what it must prove.
  *
- * Le prompt de l'implementer demande deja d'identifier la bibliotheque de
- * reference et de dire pourquoi elle n'est pas utilisee. Rien ne le
- * verifiait : sur ce depot, une bibliotheque de validation a ete evaluee
- * puis ecartee a l'interieur d'un handoff, jamais soumise, et l'operateur
- * l'a decouvert en lisant le code d'une issue deja implementee.
+ * The implementer prompt already asks that the reference library be
+ * identified and that the reason for not using it be stated. Nothing checked
+ * it: on this repository a validation library was assessed then set aside
+ * inside a handoff, never submitted, and the operator found out by reading
+ * the code of an already implemented issue.
  *
- * Les champs exiges sont ceux qu'on ne peut pas remplir sans avoir
- * regarde. Une licence, une date de derniere publication, un nombre
- * d'avis de securite ouverts : ce sont des mesures, pas des impressions,
- * et leur absence dit qu'on ne les a pas prises.
+ * The required fields are the ones that cannot be filled in without having
+ * looked. A licence, a last-release date, a count of open advisories: these
+ * are measurements, not impressions, and their absence says they were not
+ * taken.
  *
- * @param handoff - demande soumise
- * @param errors - liste d'erreurs a completer
+ * @param handoff - the submitted request
+ * @param errors - list of errors to append to
  */
 function checkDependencyAssessment(handoff, errors) {
   if (typeof handoff.need !== "string" || handoff.need.trim().length === 0) {
@@ -116,22 +114,22 @@ function checkDependencyAssessment(handoff, errors) {
 }
 
 /**
- * Valide un handoff d'agent contre la source machine des regles.
+ * Validates an agent handoff against the machine source of the rules.
  *
- * Verifie la forme, le role emetteur, la transition demandee, le titre
- * de contexte autorise pour ce role, la coherence du routage de faute
- * QA, et les chemins declares contre la politique de fichiers du role.
- * Ne verifie pas le diff reel : c'est le travail de verify-scope.mjs.
+ * Checks the shape, the emitting role, the requested transition, the context
+ * heading allowed for that role, the coherence of QA fault routing, and the
+ * declared paths against the role's file policy. It does not check the real
+ * diff: that is verify-scope.mjs's job.
  *
- * Une spec passe par deux modes et l'operateur est entre les deux.
- * `spec_proposal` soumet les choix et ne porte aucune issue ; `spec_plan`
- * exige `approved_proposal` et confronte son `digest_sha256` au contenu
- * reel du fichier approuve. Product ne peut donc pas livrer un plan
- * persistable sur une proposition que personne n'a lue — un decoupage
- * ecrit avant l'accord fait decouvrir le produit a son proprietaire une
- * fois qu'il est trop cher a changer.
+ * A spec goes through two modes with the operator between them.
+ * `spec_proposal` submits the choices and carries no issue; `spec_plan`
+ * requires `approved_proposal` and confronts its `digest_sha256` with the
+ * real content of the approved file. Product therefore cannot deliver a
+ * persistable plan derived from a proposal nobody read, and a decomposition
+ * written before the agreement makes the owner discover the product once it
+ * is too expensive to change.
  *
- * Usage : node validate-handoff.mjs <handoff.json>
+ * Usage: node validate-handoff.mjs <handoff.json>
  */
 function main() {
   const handoffPath = process.argv[2];

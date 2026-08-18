@@ -105,6 +105,21 @@ function testTitles(source) {
   return [...codeOnly(source).matchAll(/\b(?:describe|test|it)\(\s*(["'`])([\s\S]*?)\1/g)].map((m) => m[2]);
 }
 
+/**
+ * Extrait les blocs de commentaire d'un source.
+ *
+ * Ils etaient exclus des balayages jusqu'au 2026-08-18, au motif qu'un
+ * commentaire n'est pas une sortie. C'etait faux dans les faits : ce sont
+ * les premieres lignes que lit quiconque ouvre un script, et rien ne les
+ * freinant, le francais y est revenu a chaque fichier ecrit.
+ *
+ * @param source - contenu du fichier
+ * @returns les blocs de commentaire, un par entree
+ */
+function comments(source) {
+  return [...source.matchAll(/\/\*[\s\S]*?\*\//g), ...source.matchAll(/^\s*\/\/.*$/gm)].map((match) => match[0]);
+}
+
 describe("the framework speaks one language", () => {
   test("no user-facing message is in French", () => {
     const offenders = [];
@@ -147,6 +162,26 @@ describe("the framework speaks one language", () => {
       }
     }
     assert.deepEqual(offenders, [], "les documents du cadre sont en anglais");
+  });
+
+  test("no script comment is in French", () => {
+    const offenders = [];
+    for (const directory of ["scripts", "test"]) {
+      for (const name of readdirSync(join(FRAMEWORK, directory)).filter((f) => f.endsWith(".mjs"))) {
+        if (name === SELF) continue;
+        for (const block of comments(readFileSync(join(FRAMEWORK, directory, name), "utf8"))) {
+          const hit = frenchIn(block);
+          if (hit != null) offenders.push(`${directory}/${name} (${hit})`);
+        }
+      }
+    }
+    assert.deepEqual(
+      [...new Set(offenders)].slice(0, 10),
+      [],
+      `${offenders.length} block(s) in French. A comment is the first thing anyone opening a script ` +
+        "reads: a repository whose documents are in one language and whose reasoning is in another " +
+        "asks its reader to know both.",
+    );
   });
 
   test("the detector does not fire on ordinary English", () => {

@@ -2,25 +2,24 @@ import { join } from "node:path";
 import { loadConfig, loadRules, readJsonl } from "./lib.mjs";
 
 /**
- * Rend les mesures de debit et de qualite derivables du store.
+ * Returns the throughput and quality measurements derivable from the store.
  *
- * Le seul indicateur de qualite qui compte est l'ECHAPPEE : un defaut qui a
- * franchi QA et qu'on decouvre plus tard. Il se lit dans le champ
- * `escaped_from`, et NON dans la relation `discovered-from` — celle-ci dit ou
- * une trouvaille est apparue, pas ce qui l'a laissee passer. Les confondre
- * gonfle l'indicateur exactement quand le mecanisme est bien utilise, ce qui
- * est arrive : 18 decouvertes attrapees a temps ont ete rapportees comme 18
- * echappees.
+ * The only quality indicator that counts is the ESCAPE: a defect that crossed
+ * QA and is discovered later. It is read from the `escaped_from` field, and
+ * NOT from the `discovered-from` relation, which says where a finding
+ * appeared, not what let it through. Confusing them inflates the indicator
+ * exactly when the mechanism is being used well, and that happened: 18
+ * discoveries caught in time were reported as 18 escapes.
  *
- * Le reste — cycles, durees, rejets — mesure le debit, pas la qualite : une QA
- * qui ne rejette jamais ne prouve rien, elle peut aussi bien n'avoir aucune
- * case ou ranger ce qu'elle trouve.
+ * The rest, cycles, durations, rejections, measures throughput rather than
+ * quality: a QA that never rejects proves nothing, it may equally have no box
+ * to file what it finds.
  *
- * Aucune de ces valeurs n'est une statistique. Sur un projet, quelques
- * dizaines d'issues et un seul operateur, ce sont des indications, et la
- * tentation de lire un effet dans du bruit est le risque principal.
+ * None of these values is a statistic. On one project, a few dozen issues and
+ * a single operator, they are indications, and the temptation to read an
+ * effect into noise is the main risk.
  *
- * Usage : node metrics.mjs [--spec <spec-id>] [--json]
+ * Usage: node metrics.mjs [--spec <spec-id>] [--json]
  */
 function main() {
   const args = process.argv.slice(2);
@@ -138,11 +137,11 @@ function main() {
 }
 
 /**
- * Rend la duree en minutes entre deux horodatages.
+ * Returns the duration in minutes between two timestamps.
  *
- * @param start - Horodatage de depart, ou absence.
- * @param end - Horodatage d'arrivee, ou absence.
- * @returns La duree arrondie en minutes, ou `null` si elle n'est pas calculable.
+ * @param start - Starting timestamp, or none.
+ * @param end - Ending timestamp, or none.
+ * @returns The duration rounded to minutes, or `null` if it cannot be computed.
  */
 function durationMinutes(start, end) {
   if (!start || !end) return null;

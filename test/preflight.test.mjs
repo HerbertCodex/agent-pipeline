@@ -12,10 +12,10 @@ afterEach(() => {
 });
 
 /**
- * Ecrit un jeu de commandes dans la configuration du bac a sable.
+ * Writes a set of commands into the sandbox configuration.
  *
- * @param commands - portes a declarer
- * @returns le chemin du bac a sable
+ * @param commands - gates to declare
+ * @returns the sandbox path
  */
 function withCommands(commands) {
   sandbox = createSandbox();

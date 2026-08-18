@@ -1,11 +1,11 @@
 /**
- * Feuille de style partagee par les pages de relecture du pipeline.
+ * Stylesheet shared by the pipeline's review pages.
  *
- * Une seule definition pour toutes les pages : deux copies divergeraient a
- * la premiere retouche, et l'operateur lirait deux produits differents selon
- * la page ouverte. Les couleurs passent par des jetons redefinis pour les
- * trois etats de theme possibles chez le lecteur — choix explicite clair,
- * choix explicite sombre, et le reglage systeme qui n'en stampe aucun.
+ * One definition for every page: two copies would diverge on the first tweak,
+ * and the operator would read two different products depending on which page
+ * was open. Colours go through tokens redefined for the three theme states a
+ * reader can be in: an explicit light choice, an explicit dark choice, and
+ * the system setting that stamps neither.
  */
 export const STYLE = `
 :root{--paper:#f4f3f7;--card:#fff;--ink:#1b1f2a;--muted:#5c5a68;--faint:#86838f;--rule:#dedbe6;
@@ -120,14 +120,14 @@ code{font-family:var(--mono);font-size:.86em;background:var(--stamp-wash);paddin
 `;
 
 /**
- * Echappe un texte issu du store ou d'un handoff pour insertion dans du HTML.
+ * Escapes text from the store or a handoff for insertion into HTML.
  *
- * Le contenu vient d'un agent : il est traite comme une donnee et jamais
- * comme du balisage, sans quoi une spec pourrait injecter du script dans la
- * page que l'operateur lit pour decider.
+ * The content comes from an agent: it is treated as data and never as markup,
+ * otherwise a spec could inject script into the very page the operator reads
+ * to decide.
  *
- * @param value - texte a echapper, converti en chaine si besoin
- * @returns le texte sans caractere actif pour le parseur HTML
+ * @param value - text to escape, coerced to a string if needed
+ * @returns the text with no character active for the HTML parser
  */
 export function esc(value) {
   return String(value ?? "")
@@ -138,38 +138,37 @@ export function esc(value) {
 }
 
 /**
- * Rend un numero d'ordre sur deux chiffres.
+ * Renders an ordinal number on two digits.
  *
- * @param index - rang commencant a zero
- * @returns le rang affichable, commencant a un
+ * @param index - rank starting at zero
+ * @returns the displayable rank, starting at one
  */
 export function pad(index) {
   return String(index + 1).padStart(2, "0");
 }
 
 /**
- * Assemble une page autonome autour d'un corps deja rendu.
+ * Assembles a self-contained page around an already rendered body.
  *
- * @param title - titre de l'onglet et de la galerie
- * @param body - fragment HTML du contenu
- * @returns la page complete, sans aucune ressource externe a charger
+ * @param title - title of the tab and of the gallery
+ * @param body - HTML fragment of the content
+ * @returns the complete page, with no external resource to load
  */
 export function shell(title, body) {
   return `<title>${esc(title)}</title>\n<style>${STYLE}</style>\n<div class="wrap">\n${body}\n</div>\n`;
 }
 
 /**
- * Ce qu'un harnais capable doit faire de la page produite.
+ * What a capable harness should do with the page produced.
  *
- * Le framework ecrit un fichier et s'arrete la : il ne suppose ni qu'un
- * harnais sait heberger une page, ni qu'un navigateur existe, ni qu'un lien
- * peut etre rendu a l'operateur. Ces capacites appartiennent a l'outil qui
- * execute les agents, pas au pipeline, et un framework qui les supposerait
- * ne tournerait que sur celui pour lequel il a ete ecrit.
+ * The framework writes a file and stops there: it assumes neither that a
+ * harness can host a page, nor that a browser exists, nor that a link can be
+ * handed to the operator. Those capabilities belong to the tool running the
+ * agents, not to the pipeline, and a framework assuming them would only run
+ * on the one it was written for.
  *
- * La ligne est donc imprimee a l'endroit ou le pilote regarde deja — la
- * sortie de la commande — plutot qu'enfouie dans un document qu'il peut ne
- * pas avoir lu.
+ * The line is therefore printed where the driver already looks, in the
+ * command's output, rather than buried in a document it may not have read.
  */
 export const SURFACE_HINT =
   "to publish: if the harness can host an HTML page, publish it and hand the operator the link; otherwise hand them this path. The file opens on its own, with no network and no dependency.";

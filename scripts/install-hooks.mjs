@@ -6,16 +6,15 @@ import { loadConfig, fail } from "./lib.mjs";
 const MARKER = "# genere par agent-pipeline/scripts/install-hooks.mjs";
 
 /**
- * Commandes de chaque crochet, par cle de configuration.
+ * Each hook's commands, by configuration key.
  *
- * `pre-commit` garde ce qui ne doit jamais entrer dans l'historique.
- * `pre-push` garde ce qui ne doit jamais atteindre la branche partagee, plus
- * les cibles generees : c'est la desynchronisation d'une cible generee qui a
- * motive ce script, personne ne l'ayant vue partir dans un merge.
+ * `pre-commit` guards what must never enter the history. `pre-push` guards
+ * what must never reach the shared branch, plus the generated targets: it was
+ * a generated target falling out of sync that motivated this script, nobody
+ * having seen it go out in a merge.
  *
- * `build`, la suite complete et `audit` en sont volontairement absents : ils
- * appartiennent a la CI ou a la batterie de cloture de QA, et un crochet lent
- * finit contourne.
+ * `build`, the full suite and `audit` are deliberately absent: they belong to
+ * CI or to QA's closing battery, and a slow hook ends up bypassed.
  */
 const HOOKS = {
   "pre-commit": { commands: ["lint", "secrets_scan"], generated: false },
@@ -23,10 +22,10 @@ const HOOKS = {
 };
 
 /**
- * Verifications de cibles generees ajoutees a `pre-push`.
+ * Generated-target checks added to `pre-push`.
  *
- * `project_map` n'est pas cite ici : sa commande vient de la config, parce
- * qu'elle depend du langage du projet.
+ * `project_map` is not named here: its command comes from the configuration,
+ * because it depends on the project's language.
  */
 const GENERATED_CHECKS = [
   "node agent-pipeline/scripts/sync-briefs.mjs --check",
@@ -34,15 +33,15 @@ const GENERATED_CHECKS = [
 ];
 
 /**
- * Rend le contenu d'un crochet depuis les commandes du profil.
+ * Renders a hook's content from the profile commands.
  *
- * Le crochet ne connait aucune stack : il ne fait qu'appeler les valeurs que
- * `commands` porte, dans l'ordre, et s'arrete au premier echec. Changer
- * d'ecosysteme ne change que la configuration.
+ * The hook knows no stack: it only calls the values `commands` carries, in
+ * order, and stops at the first failure. Changing ecosystem changes only the
+ * configuration.
  *
- * @param name - nom du crochet
- * @param config - configuration du projet
- * @returns le script shell du crochet
+ * @param name - hook name
+ * @param config - project configuration
+ * @returns the hook's shell script
  */
 function renderHook(name, config) {
   const spec = HOOKS[name];
@@ -64,13 +63,13 @@ function renderHook(name, config) {
 }
 
 /**
- * Rend le repertoire des crochets, en respectant `core.hooksPath`.
+ * Returns the hooks directory, honouring `core.hooksPath`.
  *
- * Un depot qui a redirige ses crochets et un script qui ecrit dans
- * `.git/hooks` produisent le pire des cas : des fichiers presents que rien
- * n'execute.
+ * A repository that redirected its hooks plus a script writing into
+ * `.git/hooks` produce the worst case: files that are present and that
+ * nothing executes.
  *
- * @returns le chemin du repertoire des crochets
+ * @returns the path of the hooks directory
  */
 function hooksDir() {
   let configured = "";
@@ -86,18 +85,18 @@ function hooksDir() {
 }
 
 /**
- * Installe les crochets git, ou verifie qu'ils sont installes et a jour.
+ * Installs the git hooks, or checks that they are installed and current.
  *
- * Le pipeline affirme depuis toujours que `pre-push` refuse une cible
- * generee desynchronisee. Rien ne l'installait : l'affirmation etait vraie
- * sur le papier et fausse sur le disque, et c'est ainsi qu'un brief perime a
- * ete pousse puis merge sans que rien ne le signale. Ce script est ce qui
- * manquait derriere la phrase.
+ * The pipeline had always claimed that `pre-push` refuses a generated target
+ * that has fallen out of sync. Nothing installed it: the claim was true on
+ * paper and false on disk, and that is how a stale brief got pushed and then
+ * merged with nothing to report it. This script is what was missing behind
+ * the sentence.
  *
- * Un crochet existant qui ne porte pas la marque de ce script n'est jamais
- * ecrase sans `--force` : il appartient a quelqu'un d'autre.
+ * An existing hook that does not carry this script's marker is never
+ * overwritten without `--force`: it belongs to somebody else.
  *
- * Usage : node install-hooks.mjs [--check] [--force]
+ * Usage: node install-hooks.mjs [--check] [--force]
  */
 function main() {
   const args = process.argv.slice(2);

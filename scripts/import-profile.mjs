@@ -4,31 +4,30 @@ import { fileURLToPath } from "node:url";
 import { fail } from "./lib.mjs";
 
 /**
- * Cles que le paquet apporte, dans l'ordre ou elles se lisent.
+ * Keys the bundle brings, in the order they are read.
  */
 const STACK_KEYS = ["commands", "project_map", "doc_policy", "comment_policy", "secrets_scan", "file_policy"];
 
 /**
- * Gabarit des valeurs que le paquet ne peut pas connaitre.
+ * Template of the values the bundle cannot know.
  *
- * Elles decrivent l'endroit ou ce projet-ci range ses fichiers, pas la
- * stack : aucun profil ne peut les apporter. Elles vivent dans un gabarit
- * plutot que dans ce script, pour deux raisons. Un chemin ecrit en dur ici
- * ne vaudrait que pour un projet ayant garde les defauts, et le cadre s'en
- * interdit partout ailleurs. Et un gabarit se relit : un defaut qu'on
- * decouvre en ouvrant un fichier vaut mieux qu'un defaut qu'on decouvre en
- * lisant du code.
+ * They describe where THIS project files its own things, not the stack: no
+ * profile can bring them. They live in a template rather than in this script,
+ * for two reasons. A path hardcoded here would only hold for a project that
+ * kept the defaults, and the framework forbids itself that everywhere else.
+ * And a template is read: a default discovered by opening a file beats a
+ * default discovered by reading code.
  */
 const CONFIG_TEMPLATE = join(dirname(fileURLToPath(import.meta.url)), "..", "templates", "pipeline.config.template.json");
 
 /**
- * Lit les valeurs d'accueil depuis le gabarit du cadre.
+ * Reads the host values from the framework's template.
  *
- * Le gabarit est resolu depuis ce script, jamais depuis le projet
- * d'accueil : c'est le cadre qui execute l'import qui apporte ses propres
- * defauts, et un accueil vierge n'a encore rien a offrir.
+ * The template is resolved from this script, never from the host project: the
+ * framework running the import is the one bringing its own defaults, and a
+ * blank host has nothing to offer yet.
  *
- * @returns les cles d'emplacement a poser dans la configuration
+ * @returns the location keys to write into the configuration
  */
 function hostDefaults() {
   if (!existsSync(CONFIG_TEMPLATE)) fail(`not found: ${CONFIG_TEMPLATE}`);
@@ -36,7 +35,7 @@ function hostDefaults() {
 }
 
 /**
- * Installe un paquet de profil dans un projet d'accueil.
+ * Installs a profile bundle into a host project.
  */
 function main() {
   const [bundle, host = "."] = process.argv.slice(2);

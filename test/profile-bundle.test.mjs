@@ -11,10 +11,10 @@ afterEach(() => {
 });
 
 /**
- * Prepare un bac a sable portant un profil complet et ses outils.
+ * Prepares a sandbox carrying a complete profile and its tools.
  *
- * @param overrides - champs a fusionner dans la configuration
- * @returns la racine du bac a sable
+ * @param overrides - fields to merge into the configuration
+ * @returns the sandbox root
  */
 function withProfile(overrides = {}) {
   const root = createSandbox();
@@ -45,10 +45,10 @@ function withProfile(overrides = {}) {
 }
 
 /**
- * Relit le manifeste d'un paquet exporte.
+ * Reads back an exported bundle's manifest.
  *
- * @param bundle - repertoire du paquet
- * @returns le manifeste analyse
+ * @param bundle - the bundle's directory
+ * @returns the parsed manifest
  */
 function manifest(bundle) {
   return JSON.parse(readFileSync(join(bundle, "profile.json"), "utf8"));
@@ -112,9 +112,9 @@ describe("export-profile: what a profile has to carry to be reusable", () => {
 
 describe("import-profile: installing a profile without silently overwriting", () => {
   /**
-   * Exporte un paquet puis rend une racine vierge prete a l'importer.
+   * Exports a bundle then returns a blank root ready to import it.
    *
-   * @returns le paquet exporte et la racine d'accueil
+   * @returns the exported bundle and the host root
    */
   function exported() {
     sandbox = withProfile();

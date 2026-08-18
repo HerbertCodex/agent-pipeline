@@ -4,10 +4,10 @@ import { loadConfig, matchAny, fail } from "./lib.mjs";
 const WRITING_TOOLS = ["Edit", "Write", "NotebookEdit"];
 
 /**
- * Rend les chemins refuses a chaque role, depuis `file_policy`.
+ * Returns the paths refused to each role, from `file_policy`.
  *
- * @param config - configuration du projet
- * @returns les globs refuses par role, roles sans refus exclus
+ * @param config - project configuration
+ * @returns the refused globs per role, roles with no refusal excluded
  */
 function denialsByRole(config) {
   const policy = config.file_policy ?? {};
@@ -20,33 +20,32 @@ function denialsByRole(config) {
 }
 
 /**
- * Rend un chemin representatif d'un glob, pour tester sa couverture.
+ * Returns a path representative of a glob, to test its coverage.
  *
- * Comparer deux globs par egalite de chaines est faux : `**` couvre
- * `.sudocode/**` sans lui ressembler. On teste donc un chemin concret que le
- * glob designe, contre les motifs de l'autre role.
+ * Comparing two globs by string equality is wrong: `**` covers
+ * `.sudocode/**` without resembling it. So a concrete path the glob
+ * designates is tested against the other role's patterns.
  *
- * @param glob - le motif a representer
- * @returns un chemin que ce motif designe
+ * @param glob - the pattern to represent
+ * @returns a path that pattern designates
  */
 function representative(glob) {
   return glob.replaceAll("**/", "x/").replaceAll("**", "x").replaceAll("*", "x").replaceAll("?", "x");
 }
 
 /**
- * Rend les chemins qu'AUCUN role n'a le droit d'ecrire.
+ * Returns the paths NO role is allowed to write.
  *
- * Une plateforme dont les permissions sont globales a la session ne sait pas
- * exprimer « ce role-ci ne peut pas ecrire ici, celui-la si ». Un chemin
- * qu'au moins un role a le droit d'ecrire ne peut donc pas etre refuse
- * globalement sans casser ce role.
+ * A platform whose permissions are session-global cannot express "this role
+ * may not write here, that one may". A path at least one role may write can
+ * therefore not be refused globally without breaking that role.
  *
- * Un role autorise un chemin quand sa liste `allow` le couvre, ou quand sa
- * liste `deny` ne le couvre pas, ou quand il n'a aucune politique.
+ * A role allows a path when its `allow` list covers it, or when its `deny`
+ * list does not, or when it has no policy at all.
  *
- * @param config - configuration du projet
- * @param candidates - les globs a examiner
- * @returns les globs refusables globalement, tries
+ * @param config - project configuration
+ * @param candidates - the globs to examine
+ * @returns the globs refusable globally, sorted
  */
 function universalDenials(config, candidates) {
   const policy = config.file_policy ?? {};
@@ -64,20 +63,20 @@ function universalDenials(config, candidates) {
 }
 
 /**
- * Rend les regles de refus au format d'une plateforme d'agents.
+ * Renders the refusal rules in an agent platform's format.
  *
- * @param globs - les chemins a refuser
- * @returns les regles `Outil(motif)`
+ * @param globs - the paths to refuse
+ * @returns the `Tool(pattern)` rules
  */
 function toRules(globs) {
   return globs.flatMap((glob) => WRITING_TOOLS.map((tool) => `${tool}(${glob})`));
 }
 
 /**
- * Verifie qu'un fichier de reglages refuse bien chaque chemin attendu.
+ * Checks that a settings file really refuses every expected path.
  *
- * @param path - chemin du fichier de reglages
- * @param expected - les regles attendues
+ * @param path - settings file path
+ * @param expected - the expected rules
  */
 function check(path, expected) {
   if (expected.length === 0) {
@@ -114,19 +113,19 @@ function check(path, expected) {
 }
 
 /**
- * Derive les permissions de plateforme depuis `file_policy`.
+ * Derives platform permissions from `file_policy`.
  *
- * `AGENTS.md` exige que les permissions soient imposees par la plateforme et
- * previent qu'une interdiction ecrite dans un prompt n'est pas une barriere
- * de securite. Rien ne les derivait pourtant : `file_policy` etait injectee
- * dans les regles machine et repetee dans les prompts, et s'arretait la.
+ * `AGENTS.md` requires permissions to be enforced by the platform, and warns
+ * that a prohibition written in a prompt is not a security boundary. Yet
+ * nothing derived them: `file_policy` was injected into the machine rules and
+ * repeated in the prompts, and stopped there.
  *
- * Ce script ne configure aucune plateforme — il n'en connait aucune. Il rend
- * la politique deja declaree sous une forme applicable, et sait verifier
- * qu'un fichier de reglages la porte vraiment.
+ * This script configures no platform; it knows none. It renders the policy
+ * already declared in an enforceable form, and can check that a settings file
+ * really carries it.
  *
- * Usage : node permissions.mjs [--format claude]
- *         node permissions.mjs --check <fichier-de-reglages>
+ * Usage: node permissions.mjs [--format claude]
+ *        node permissions.mjs --check <settings-file>
  */
 function main() {
   const args = process.argv.slice(2);

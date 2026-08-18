@@ -3,19 +3,18 @@ import { fail, sha256 } from "./lib.mjs";
 import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
 
 /**
- * Empreinte de ce que la page montre a l'operateur.
+ * Digest of what the page shows the operator.
  *
- * Elle porte le perimetre fonctionnel, les choix soumis et le tour — ce sur
- * quoi l'operateur se prononce — et rien d'autre : un champ de forme qui
- * bougerait sans changer la lecture ne doit pas invalider une relecture
- * deja faite.
+ * It carries the functional scope, the submitted choices and the round, which
+ * is what the operator rules on, and nothing else: a formatting field moving
+ * without changing the reading must not invalidate a review already done.
  *
- * Le calcul est le meme ici et dans `validate-handoff`. C'est ce qui permet
- * a la porte de confronter la page a la proposition sans que l'une ait a
- * connaitre l'autre, et sans qu'un document contienne sa propre empreinte.
+ * The computation is the same here and in `validate-handoff`. That is what
+ * lets the gate confront the page with the proposal without either having to
+ * know the other, and without any document containing its own digest.
  *
- * @param handoff - proposition rendue
- * @returns l'empreinte hexadecimale du contenu soumis a relecture
+ * @param handoff - the proposal being rendered
+ * @returns the hexadecimal digest of the content submitted for review
  */
 export function reviewDigest(handoff) {
   return sha256(
@@ -29,10 +28,10 @@ export function reviewDigest(handoff) {
 }
 
 /**
- * Rend une section de fonctionnalites avec leurs regles numerotees.
+ * Renders a features section with their numbered rules.
  *
- * @param features - liste des fonctionnalites du perimetre
- * @returns le fragment HTML de la section, vide si la liste l'est
+ * @param features - the scope's list of features
+ * @returns the section's HTML fragment, empty if the list is
  */
 function renderFeatures(features) {
   if (!features?.length) return "";
@@ -53,10 +52,10 @@ function renderFeatures(features) {
 }
 
 /**
- * Rend la liste des exclusions declarees.
+ * Renders the list of declared exclusions.
  *
- * @param entries - contenu de functional_scope.out_of_scope
- * @returns le fragment HTML, vide si aucune exclusion n'est declaree
+ * @param entries - content of functional_scope.out_of_scope
+ * @returns the HTML fragment, empty if no exclusion is declared
  */
 function renderExclusions(entries) {
   if (!entries?.length) return "";
@@ -68,12 +67,12 @@ function renderExclusions(entries) {
 }
 
 /**
- * Rend une liste d'engagements numerotes.
+ * Renders a list of numbered commitments.
  *
- * @param entries - liste de textes d'engagement
- * @param heading - titre de la section
- * @param blurb - phrase de cadrage sous le titre
- * @returns le fragment HTML, vide si la liste l'est
+ * @param entries - list of commitment texts
+ * @param heading - section title
+ * @param blurb - framing sentence under the title
+ * @returns the HTML fragment, empty if the list is
  */
 function renderPledges(entries, heading, blurb) {
   if (!entries?.length) return "";
@@ -84,13 +83,13 @@ function renderPledges(entries, heading, blurb) {
 }
 
 /**
- * Rend les choix qui attendent encore l'arbitrage de l'operateur.
+ * Renders the choices still awaiting the operator's decision.
  *
- * Cette section vient avant le perimetre : un tour ouvert se lit d'abord par
- * ce qu'il demande, pas par ce qu'il propose.
+ * This section comes before the scope: an open round is read first by what it
+ * asks, not by what it proposes.
  *
- * @param decisions - contenu de decisions_for_operator
- * @returns le fragment HTML, vide quand plus rien n'est ouvert
+ * @param decisions - content of decisions_for_operator
+ * @returns the HTML fragment, empty once nothing is open
  */
 function renderDecisions(decisions) {
   if (!decisions?.length) return "";
@@ -110,10 +109,10 @@ function renderDecisions(decisions) {
 }
 
 /**
- * Rend les titres du decoupage envisage.
+ * Renders the titles of the envisaged decomposition.
  *
- * @param titles - contenu de decomposition_titles
- * @returns le fragment HTML, vide si aucun titre n'est propose
+ * @param titles - content of decomposition_titles
+ * @returns the HTML fragment, empty if no title is proposed
  */
 function renderTitles(titles) {
   const list = titles?.titles;
@@ -128,15 +127,15 @@ ${note ? `<p class="note">${esc(note)}</p>` : ""}</section>`;
 }
 
 /**
- * Rend une proposition de spec en page HTML autonome, prete a publier.
+ * Renders a spec proposal as a self-contained HTML page, ready to publish.
  *
- * Le rendu est deterministe et sans decision de mise en forme au moment de
- * publier : deux tours successifs se comparent a l'oeil parce que seule leur
- * substance change. Le texte est repris tel quel, jamais reformule — une
- * relecture obligeante creerait un ecart entre ce que l'operateur lit et ce
- * que l'empreinte de `approved_proposal` fige.
+ * The rendering is deterministic, with no formatting decision at publish
+ * time: two successive rounds compare by eye because only their substance
+ * changes. The text is taken as it is, never reworded, since an obliging
+ * re-read would open a gap between what the operator reads and what the
+ * `approved_proposal` digest freezes.
  *
- * Usage : node render-proposal.mjs <proposition.json> <sortie.html>
+ * Usage: node render-proposal.mjs <proposal.json> <output.html>
  */
 function main() {
   const [source, target] = process.argv.slice(2);

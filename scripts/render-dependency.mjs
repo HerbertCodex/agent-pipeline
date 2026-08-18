@@ -3,16 +3,16 @@ import { fail, sha256 } from "./lib.mjs";
 import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
 
 /**
- * Empreinte de ce que la page soumet a l'operateur.
+ * Digest of what the page submits to the operator.
  *
- * Elle porte le besoin, le cout de l'ecrire soi-meme, les candidats, la
- * recommandation et ce qui a ete ecarte — ce sur quoi l'operateur se
- * prononce. Le calcul est le meme ici et dans `validate-handoff`, ce qui
- * permet de confronter la page a la demande sans qu'aucune des deux ne
- * contienne sa propre empreinte.
+ * It carries the need, the cost of writing it yourself, the candidates, the
+ * recommendation and what was set aside, which is what the operator rules on.
+ * The computation is the same here and in `validate-handoff`, which allows
+ * confronting the page with the request without either containing its own
+ * digest.
  *
- * @param handoff - evaluation rendue
- * @returns l'empreinte hexadecimale du contenu soumis
+ * @param handoff - the assessment being rendered
+ * @returns the hexadecimal digest of the submitted content
  */
 export function dependencyDigest(handoff) {
   return sha256(
@@ -27,15 +27,15 @@ export function dependencyDigest(handoff) {
 }
 
 /**
- * Rend la fiche d'un candidat, securite comprise.
+ * Renders a candidate's card, security included.
  *
- * L'ordre n'est pas neutre : ce que la bibliotheque fait vient en premier,
- * puis ce qu'elle coute a heberger, puis qui la maintient, et la securite
- * ferme la fiche parce que c'est le dernier point lu avant de trancher.
+ * The order is not neutral: what the library does comes first, then what it
+ * costs to host, then who maintains it, and security closes the card because
+ * it is the last point read before deciding.
  *
- * @param candidate - candidat evalue
- * @param index - rang dans la liste
- * @returns le fragment HTML de la fiche
+ * @param candidate - the candidate assessed
+ * @param index - rank in the list
+ * @returns the card's HTML fragment
  */
 function card(candidate, index) {
   const weight = candidate.weight ?? {};
@@ -64,10 +64,10 @@ function card(candidate, index) {
 }
 
 /**
- * Rend une liste de rejets motives.
+ * Renders a list of rejections with their reasons.
  *
- * @param entries - alternatives ecartees
- * @returns le fragment HTML, vide si la liste l'est
+ * @param entries - alternatives set aside
+ * @returns the HTML fragment, empty if the list is
  */
 function rejected(entries) {
   if (!entries?.length) return "";
@@ -83,7 +83,7 @@ function rejected(entries) {
 }
 
 /**
- * Rend une demande de dependance en page de relecture.
+ * Renders a dependency request as a review page.
  */
 function main() {
   const [source, target] = process.argv.slice(2);

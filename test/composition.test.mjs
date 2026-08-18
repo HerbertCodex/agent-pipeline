@@ -16,14 +16,14 @@ const SCOPE = {
 const DECISION = { question: "combien ?", product_recommendation: "cinq", alternatives: ["trois"] };
 
 /**
- * Construit un tour de proposition, le rend, puis le soumet au validateur.
+ * Builds a proposal round, renders it, then submits it to the validator.
  *
- * Le rendu n'est pas un detail de mise en place : toute proposition doit
- * presenter la page que l'operateur a lue. Declarer un faux chemin ferait
- * passer cette suite en desactivant la porte qu'elle traverse.
+ * The rendering is not a setup detail: every proposal must present the page
+ * the operator read. Declaring a fake path would make this suite pass by
+ * switching off the gate it goes through.
  *
- * @param overrides - champs a fusionner dans le tour de base
- * @returns le resultat d'execution du validateur
+ * @param overrides - fields to merge into the base round
+ * @returns the validator's execution result
  */
 function round(overrides) {
   sandbox ??= createSandbox();

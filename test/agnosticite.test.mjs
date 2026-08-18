@@ -12,21 +12,21 @@ const SCRIPTS = join(FRAMEWORK, "scripts");
 const TESTS = here;
 
 /**
- * Nom de ce fichier, seule exclusion des balayages ci-dessous.
+ * This file's name, the only exclusion from the scans below.
  *
- * Un controle doit nommer ce qu'il refuse, donc son propre source contient
- * les motifs interdits et se denoncerait lui-meme. L'exclusion est nommee
- * plutot que le motif tordu : une expression contournee pour ne pas se voir
- * finit par ne plus voir non plus ce qu'elle cherche.
+ * A control must name what it refuses, so its own source contains the
+ * forbidden patterns and would report itself. The exclusion is named rather
+ * than the pattern twisted: an expression contorted so as not to see itself
+ * ends up not seeing what it is looking for either.
  */
 const SELF = "agnosticite.test.mjs";
 
 /**
- * Lit tous les fichiers d'un repertoire du framework.
+ * Reads every file of a framework directory.
  *
- * @param directory - repertoire a parcourir
- * @param suffix - extension retenue
- * @returns les couples nom de fichier et contenu
+ * @param directory - directory to walk
+ * @param suffix - extension retained
+ * @returns the pairs of file name and content
  */
 function filesIn(directory, suffix = ".mjs") {
   return readdirSync(directory)
@@ -35,14 +35,14 @@ function filesIn(directory, suffix = ".mjs") {
 }
 
 /**
- * Retire les blocs de commentaire et les lignes de commentaire d'un source.
+ * Strips comment blocks and comment lines from a source.
  *
- * Une consigne peut legitimement citer un outil de projet en prose ; seule
- * une invocation reelle est un couplage. Comparer sur le code seul evite de
- * transformer la porte en interdiction d'ecrire de la documentation.
+ * An instruction may legitimately name a project tool in prose; only a real
+ * invocation is a coupling. Comparing on the code alone avoids turning the
+ * gate into a ban on writing documentation.
  *
- * @param source - contenu du fichier
- * @returns le source prive de ses commentaires
+ * @param source - file content
+ * @returns the source without its comments
  */
 function codeOnly(source) {
   return source.replaceAll(/\/\*[\s\S]*?\*\//g, "").replaceAll(/^\s*\/\/.*$/gm, "");
@@ -146,10 +146,10 @@ describe("the framework requires a gate on design limits", () => {
 
 describe("the framework requires the code layout to be declared", () => {
   /**
-   * Ecrit une configuration bac a sable dont le bloc architecture est impose.
+   * Writes a sandbox configuration whose architecture block is imposed.
    *
-   * @param root - racine du bac a sable
-   * @param architecture - valeur a poser, ou null pour retirer la cle
+   * @param root - sandbox root
+   * @param architecture - value to set, or null to remove the key
    */
   function withArchitecture(root, architecture) {
     const path = join(root, "pipeline.config.json");

@@ -1,10 +1,10 @@
 /**
- * Les questions qui font comprendre un projet avant d'en choisir la forme.
+ * The questions that make a project understood before its shape is chosen.
  *
- * Elles se repondent en langue ordinaire, sans vocabulaire technique, parce
- * que celui qui connait le produit n'est pas forcement celui qui connait
- * les architectures. Une recommandation donnee sans ces reponses est un
- * catalogue : elle ne peut argumenter que dans l'abstrait.
+ * They are answered in plain language, with no technical vocabulary, because
+ * whoever knows the product is not necessarily whoever knows the
+ * architectures. A recommendation given without these answers is a
+ * catalogue: it can only argue in the abstract.
  */
 export const BRIEF_QUESTIONS = [
   {
@@ -58,7 +58,7 @@ export const BRIEF_QUESTIONS = [
 ];
 
 /**
- * Verdicts possibles d'une architecture face a un projet analyse.
+ * Verdicts an architecture can receive when faced with an analysed project.
  */
 const VERDICT = {
   recommande: { label: "Recommended", rank: 0 },
@@ -67,15 +67,15 @@ const VERDICT = {
 };
 
 /**
- * Confronte une architecture a l'analyse d'un projet.
+ * Confronts an architecture with a project's analysis.
  *
- * Le raisonnement est explicite et rendu a l'operateur : une recommandation
- * dont on ne voit pas le motif ne se discute pas, elle s'accepte — ce qui
- * est exactement ce que ce mecanisme existe pour empecher.
+ * The reasoning is explicit and handed to the operator: a recommendation
+ * whose grounds cannot be seen is not discussed, it is accepted, which is
+ * exactly what this mechanism exists to prevent.
  *
- * @param entry - architecture du catalogue
- * @param analysis - analyse du projet issue du cahier des charges
- * @returns le verdict et les raisons qui le fondent
+ * @param entry - catalogue architecture
+ * @param analysis - project analysis drawn from the rough brief
+ * @returns the verdict and the reasons grounding it
  */
 export function judge(entry, analysis) {
   const rules = (analysis.business_rules ?? []).length;
@@ -142,10 +142,10 @@ export function judge(entry, analysis) {
 }
 
 /**
- * Resume ce que l'analyse dit du projet, en une phrase opposable.
+ * Summarises what the analysis says about the project, in one quotable line.
  *
- * @param analysis - analyse du projet
- * @returns la phrase de synthese
+ * @param analysis - project analysis
+ * @returns the summary sentence
  */
 export function summarise(analysis) {
   const rules = (analysis.business_rules ?? []).length;

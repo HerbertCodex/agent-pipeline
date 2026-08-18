@@ -10,19 +10,19 @@ const SCRIPTS = join(here, "..", "scripts");
 const PROJECT_ROOT = join(here, "..", "..");
 
 /**
- * Resout le fichier de regles a copier dans un bac a sable.
+ * Resolves the rules file to copy into a sandbox.
  *
- * Dans un projet hote, c'est SON fichier — `rules_path` est configurable, et
- * un harnais qui supposerait `pipeline/rules.json` ne tournerait que sur les
- * projets ayant garde le defaut.
+ * Inside a host project it is THAT project's file: `rules_path` is
+ * configurable, and a harness assuming `pipeline/rules.json` would only run
+ * on projects that kept the default.
  *
- * Hors projet — le cadre clone seul — c'est la source d'amorcage
- * `schemas/rules.json`, dont chaque projet descend. Ce n'est donc pas un jeu
- * de regles de test qui divergerait en silence : c'est l'original. Sans ce
- * repli, un lecteur qui clone et lance les tests voit cent echecs et conclut
- * que le cadre est casse.
+ * Outside a project, when the framework is cloned on its own, it is the
+ * seeding source `schemas/rules.json`, which every project descends from. So
+ * this is not a test rule set that would drift in silence: it is the
+ * original. Without this fallback, a reader who clones and runs the tests
+ * sees a hundred failures and concludes the framework is broken.
  *
- * @returns le chemin absolu du fichier de regles a utiliser
+ * @returns the absolute path of the rules file to use
  */
 function resolveRules() {
   const hosted = join(PROJECT_ROOT, "pipeline.config.json");
@@ -35,21 +35,20 @@ function resolveRules() {
 }
 
 /**
- * Cree un depot jetable portant une configuration de pipeline minimale.
+ * Creates a throwaway repository carrying a minimal pipeline configuration.
  *
- * Les scripts du core resolvent `pipeline.config.json` depuis le repertoire
- * courant : un bac a sable par test isole donc completement l'etat, et aucun
- * test ne peut ecrire dans le store du projet reel.
+ * Core scripts resolve `pipeline.config.json` from the current directory: one
+ * sandbox per test therefore isolates state completely, and no test can write
+ * into the real project's store.
  *
- * Les regles sont copiees depuis le fichier `rules_path` du projet hote
- * plutot que reinventees. Un jeu de regles de test diverge de la production
- * sans que rien ne le signale, et les tests finissent par prouver la copie
- * au lieu du systeme. Le reste de la configuration du bac a sable est en
- * revanche fabrique : ses chemins et sa politique de fichiers n'appartiennent
- * qu'au test, et ne supposent rien du projet hote.
+ * The rules are copied from the host project's `rules_path` file rather than
+ * reinvented. A test rule set drifts from production with nothing to report
+ * it, and the tests end up proving the copy instead of the system. The rest
+ * of the sandbox configuration is fabricated, however: its paths and its file
+ * policy belong to the test alone, and assume nothing of the host project.
  *
- * @param options - contenu initial : `issues` et `specs`, listes de records
- * @returns le chemin du bac a sable, a supprimer avec `destroySandbox`
+ * @param options - initial content: `issues` and `specs`, lists of records
+ * @returns the sandbox path, to be removed with `destroySandbox`
  */
 export function createSandbox({ issues = [], specs = [] } = {}) {
   const root = mkdtempSync(join(tmpdir(), "pipeline-core-"));
@@ -61,11 +60,11 @@ export function createSandbox({ issues = [], specs = [] } = {}) {
     qa: { allow: [] },
     orchestrator: { allow: ["pipeline/store/**"] },
   };
-  // `file_policy` est INJECTEE dans les regles par apply-profile depuis la
-  // config : la source d'amorcage ne la porte pas. Le bac a sable reproduit
-  // donc l'injection au lieu de dependre d'un fichier deja rendu par un
-  // projet hote — sans quoi les tests ne passeraient que la ou le pipeline
-  // tourne deja.
+  // `file_policy` is INJECTED into the rules by apply-profile, from the
+  // configuration: the seeding source does not carry it. The sandbox
+  // therefore reproduces that injection rather than depending on a file
+  // already rendered by a host project, without which the tests would only
+  // pass where the pipeline already runs.
   const rules = JSON.parse(readFileSync(resolveRules(), "utf8"));
   writeFileSync(join(root, "pipeline", "rules.json"), JSON.stringify({ ...rules, file_policy: policy }, null, 2));
 
@@ -93,20 +92,20 @@ export function createSandbox({ issues = [], specs = [] } = {}) {
 }
 
 /**
- * Supprime un bac a sable et tout son contenu.
+ * Removes a sandbox and everything it contains.
  *
- * @param root - chemin rendu par `createSandbox`
+ * @param root - path returned by `createSandbox`
  */
 export function destroySandbox(root) {
   rmSync(root, { recursive: true, force: true });
 }
 
 /**
- * Reecrit un fichier du store a partir d'une liste de records.
+ * Rewrites a store file from a list of records.
  *
- * @param root - chemin du bac a sable
- * @param kind - `issues` ou `specs`
- * @param records - records a serialiser, une ligne chacun
+ * @param root - sandbox path
+ * @param kind - `issues` or `specs`
+ * @param records - records to serialise, one line each
  */
 export function writeStore(root, kind, records) {
   const body = records.map((record) => JSON.stringify(record)).join("\n");
@@ -114,12 +113,12 @@ export function writeStore(root, kind, records) {
 }
 
 /**
- * Relit un record du store par son identifiant.
+ * Reads a store record back by its identifier.
  *
- * @param root - chemin du bac a sable
- * @param kind - `issues` ou `specs`
- * @param id - identifiant du record
- * @returns le record, ou `undefined` s'il est absent
+ * @param root - sandbox path
+ * @param kind - `issues` or `specs`
+ * @param id - record identifier
+ * @returns the record, or `undefined` if absent
  */
 export function readRecord(root, kind, id) {
   const path = join(root, "pipeline", "store", `${kind}.jsonl`);
@@ -131,15 +130,15 @@ export function readRecord(root, kind, id) {
 }
 
 /**
- * Rend le hash de verrou optimiste d'un record, tel que le core le calcule.
+ * Returns a record's optimistic-lock hash, exactly as the core computes it.
  *
- * Le hash porte sur la ligne brute et non sur le record reserialise : un
- * reformatage sans effet semantique change le hash, et c'est voulu.
+ * The hash covers the raw line, not the reserialised record: a reformat with
+ * no semantic effect changes the hash, and that is deliberate.
  *
- * @param root - chemin du bac a sable
- * @param kind - `issues` ou `specs`
- * @param id - identifiant du record
- * @returns le hash hexadecimal attendu par `store-update`
+ * @param root - sandbox path
+ * @param kind - `issues` or `specs`
+ * @param id - record identifier
+ * @returns the hexadecimal hash `store-update` expects
  */
 export function recordHash(root, kind, id) {
   const path = join(root, "pipeline", "store", `${kind}.jsonl`);
@@ -150,12 +149,12 @@ export function recordHash(root, kind, id) {
 }
 
 /**
- * Ecrit un fichier JSON dans le bac a sable et rend son chemin absolu.
+ * Writes a JSON file into the sandbox and returns its absolute path.
  *
- * @param root - chemin du bac a sable
- * @param name - nom du fichier
- * @param value - contenu serialisable
- * @returns le chemin absolu du fichier ecrit
+ * @param root - sandbox path
+ * @param name - file name
+ * @param value - serialisable content
+ * @returns the absolute path of the written file
  */
 export function writeJson(root, name, value) {
   const path = join(root, name);
@@ -164,12 +163,12 @@ export function writeJson(root, name, value) {
 }
 
 /**
- * Execute un script du core dans le bac a sable.
+ * Runs a core script inside the sandbox.
  *
- * @param root - chemin du bac a sable, utilise comme repertoire courant
- * @param script - nom de fichier du script, par exemple `store-update.mjs`
- * @param args - arguments de ligne de commande
- * @returns le code de sortie et les deux flux de sortie
+ * @param root - sandbox path, used as the working directory
+ * @param script - script file name, for example `store-update.mjs`
+ * @param args - command-line arguments
+ * @returns the exit code and both output streams
  */
 export function run(root, script, args = []) {
   const result = spawnSync(process.execPath, [join(SCRIPTS, script), ...args], {
@@ -185,10 +184,10 @@ export function run(root, script, args = []) {
 }
 
 /**
- * Construit un bloc `pipeline_state` valide.
+ * Builds a valid `pipeline_state` block.
  *
- * @param overrides - champs a remplacer dans l'etat par defaut
- * @returns un bloc d'etat accepte par la validation du core
+ * @param overrides - fields to replace in the default state
+ * @returns a state block accepted by the core validation
  */
 export function state(overrides = {}) {
   return {
@@ -205,10 +204,10 @@ export function state(overrides = {}) {
 }
 
 /**
- * Construit une issue de test complete.
+ * Builds a complete test issue.
  *
- * @param overrides - champs a remplacer dans le record par defaut
- * @returns un record d'issue accepte par le store
+ * @param overrides - fields to replace in the default record
+ * @returns an issue record accepted by the store
  */
 export function issue(overrides = {}) {
   return {

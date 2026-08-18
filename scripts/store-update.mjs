@@ -3,12 +3,12 @@ import { join } from "node:path";
 import { loadConfig, loadRules, readJsonl, sha256, sudocodeStatus, fail } from "./lib.mjs";
 
 /**
- * Valide un bloc d'etat contre la source machine des regles.
+ * Validates a state block against the machine source of the rules.
  *
- * @param state - bloc pipeline_state propose
- * @param rules - regles chargees depuis <rules_path>
- * @throws {Error} si un champ obligatoire manque, si la phase ou le
- * proprietaire sont inconnus, ou s'ils ne correspondent pas
+ * @param state - the proposed pipeline_state block
+ * @param rules - rules loaded from <rules_path>
+ * @throws {Error} if a required field is missing, if the phase or the owner
+ * is unknown, or if they do not match
  */
 function validateState(state, rules) {
   for (const field of rules.state_required_fields) {
@@ -23,41 +23,41 @@ function validateState(state, rules) {
 }
 
 /**
- * Applique une requete d'ecriture au store avec verrou optimiste.
+ * Applies a write request to the store under an optimistic lock.
  *
- * La requete JSON contient : target {kind, id}, expected_record_hash, et au
- * choix pipeline_state, acceptance_criteria, criteria_ledger,
+ * The JSON request carries: target {kind, id}, expected_record_hash, and any
+ * of pipeline_state, acceptance_criteria, criteria_ledger,
  * discoveries_declared, spec_state {phase, pr_url}, spec_fields,
- * append_context {heading, body}, set_status, ou create_record pour une
- * creation. Seule la ligne visee est reecrite ; toute autre ligne est
- * recopiee octet pour octet.
+ * append_context {heading, body}, set_status, or create_record for a
+ * creation. Only the targeted line is rewritten; every other line is copied
+ * byte for byte.
  *
- * `pipeline_state` confronte le couple (phase quittee, phase visee) a
- * `rules.transitions` et refuse ce qui n'y figure pas. Une phase identique de
- * part et d'autre est un AMENDEMENT : la version avance, le journal
- * `transitions` n'enregistre rien, parce qu'aucune transition n'a eu lieu et
- * qu'un faux mouvement fausserait la mesure.
+ * `pipeline_state` confronts the pair (phase left, phase entered) with
+ * `rules.transitions` and refuses anything absent from it. An identical phase
+ * on both sides is an AMENDMENT: the version advances, the `transitions`
+ * journal records nothing, because no transition happened and a false
+ * movement would skew the measurements.
  *
- * `acceptance_criteria` reecrit le contrat d'une issue quand une revision de
- * spec le change. Il efface alors `criteria_ledger` : un registre etabli
- * contre d'autres criteres n'est pas une preuve sur ceux-la. Sans ce chemin,
- * une issue revisee gardait ses criteres perimes et devenait inclosable,
- * `store-verify` mesurant la longueur du registre contre eux.
+ * `acceptance_criteria` rewrites an issue's contract when a spec revision
+ * changes it. It then clears `criteria_ledger`: a ledger established against
+ * other criteria is not evidence about these. Without this path, a revised
+ * issue kept its stale criteria and became unclosable, `store-verify`
+ * measuring the ledger's length against them.
  *
- * `spec_fields` fusionne les champs normatifs d'un record de spec, hors
- * champs qui ont deja leur propre chemin d'ecriture.
+ * `spec_fields` merges a spec record's normative fields, excluding fields
+ * that already have their own write path.
  *
- * `criteria_ledger` porte ce qui est CONNU comme vrai de chaque critere, une
- * entree par critere d'acceptation, dans l'ordre. Il n'enregistre pas ce
- * qu'un agent declare avoir fait : il enregistre ce qu'un audit a constate
- * dans l'environnement, avec sa preuve.
+ * `criteria_ledger` carries what is KNOWN to be true of each criterion, one
+ * entry per acceptance criterion, in order. It does not record what an agent
+ * says it did: it records what an audit observed in the environment, with its
+ * evidence.
  *
- * `discoveries_declared` inscrit les trouvailles annoncees par un handoff.
- * C'est ce que `store-verify` confronte aux issues reellement creees pour
- * refuser une cloture qui les aurait perdues. L'invariant existait sans ce
- * chemin d'ecriture : il ne pouvait donc jamais mordre.
+ * `discoveries_declared` records the findings a handoff announced. That is
+ * what `store-verify` confronts with the issues actually created, in order to
+ * refuse a closure that would have lost them. The invariant existed without
+ * this write path, and could therefore never refuse anything.
  *
- * Usage : node store-update.mjs <requete.json>
+ * Usage: node store-update.mjs <request.json>
  */
 function main() {
   const requestPath = process.argv[2];
@@ -260,26 +260,25 @@ function main() {
 }
 
 /**
- * Ajoute un nouveau record en fin de fichier, sans toucher aux autres.
+ * Appends a new record at the end of the file, touching no other.
  *
- * `create_record.discovered_from` relie le nouveau record a l'issue PENDANT
- * laquelle la trouvaille est apparue. Une decouverte faite en route — un
- * doublon a mutualiser, un ecart entre le contrat documente et le
- * comportement reel, une dette apercue — meurt dans la prose d'une PR si rien
- * ne l'attache. Ce lien lui donne un porteur et une origine consultable.
+ * `create_record.discovered_from` links the new record to the issue DURING
+ * which the finding appeared. A discovery made along the way, a duplication
+ * to factor out, a gap between the documented contract and the real
+ * behaviour, a debt spotted, dies in a PR's prose if nothing attaches it.
+ * This link gives it an owner and a traceable origin.
  *
- * `create_record.escaped_from` est un champ DISTINCT et facultatif : l'issue
- * deja fermee a laquelle le defaut appartient. Les deux ne se confondent pas,
- * et les confondre rend la mesure d'echappees fausse — une trouvaille faite
- * pendant le cycle de son issue source n'a rien echappe, elle a ete attrapee
- * a temps. Ne le renseigner que lorsque le defaut nomme relevait d'une issue
- * close avant que ce cycle ne commence : c'est alors une echappee, c'est-a-dire
- * un defaut qui a franchi QA.
+ * `create_record.escaped_from` is a DISTINCT and optional field: the
+ * already-closed issue the defect belongs to. The two are not the same, and
+ * confusing them makes the escape measurement wrong; a finding made during
+ * its source issue's cycle escaped nothing, it was caught in time. Fill it in
+ * only when the named defect belonged to an issue closed before this cycle
+ * began: it is then an escape, that is, a defect that crossed QA.
  *
- * @param request - requete portant create_record {kind, record,
+ * @param request - request carrying create_record {kind, record,
  * discovered_from, escaped_from}
- * @param config - configuration du projet
- * @param rules - regles du pipeline
+ * @param config - project configuration
+ * @param rules - pipeline rules
  */
 function create(request, config, rules) {
   const {

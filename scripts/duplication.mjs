@@ -3,22 +3,22 @@ import { join, relative } from "node:path";
 import { loadConfig, sha256, fail } from "./lib.mjs";
 
 /**
- * Longueur par defaut d'un bloc juge duplique.
+ * Default length of a block judged duplicated.
  *
- * Six lignes significatives : au-dessous, deux fichiers qui se ressemblent
- * sont surtout deux fichiers qui obeissent aux memes conventions. Un seuil
- * plus bas ne produit pas plus de trouvailles, il produit du bruit qu'on
- * apprend a ignorer — et une porte qu'on ignore est deja desactivee.
+ * Six significant lines: below that, two files that resemble each other are
+ * mostly two files obeying the same conventions. A lower threshold does not
+ * produce more findings, it produces noise people learn to ignore, and a gate
+ * people ignore is already switched off.
  */
 const DEFAULT_MIN_LINES = 6;
 
 /**
- * Parcourt une racine et rend ses fichiers, moins ceux qui sont ecartes.
+ * Walks a root and returns its files, minus the ones skipped.
  *
- * @param root - repertoire de depart
- * @param skip - expression reguliere de rejet, ou null
- * @param found - accumulateur des chemins retenus
- * @returns les chemins retenus
+ * @param root - starting directory
+ * @param skip - rejection regular expression, or null
+ * @param found - accumulator of retained paths
+ * @returns the retained paths
  */
 function walk(root, skip, found = []) {
   let entries;
@@ -37,18 +37,18 @@ function walk(root, skip, found = []) {
 }
 
 /**
- * Reduit un fichier a ses lignes significatives, indentation neutralisee.
+ * Reduces a file to its significant lines, with indentation normalised.
  *
- * Un copier-coller est presque toujours reindente en arrivant : le meme
- * bloc pose dans une methode gagne quatre espaces. Comparer les lignes
- * brutes le manquerait, alors que c'est le cas le plus frequent.
+ * A paste is almost always reindented on arrival: the same block dropped into
+ * a method gains four spaces. Comparing raw lines would miss it, and that is
+ * the most frequent case.
  *
- * Les commentaires ne sont PAS retires : les enlever demanderait de
- * connaitre la syntaxe du langage, et ce script n'en connait aucun. Un bloc
- * copie avec son commentaire reste donc detecte, ce qui est le cas utile.
+ * Comments are NOT stripped: removing them would mean knowing the language's
+ * syntax, and this script knows none. A block copied along with its comment
+ * therefore stays detected, which is the useful case.
  *
- * @param body - contenu du fichier
- * @returns les lignes normalisees et leur numero d'origine
+ * @param body - file content
+ * @returns the normalised lines and their original numbers
  */
 function significant(body) {
   const lines = [];
@@ -60,11 +60,11 @@ function significant(body) {
 }
 
 /**
- * Groupe les fenetres identiques de `size` lignes a travers tous les fichiers.
+ * Groups identical windows of `size` lines across every file.
  *
- * @param documents - fichiers normalises
- * @param size - hauteur de la fenetre
- * @returns les groupes d'au moins deux occurrences, par empreinte
+ * @param documents - normalised files
+ * @param size - window height
+ * @returns the groups of at least two occurrences, keyed by digest
  */
 function windows(documents, size) {
   const groups = new Map();
@@ -81,16 +81,16 @@ function windows(documents, size) {
 }
 
 /**
- * Fusionne les fenetres qui glissent sur une meme copie.
+ * Merges the windows sliding over one and the same copy.
  *
- * Une copie de trente lignes produit vingt-cinq fenetres identiques
- * decalees d'une ligne. Les rendre toutes donnerait un mur que personne ne
- * lit, et ferait passer une trouvaille pour vingt-cinq. On ne garde donc
- * qu'une occurrence par region, en retenant la plus longue.
+ * A thirty-line copy produces twenty-five identical windows offset by one
+ * line. Returning them all would give a wall nobody reads, and would make one
+ * finding look like twenty-five. Only one occurrence per region is kept, the
+ * longest one.
  *
- * @param groups - groupes de fenetres identiques
- * @param size - hauteur de la fenetre
- * @returns les clones, une entree par region dupliquee
+ * @param groups - groups of identical windows
+ * @param size - window height
+ * @returns the clones, one entry per duplicated region
  */
 function merge(groups, size) {
   const clones = [];
@@ -114,11 +114,11 @@ function merge(groups, size) {
 }
 
 /**
- * Dit si toutes les occurrences se prolongent d'une ligne identique.
+ * Says whether every occurrence extends by one identical line.
  *
- * @param occurrences - positions du bloc
- * @param span - hauteur atteinte
- * @returns vrai si la ligne suivante est la meme partout
+ * @param occurrences - positions of the block
+ * @param span - height reached
+ * @returns true if the next line is the same everywhere
  */
 function grows(occurrences, span) {
   const next = occurrences.map((at) => at.document.lines[at.start + span]?.text ?? null);
@@ -126,7 +126,7 @@ function grows(occurrences, span) {
 }
 
 /**
- * Cherche les blocs dupliques et rend un verdict.
+ * Looks for duplicated blocks and returns a verdict.
  */
 function main() {
   const asJson = process.argv.includes("--json");

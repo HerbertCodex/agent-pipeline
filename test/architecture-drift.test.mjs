@@ -12,11 +12,11 @@ afterEach(() => {
 });
 
 /**
- * Construit un graphe de N modules de taille donnee, sans dependance.
+ * Builds a graph of N modules of a given size, with no dependency.
  *
- * @param count - nombre de modules
- * @param filesEach - fichiers par module
- * @returns le graphe
+ * @param count - number of modules
+ * @param filesEach - files per module
+ * @returns the graph
  */
 function grid(count, filesEach) {
   const modules = {};
@@ -25,10 +25,10 @@ function grid(count, filesEach) {
 }
 
 /**
- * Lance le detecteur sur un graphe ecrit dans le bac a sable.
+ * Runs the detector on a graph written into the sandbox.
  *
- * @param graph - graphe a juger
- * @returns le resultat d'execution
+ * @param graph - graph to judge
+ * @returns the execution result
  */
 function inspect(graph) {
   sandbox ??= createSandbox();

@@ -44,10 +44,10 @@ const QA_CLOSURE = {
 };
 
 /**
- * Ecrit un handoff dans le bac a sable et lance le validateur dessus.
+ * Writes a handoff into the sandbox and runs the validator on it.
  *
- * @param handoff - contenu du handoff
- * @returns le resultat d'execution du validateur
+ * @param handoff - handoff content
+ * @returns the validator's execution result
  */
 function validate(handoff) {
   sandbox ??= createSandbox();
@@ -116,9 +116,9 @@ describe("validate-handoff: a closure confronts instead of believing", () => {
 
 describe("store-update: the verdict is counted against the claims", () => {
   /**
-   * Prepare une issue portant deja des affirmations a rejouer.
+   * Prepares an issue already carrying claims to replay.
    *
-   * @returns le bac a sable, l'identifiant et le hash de verrou courant
+   * @returns the sandbox, the identifier and the current lock hash
    */
   function withClaims() {
     const record = issue({ claims_to_replay: [CLAIM, { claim: "10 mutations", how_to_replay: "les rejouer" }] });

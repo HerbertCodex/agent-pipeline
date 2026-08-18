@@ -17,10 +17,10 @@ const SCOPE = {
 };
 
 /**
- * Rend une proposition dans le bac a sable et relit la page produite.
+ * Renders a proposal in the sandbox and reads the page back.
  *
- * @param handoff - contenu de la proposition a rendre
- * @returns le resultat d'execution et le HTML produit, vide en cas d'echec
+ * @param handoff - content of the proposal to render
+ * @returns the execution result and the HTML produced, empty on failure
  */
 function render(handoff) {
   sandbox ??= createSandbox();

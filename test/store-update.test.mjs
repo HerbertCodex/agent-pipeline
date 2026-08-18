@@ -9,10 +9,10 @@ afterEach(() => {
 });
 
 /**
- * Prepare un bac a sable portant une seule issue et rend de quoi l'ecrire.
+ * Prepares a sandbox carrying one issue and returns what is needed to write it.
  *
- * @param overrides - champs a remplacer dans l'issue par defaut
- * @returns le bac a sable, l'identifiant et le hash de verrou courant
+ * @param overrides - fields to replace in the default issue
+ * @returns the sandbox, the identifier and the current lock hash
  */
 function withIssue(overrides = {}) {
   const record = issue(overrides);

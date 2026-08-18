@@ -11,11 +11,11 @@ afterEach(() => {
 });
 
 /**
- * Prepare un bac a sable portant des sources et un bloc `duplication`.
+ * Prepares a sandbox carrying sources and a `duplication` block.
  *
- * @param files - couples chemin relatif et contenu
- * @param settings - reglages a poser dans la configuration
- * @returns la racine du bac a sable
+ * @param files - pairs of relative path and content
+ * @param settings - settings to write into the configuration
+ * @returns the sandbox root
  */
 function withSources(files, settings = {}) {
   const root = createSandbox();
@@ -31,11 +31,11 @@ function withSources(files, settings = {}) {
 }
 
 /**
- * Construit un bloc de lignes distinctes et previsibles.
+ * Builds a block of distinct, predictable lines.
  *
- * @param count - nombre de lignes
- * @param prefix - texte place devant l'index
- * @returns le bloc, une ligne par element
+ * @param count - number of lines
+ * @param prefix - text placed before the index
+ * @returns the block, one line per element
  */
 function block(count, prefix = "const value") {
   return Array.from({ length: count }, (_, index) => `${prefix}${index} = compute(${index});`).join("\n");

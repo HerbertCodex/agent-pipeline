@@ -3,21 +3,21 @@ import { fail } from "./lib.mjs";
 import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
 
 /**
- * Types de projet qui ont des ecrans, et donc un design system.
+ * Project types that have screens, and therefore a design system.
  *
- * Un service back-end n'en a pas : lui poser la question produirait une
- * page vide qu'on apprend a passer, et une question qu'on apprend a passer
- * finit par masquer celles qui comptent.
+ * A back-end service has none: asking there would produce an empty page
+ * people learn to skip, and a question people learn to skip ends up hiding
+ * the ones that matter.
  */
 const WITH_SCREENS = ["frontend", "mobile", "fullstack"];
 
 /**
- * Les decisions a prendre, dans l'ordre ou elles se contraignent.
+ * The decisions to take, in the order they constrain each other.
  *
- * L'ordre est le contenu principal de cette page. Des primitives ecrites
- * avant les jetons figent des valeurs en dur, et une maquette dessinee
- * avant les jetons invente une echelle que le code recopiera ensuite. On
- * ne peut pas remonter cet ordre apres coup sans repasser sur tout.
+ * The order is this page's main content. Primitives written before the tokens
+ * freeze hardcoded values, and a mockup drawn before the tokens invents a
+ * scale the code then copies. That order cannot be reversed afterwards
+ * without going over everything again.
  */
 const LAYERS = [
   {
@@ -53,7 +53,7 @@ const LAYERS = [
 ];
 
 /**
- * Ce que coute une maquette dessinee avant les jetons.
+ * What a mockup drawn before the tokens costs.
  */
 const MOCKUP = `<section><div class="sec-head"><h2>&laquo; Do we draw the mockup first? &raquo;</h2>
 <p>Short answer: a mockup, yes. THE finished mockup, no.</p></div>
@@ -62,9 +62,9 @@ const MOCKUP = `<section><div class="sec-head"><h2>&laquo; Do we draw the mockup
 <strong>The order that holds:</strong> agreement on what the product does &rarr; tokens &rarr; primitives &rarr; finished mockup built from the primitives that exist &rarr; screens. The mockup then becomes an assembly of things that exist, not an image to reproduce.</p></section>`;
 
 /**
- * Ecrire ses primitives ou prendre une bibliotheque : le choix qui revient.
+ * Writing your own primitives or taking a library: the recurring choice.
  *
- * @returns le fragment HTML de la section
+ * @returns the section's HTML fragment
  */
 function libraryChoice() {
   const options = [

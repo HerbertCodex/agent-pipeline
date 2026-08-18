@@ -27,10 +27,10 @@ const SCOPE = {
 const DECISION = { question: "duree de pret ?", product_recommendation: "14 jours", alternatives: ["21 jours"] };
 
 /**
- * Ecrit un handoff dans le bac a sable et lance le validateur dessus.
+ * Writes a handoff into the sandbox and runs the validator on it.
  *
- * @param overrides - champs a fusionner dans le handoff de base
- * @returns le resultat d'execution du validateur
+ * @param overrides - fields to merge into the base handoff
+ * @returns the validator's execution result
  */
 function validate(overrides) {
   sandbox ??= createSandbox();
@@ -39,15 +39,15 @@ function validate(overrides) {
 }
 
 /**
- * Valide une proposition apres l'avoir rendue en page de relecture.
+ * Validates a proposal after rendering it as a review page.
  *
- * Toute proposition doit desormais presenter la page que l'operateur a
- * lue. Les cas qui verifient autre chose passent par ici pour satisfaire
- * cette porte sans la contourner : declarer un faux chemin la rendrait
- * decorative dans la moitie de la suite.
+ * Every proposal must now present the page the operator read. The cases that
+ * check something else go through here to satisfy that gate without
+ * bypassing it: declaring a fake path would make it decorative across half
+ * the suite.
  *
- * @param overrides - champs de la proposition
- * @returns le resultat de validate-handoff
+ * @param overrides - fields of the proposal
+ * @returns validate-handoff's result
  */
 function validateReviewed(overrides) {
   sandbox ??= createSandbox();
@@ -158,10 +158,10 @@ describe("validate-handoff: a round with no question declares it", () => {
 
 describe("validate-handoff: a plan derived from an approved proposal", () => {
   /**
-   * Ecrit une proposition sur disque et rend son chemin avec son empreinte.
+   * Writes a proposal to disk and returns its path with its digest.
    *
-   * @param body - contenu du fichier de proposition
-   * @returns le chemin absolu et le sha256 de son contenu exact
+   * @param body - content of the proposal file
+   * @returns the absolute path and the sha256 of its exact content
    */
   function approved(body = { perimetre: "approuve" }) {
     sandbox ??= createSandbox();
@@ -301,11 +301,11 @@ describe("validate-handoff: transitions and red proof", () => {
 
 describe("validate-handoff: a proposal proves it was rendered for review", () => {
   /**
-   * Rend une proposition en page de relecture dans le bac a sable.
+   * Renders a proposal as a review page inside the sandbox.
    *
-   * @param handoff - proposition a rendre
-   * @param name - nom du fichier de sortie
-   * @returns le chemin de la page produite
+   * @param handoff - proposal to render
+   * @param name - output file name
+   * @returns the path of the page produced
    */
   function renderPage(handoff, name) {
     const source = writeJson(sandbox, `${name}.json`, handoff);
