@@ -202,6 +202,27 @@ Three things stay with the human operator, in every profile: **installing a depe
 
 Report, do not invent: an unavailable command is escalated, never replaced by a substitute pretending to prove the real system.
 
+## The mockup is checked against the tokens, not drawn beside them
+
+The design-system page states the order that holds: tokens, then primitives, then a finished mockup built from the primitives that exist, then screens. It also states what a mockup is — *an assembly of things that exist, not an image to reproduce*. Nothing made that true until `mockup-check.mjs` existed.
+
+```
+node agent-pipeline/scripts/mockup-check.mjs <mockup-file>
+```
+
+It reads every colour, length and font the file states and refuses each one that traces back to no declared token. A reference through `var(--token)` counts as a value stated correctly, so a mockup built the right way passes while a mockup with no styling at all is refused — the two look alike to a naive counter and mean opposite things.
+
+**This is also where the machine-made look is caught.** An agent asked for a screen reaches for a plausible value, and plausible converges: the same near-black, the same blue, the same font. Run against a mockup carrying the usual tells, it names all of them:
+
+```
+colour  #0a0a0f — nearest declared token: --ink
+colour  #3b82f6
+length  13px
+font    Inter, sans-serif
+```
+
+The nearest token is only offered when there is a real neighbour. Suggesting the cream token for a blue would be followed, and a hint that lies is worse than no hint.
+
 ## Projects with screens declare their design system
 
 A project with screens also declares `commands.accessibility`. It sits here rather than in the general list because a service with no screen has nothing to check. The reason it is a command at all, when the rest of interface design is not, is that it is the measurable half: contrast ratio, focus order, keyboard reachability, what a screen reader announces. Everything else a design skill says is judgement, and judgement is argued in review.
