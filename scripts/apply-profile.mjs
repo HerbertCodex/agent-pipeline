@@ -307,8 +307,9 @@ function applySkills(config, checkMode) {
  * and a spacing to write anything, and every issue after inherits a decision
  * nobody approved.
  *
- * It also requires an accessibility command here rather than in the general
- * list, because a service with no screen has nothing to check.
+ * It also requires a named visual direction, and an accessibility command
+ * here rather than in the general list, because a service with no screen has
+ * neither a look nor anything to check.
  *
  * The core does not judge the system retained: writing your own primitives
  * and taking a library are both defensible answers. It requires ONE source of
@@ -341,6 +342,22 @@ function checkDesignSystem(config) {
         "starts \u2014 an agent that finds no button writes one, then another.",
     );
   }
+  const direction = chosen.direction;
+  if (direction == null || typeof direction.genre !== "string" || direction.genre.trim().length === 0) {
+    fail(
+      "design_system.direction.genre missing: name the visual genre this project commits to. " +
+        "Left unnamed, every project an agent builds converges \u2014 not on the framework default, which the " +
+        "design skill refuses by name, but on whatever that skill's own examples suggest. Two projects that " +
+        "land on the same genre should have to say why one answer fits two different products.",
+    );
+  }
+  if (typeof direction.because !== "string" || direction.because.trim().length === 0) {
+    fail(
+      'design_system.direction.because missing: finish the sentence "this genre suits the product because ___". ' +
+        "A genre nobody had to justify was picked by habit, and habit is what makes two products look alike.",
+    );
+  }
+
   if (typeof config.commands?.accessibility !== "string") {
     fail(
       "commands.accessibility missing: this project has screens. Everything else a design skill " +

@@ -216,7 +216,9 @@ node agent-pipeline/scripts/render-design-system.mjs <output.html> <frontend|mob
 
 The page lays out the four layers in the order they constrain each other, answers the "do we draw the mockup first?" question rather than dodging it, and weighs the three honest options for the primitives — a full component library, an unstyled one, or writing them yourself — with accessibility named as the criterion that decides. A library that handles neither focus nor the keyboard nor screen reader announcements is a set of styles, and the hard work is still ahead.
 
-Declare `{ tokens, primitives, decided_at }`. The core does not judge the system: `own` and a library name are equally valid answers. It requires **one** source of truth for the tokens, because two drift apart in silence and the drift is only found in a screenshot.
+Declare `{ tokens, primitives, direction, decided_at }`.
+
+`direction` is `{ genre, because }`, and it is the key that keeps two of your projects from looking alike. Not because the framework picks differently each time — it picks nothing — but because a genre nobody had to justify was picked by habit, and habit is what makes two products converge. The design skill refuses the framework defaults by name; left to itself it then converges on its own examples instead, which is the second template its own reference file describes: an interface recognisable as "an agent that read an anti-generic guide". Finishing the sentence "this genre suits the product because ___" is what breaks that. The core does not judge the system: `own` and a library name are equally valid answers. It requires **one** source of truth for the tokens, because two drift apart in silence and the drift is only found in a screenshot.
 
 ## The project map, and the generator the framework ships
 

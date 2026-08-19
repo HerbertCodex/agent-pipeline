@@ -134,7 +134,7 @@ describe("apply-profile: an interface project declares its design system", () =>
   });
 
   test("accepts a declared system, whatever it names", () => {
-    sandbox = withProject("frontend", { tokens: "src/tokens.css", primitives: "own", library: null, decided_at: "2026-08-18" });
+    sandbox = withProject("frontend", { tokens: "src/tokens.css", primitives: "own", library: null, decided_at: "2026-08-18", direction: { genre: "editorial", because: "long-form reading, the type does the work" } });
     const result = run(sandbox, "apply-profile.mjs", ["--check"]);
     assert.doesNotMatch(result.output, /design_system/, "the core does not judge the system, only that one is declared");
   });
@@ -203,7 +203,7 @@ describe("apply-profile: a skill can name the project types it applies to", () =
     writeFileSync(join(dir, "SKILL.md"), `---\nname: ${name}\ndescription: x\n${header}---\n\nbody\n`);
   }
 
-  const DESIGN = { tokens: "src/tokens.css", primitives: "own", decided_at: "2026-08-19" };
+  const DESIGN = { tokens: "src/tokens.css", primitives: "own", decided_at: "2026-08-19", direction: { genre: "editorial", because: "long-form reading, the type does the work" } };
 
   test("wants a screen skill installed on a frontend project", () => {
     sandbox = withProject("frontend", DESIGN);
@@ -254,7 +254,7 @@ describe("apply-profile: a skill can name the project types it applies to", () =
 });
 
 describe("apply-profile: a project with screens is checked for accessibility", () => {
-  const DESIGN = { tokens: "src/tokens.css", primitives: "own", decided_at: "2026-08-19" };
+  const DESIGN = { tokens: "src/tokens.css", primitives: "own", decided_at: "2026-08-19", direction: { genre: "editorial", because: "long-form reading, the type does the work" } };
 
   test("refuses a frontend project that declares no accessibility command", () => {
     sandbox = withProject("frontend", DESIGN);
@@ -282,5 +282,51 @@ describe("apply-profile: a project with screens is checked for accessibility", (
     writeFileSync(path, JSON.stringify(config, null, 2));
     const result = run(sandbox, "apply-profile.mjs", ["--check"]);
     assert.doesNotMatch(result.output, /accessibility/, "the core does not judge the tool, only the presence of the key");
+  });
+});
+
+describe("apply-profile: the visual direction is written down, not remembered", () => {
+  test("refuses a screen project that names no visual direction", () => {
+    sandbox = withProject("frontend", { tokens: "src/tokens.css", primitives: "own", decided_at: "2026-08-19" });
+    withAccessibility(sandbox);
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /design_system\.direction/);
+    assert.match(
+      result.output,
+      /converge|same|resemble/i,
+      "the refusal says what the silence costs across projects, not only that a key is missing",
+    );
+  });
+
+  test("accepts a direction that carries its justification", () => {
+    sandbox = withProject("frontend", {
+      tokens: "src/tokens.css",
+      primitives: "own",
+      decided_at: "2026-08-19",
+      direction: { genre: "editorial", because: "the product is long-form reading, and the type does the work" },
+    });
+    withAccessibility(sandbox);
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.doesNotMatch(result.output, /design_system\.direction/);
+  });
+
+  test("refuses a direction asserted without a reason", () => {
+    sandbox = withProject("frontend", {
+      tokens: "src/tokens.css",
+      primitives: "own",
+      decided_at: "2026-08-19",
+      direction: { genre: "premium dark" },
+    });
+    withAccessibility(sandbox);
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /because/);
+  });
+
+  test("asks nothing of a back-end project", () => {
+    sandbox = withProject("backend");
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.doesNotMatch(result.output, /direction/);
   });
 });

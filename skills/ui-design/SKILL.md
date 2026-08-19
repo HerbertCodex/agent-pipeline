@@ -4,15 +4,12 @@ description: Design/build/review UI: layout, color, typography, animation. Disti
 applies_to: frontend, mobile, fullstack
 ---
 
-## Core principles (always apply)
+## Craft — always applies, never varies by project
 
 - **Mobile-first, always**: write styles for 320px first, enhance upward —
   never write desktop styles and override for mobile. No exceptions.
 - **Every screen size works**: from 320px to 2560px — test at 375, 768, 1024, 1440, 1920
-- **Generic is the enemy**: default Tailwind blue, Inter font, white background,
-  card grid layouts — these are the baseline to escape, not the goal
-- **First impression is everything**: every screen must have one element
-  that makes someone stop and look — a color, a type treatment, a motion
+- **Generic is the enemy**: framework defaults are the baseline to escape, not the goal
 - **Personality before polish**: a strong visual identity with rough edges
   beats a perfectly polished but forgettable interface
 - **Motion has meaning**: every animation communicates something —
@@ -24,29 +21,48 @@ applies_to: frontend, mobile, fullstack
 - **Constraints create creativity**: pick a tight design system and push it
   hard rather than using every option available
 
-## Visual direction
+## Direction — decided per project, and it must differ between them
 
-The visual direction is **defined by the project**, not by this skill.
+Nothing below this line is settled by this skill. **Read `references/design-process.md`
+first**: it takes the product to a brand brief, then to one named visual genre, then to
+a constraint sheet. That sequence is the only thing standing between two of your projects
+and the same interface.
 
-**The structural half of it is already settled**, and not here: `design_system` in
-`pipeline.config.json` names the single source of truth for the tokens and says whether
-the primitives are yours or a library's. `apply-profile` refuses a project with screens
-that declares neither. Read that block before proposing anything — a palette proposed
-against tokens that already exist is a second source of truth, and two drift apart in
-silence.
+> ⚠️ **If you skip it, every project you build converges.** Not on the framework default
+> — this skill names those and refuses them — but on whatever this skill's own examples
+> suggest. A guide read without a brief becomes a template, and the second cliché in
+> `references/anti-generic.md` is exactly what that looks like: an interface recognisable
+> as "an agent that read an anti-generic guide".
+>
+> The genre chosen in step 2 is written down and justified in one sentence. Two projects
+> that land on the same genre must say why the same answer fits two different products —
+> and usually it does not.
 
-What this skill decides is what the tokens should CONTAIN:
+### What is already settled, and not by you
 
-1. **What is the brand personality?** — playful, corporate, technical, luxury, minimal?
-2. **What are the brand colors?** — if none exist, propose a palette and get approval
-3. **What is the target audience?** — this drives every visual decision
-4. **Light mode, dark mode, or both?** — decide upfront, don't assume
+`design_system` in `pipeline.config.json` names the single source of truth for the
+tokens and says whether the primitives are yours or a library's. `apply-profile` refuses
+a project with screens that declares neither. **Read that block before proposing
+anything** — a palette proposed against tokens that already exist is a second source of
+truth, and two drift apart in silence.
 
-Once defined, apply these universal principles:
+### What you decide, in this order
+
+1. **Brand personality** — one or two adjectives, from the product, not from taste
+2. **Audience** — a fintech dashboard and a children's reading app share almost no decision
+3. **One named visual genre**, with the sentence "this genre suits the brand because ___".
+   If you cannot finish that sentence, the genre is wrong. It goes into
+   `design_system.direction` in the configuration, and `apply-profile` refuses a
+   project with screens that declares none — including the justification
+4. **Light, dark, or both** — decided, never assumed. Dark by default is the tell
+
+### What holds whatever the direction
 
 - **Consistency over novelty**: one design system, applied everywhere
-- **Hierarchy through contrast**: one bold element per screen, generous whitespace
-- **Color as a tool, not decoration**: accent colors used sparingly and with purpose
+- **Hierarchy through contrast**: something dominates each screen. *Which* thing, and
+  by how much, comes from the genre — a Swiss grid and an editorial page both have
+  hierarchy and look nothing alike
+- **Color as a tool, not decoration**: few colours, used on purpose
 - **Intentional convention-breaking**: break rules on purpose, never by accident
 
 ## Animation direction
@@ -55,13 +71,17 @@ Once defined, apply these universal principles:
 Every interaction should feel alive without drawing attention to itself.
 The user should feel the quality, not see the animation.
 
+**The vocabulary is a project decision, the restraint is not.** Pick two or three
+gestures from the direction chosen in `design-process.md` and use only those. A
+translate, a border, an underline, a fill, a scale, a glow — any of them works;
+using all of them is what reads as machine-made.
+
 ```
-✅ Right level:
-- Hover states that shift slightly — translate, glow, border fade
-- Button press feedback — scale(0.97), 100ms
-- Focus rings with glow instead of default outline
-- Text that fades in on scroll — once, cleanly, done
-- Input borders that light up on focus
+✅ Right level — pick FEW, and the same ones everywhere:
+- Hover: one property moves. Translate, or border, or fill — not three at once
+- Press feedback: a small, fast acknowledgement (roughly 80–120ms)
+- Focus: visible without hunting for it, and never the browser default alone
+- Entrance: once, on arrival, then never again
 
 ❌ Too much:
 - Scroll-hijacking or pinned horizontal scroll

@@ -203,6 +203,10 @@ Elle pèse aussi le choix qui revient partout — écrire ses primitives, prendr
 
 `apply-profile` refuse un projet frontend, mobile ou fullstack sans bloc `design_system`. Un back-end n'est jamais interrogé.
 
+> 🎭 **« Est-ce que toutes mes apps vont se ressembler ? »** C'est le vrai risque, et il ne vient pas des défauts du framework — le skill de design les refuse nommément. Il vient de ce qu'un guide lu sans brief devient un gabarit : on échappe au template SaaS pour atterrir dans le suivant, reconnaissable comme « une IA qui a lu un guide anti-générique ».
+>
+> D'où `design_system.direction` = `{ genre, because }`, exigée. Le framework ne choisit pas le genre. Il exige que vous finissiez la phrase **« ce genre convient au produit parce que ___ »**. Un genre que personne n'a eu à justifier a été pris par habitude, et l'habitude est ce qui fait converger deux produits.
+
 ### 📦 Avant d'installer quoi que ce soit
 
 Aucun agent n'installe. Il **argumente et s'arrête** :
@@ -355,7 +359,7 @@ Ses deux refus sont le cœur : **aucun fichier trouvé**, et **aucune déclarati
 | `docs/` | **en anglais** — les modèles suivent mieux l'anglais. `nouveau-profil.md` pour installer, `operateur.md` pour vous |
 | `templates/` | les fichiers de politique, le workflow CI |
 | `skills/` | conseils de code, indépendants de toute stack. Un skill peut déclarer `applies_to` : celui sur l'interface n'est pas installé sur un service sans écran |
-| `test/` | **223 tests** sur le framework lui-même |
+| `test/` | **227 tests** sur le framework lui-même |
 
 **Prérequis** : Node, git, et le client de votre forge (`gh`, `glab`). Rien d'autre.
 
