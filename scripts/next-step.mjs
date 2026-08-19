@@ -78,7 +78,7 @@ function actionFor(record, rules) {
  */
 function assertAdvanced(records, id, before) {
   const record = records.find((r) => r.id === id);
-  if (record == null) fail(`issue inconnue : ${id}`);
+  if (record == null) fail(`unknown issue: ${id}`);
 
   const after = record.pipeline_state?.version;
   if (typeof after !== "number") fail(`${id} has no pipeline_state.version`);

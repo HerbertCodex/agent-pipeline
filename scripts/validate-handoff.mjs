@@ -176,6 +176,56 @@ function checkMockup(handoff, errors) {
 }
 
 /**
+ * Confronts an escalation with what it must report.
+ *
+ * Three code rejections escalate rather than paying for a fourth cycle, and
+ * that is the right behaviour: a pipeline that changed approach on its own
+ * would take a design decision without the person who owns the product.
+ *
+ * But the escalation said only that the pipeline was stuck. The operator
+ * received a stop, not an account, and the first thing they would suggest is
+ * usually one of the approaches already tried and already failed. Three
+ * cycles were paid for; reporting none of them hides all three from the only
+ * person who can now decide.
+ *
+ * `attempts` carries one entry per approach, each with what was tried and
+ * why it failed. The count is confronted with `qa_code_rejections`: a report
+ * shorter than the number of failures leaves some of them unaccounted for.
+ *
+ * @param handoff - the submitted handoff
+ * @param errors - list of errors to append to
+ */
+function checkEscalation(handoff, errors) {
+  if (handoff.requested_transition?.to !== "operator_escalation") return;
+
+  const attempts = handoff.attempts;
+  if (!Array.isArray(attempts) || attempts.length === 0) {
+    errors.push(
+      "attempts empty: an escalation reports, it does not merely stop. Without it the operator receives " +
+        "the fact of failure and nothing else, and the first thing they suggest is usually an approach " +
+        "already tried. One entry per approach, each with approach and failed_because.",
+    );
+    return;
+  }
+
+  attempts.forEach((attempt, index) => {
+    for (const field of ["approach", "failed_because"]) {
+      if (typeof attempt?.[field] !== "string" || attempt[field].trim().length === 0) {
+        errors.push(`attempts[${index}].${field} missing`);
+      }
+    }
+  });
+
+  const rejections = handoff.qa_code_rejections;
+  if (Number.isInteger(rejections) && attempts.length < rejections) {
+    errors.push(
+      `attempts reports ${attempts.length} approach(es) for ${rejections} rejection(s): the cycles were paid ` +
+        "for, and the ones left out are exactly what the operator would try first.",
+    );
+  }
+}
+
+/**
  * Validates an agent handoff against the machine source of the rules.
  *
  * Checks the shape, the emitting role, the requested transition, the context
@@ -235,7 +285,14 @@ function main() {
       if (!handoff.context?.body) errors.push("context.body missing");
     }
 
-    if (agent === "qa" && !isClosure) {
+    // An escalation is not a routed fault. Every fault in the table sends the
+    // issue back to a role; an escalation sends it to the operator, precisely
+    // because no role is going to fix it on a fourth cycle. The rules declared
+    // the transition and the QA prompt prescribed it, yet the fault routing
+    // below made it unrepresentable: any escalation QA submitted was refused,
+    // whatever it carried. What it must carry instead is checked separately.
+    const isEscalation = transition?.to === "operator_escalation";
+    if (agent === "qa" && !isClosure && !isEscalation) {
       const fault = handoff.fault;
       if (fault == null) errors.push("a QA rejection carries a fault");
       else if (fault === "code") {
@@ -244,17 +301,17 @@ function main() {
         else if (regression.required === true) {
           const route = rules.code_fault_routing.regression_required;
           if (transition?.to !== route.to) errors.push(`fault code required:true routes to ${route.to}`);
-          if (heading !== route.heading) errors.push(`fault code required:true exige le titre ${route.heading}`);
+          if (heading !== route.heading) errors.push(`fault code required:true requires the heading ${route.heading}`);
           if (!regression.criterion) errors.push("regression.criterion missing");
         } else if (regression.required === false) {
           const route = rules.code_fault_routing.regression_waived;
           if (transition?.to !== route.to) errors.push(`fault code required:false routes to ${route.to}`);
-          if (heading !== route.heading) errors.push(`fault code required:false exige le titre ${route.heading}`);
+          if (heading !== route.heading) errors.push(`fault code required:false requires the heading ${route.heading}`);
           if (!regression.reason) errors.push("regression.reason missing");
         } else errors.push("regression.required must be true or false");
       } else {
         const target = rules.fault_routing[fault];
-        if (target == null) errors.push(`fault inconnu : ${fault}`);
+        if (target == null) errors.push(`unknown fault: ${fault}`);
         else if (transition?.to !== target) errors.push(`fault ${fault} routes to ${target}, not ${transition?.to}`);
       }
     }
@@ -272,7 +329,7 @@ function main() {
       } else {
         for (const [index, item] of ledger.entries()) {
           if (!vocabulary.values.includes(item?.status)) {
-            errors.push(`criteria_ledger[${index}] : statut inconnu ${item?.status}`);
+            errors.push(`criteria_ledger[${index}]: unknown status ${item?.status}`);
             continue;
           }
           if (vocabulary.evidence_required_for.includes(item.status) && !item.evidence) {
@@ -353,6 +410,8 @@ function main() {
       }
     }
   }
+
+  checkEscalation(handoff, errors);
 
   if (handoff.mode === "issue_handoff" && handoff.agent === "implementer") {
     checkMockup(handoff, errors);

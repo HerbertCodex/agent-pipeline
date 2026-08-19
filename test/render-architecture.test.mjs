@@ -66,7 +66,7 @@ describe("render-architecture: the project type filters the catalogue", () => {
   test("refuses an unknown type instead of rendering everything", () => {
     const { status, output } = render("erlang");
     assert.notEqual(status, 0);
-    assert.match(output, /type de projet inconnu/);
+    assert.match(output, /unknown project type/);
   });
 
   test("refuses a call with no type", () => {

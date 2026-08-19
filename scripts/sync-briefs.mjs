@@ -26,7 +26,7 @@ function extractBlocks(source, text) {
       fail(`${source}: brief tag nested inside the block opened at offset ${match.index}`);
     }
     for (const role of roles) {
-      if (!ROLES.includes(role)) fail(`${source}: role inconnu "${role}"`);
+      if (!ROLES.includes(role)) fail(`${source}: unknown role "${role}"`);
     }
     blocks.push({ roles, content: text.slice(start, end).trim() });
     OPEN_RE.lastIndex = end + CLOSE_TAG.length;

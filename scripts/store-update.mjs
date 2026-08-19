@@ -15,7 +15,7 @@ function validateState(state, rules) {
     if (!(field in state)) throw new Error(`pipeline_state.${field} missing`);
   }
   const phase = rules.phases[state.phase];
-  if (phase == null) throw new Error(`phase inconnue : ${state.phase}`);
+  if (phase == null) throw new Error(`unknown phase: ${state.phase}`);
   if (phase.owner !== state.owner) {
     throw new Error(`owner ${state.owner} invalid for phase ${state.phase} (expected ${phase.owner})`);
   }
@@ -193,7 +193,7 @@ function main() {
     if (kind !== "spec") fail("spec_state only applies to a spec record");
     const phases = ["draft", "active", "ready_for_pr", "pr_open", "merged"];
     const next = request.spec_state;
-    if (!phases.includes(next.phase)) fail(`phase de spec inconnue : ${next.phase}`);
+    if (!phases.includes(next.phase)) fail(`unknown spec phase: ${next.phase}`);
     const previous = record.spec_state ?? {};
     if (previous.phase != null) {
       const from = phases.indexOf(previous.phase);

@@ -43,6 +43,18 @@ function renderAgents(config) {
     );
   }
 
+  const pitfallsPath = join(config.profiles_dir, config.profile, "pitfalls.md");
+  if (!existsSync(pitfallsPath)) {
+    fail(
+      `not found: ${pitfallsPath}\n` +
+        "This is where a trap already paid for is written down, and it is what an escaped defect must " +
+        "leave behind: store-verify refuses to close an issue carrying escaped_from unless it names a " +
+        "gate that now refuses the defect, or a line in this file. Without the file, counting escapes " +
+        "is all the pipeline ever does with them.\n" +
+        "Create it, empty if nothing has been paid for yet.",
+    );
+  }
+
   const invariants = readFileSync(invariantsPath, "utf8").trim();
   if (invariants.length === 0) fail(`${invariantsPath} is empty`);
 
@@ -51,7 +63,7 @@ function renderAgents(config) {
     .replaceAll("{{profile_invariants}}", invariants);
 
   const unresolved = text.match(/\{\{[a-z._]+\}\}/);
-  if (unresolved) fail(`${AGENTS_TEMPLATE}: variable non resolue ${unresolved[0]}`);
+  if (unresolved) fail(`${AGENTS_TEMPLATE}: unresolved variable ${unresolved[0]}`);
   return text;
 }
 
@@ -70,7 +82,7 @@ function renderAgents(config) {
 function projectBlock(text, name, source) {
   const open = `<!-- claude:${name} -->\n`;
   const start = text.indexOf(open);
-  if (start === -1) fail(`${source}: bloc <!-- claude:${name} --> absent`);
+  if (start === -1) fail(`${source}: block <!-- claude:${name} --> missing`);
   const from = start + open.length;
   const end = text.indexOf("\n<!-- /claude -->", from);
   if (end === -1) fail(`${source}: claude block ${name} not closed`);
@@ -113,7 +125,7 @@ function renderClaude(config) {
     .replaceAll("{{project_context}}", projectBlock(source, "context", contextPath));
 
   const unresolved = text.match(/\{\{[a-z._]+\}\}/);
-  if (unresolved) fail(`${CLAUDE_TEMPLATE}: variable non resolue ${unresolved[0]}`);
+  if (unresolved) fail(`${CLAUDE_TEMPLATE}: unresolved variable ${unresolved[0]}`);
   return text;
 }
 
@@ -130,7 +142,7 @@ function renderPrompts(config) {
   for (const file of readdirSync(PROMPTS_SRC).filter((f) => f.endsWith(".md")).sort()) {
     const text = readFileSync(join(PROMPTS_SRC, file), "utf8").replaceAll("{{briefs_dir}}", config.briefs_dir);
     const unresolved = text.match(/\{\{[a-z._]+\}\}/);
-    if (unresolved) fail(`${PROMPTS_SRC}/${file}: variable non resolue ${unresolved[0]}`);
+    if (unresolved) fail(`${PROMPTS_SRC}/${file}: unresolved variable ${unresolved[0]}`);
     rendered.set(file, text);
   }
   return rendered;
@@ -482,7 +494,7 @@ function main() {
   checkCalibration(config);
   checkDesignSystem(config);
   for (const role of Object.keys(config.file_policy)) {
-    if (!ROLES.includes(role)) fail(`file_policy: role inconnu "${role}"`);
+    if (!ROLES.includes(role)) fail(`file_policy: unknown role "${role}"`);
   }
   if (typeof config.commands.duplication !== "string") {
     fail(
@@ -535,7 +547,7 @@ function main() {
   };
   for (const [key, value] of Object.entries(vars)) ci = ci.replaceAll(`{{${key}}}`, value);
   const unresolved = ci.match(/\{\{[a-z._]+\}\}/);
-  if (unresolved) fail(`${CI_TEMPLATE}: variable non resolue ${unresolved[0]}`);
+  if (unresolved) fail(`${CI_TEMPLATE}: unresolved variable ${unresolved[0]}`);
   }
 
   const prompts = renderPrompts(config);

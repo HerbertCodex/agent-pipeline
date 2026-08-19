@@ -27,6 +27,26 @@ What the boundary used to guarantee is replaced by three things that do not depe
 
 A red proof that only fails at module load is weaker than one that fails on an assertion: it establishes that the tests came before the code, not that they would catch a mistake. Say which criteria are covered by which kind — QA replays the distinction.
 
+## An escaped defect leaves a rule behind
+
+`escaped_from` marks an issue that repairs a defect QA let through. Until 2026-08-19 the pipeline recorded that fact and did nothing with it: the fix shipped, the issue closed, and the next agent could reproduce the same mistake with nothing in the way. **Counting escapes is not learning from them.**
+
+`store-verify` now refuses to close such an issue without a `prevention` block naming either `gate` — a command in the configuration that refuses the defect from now on — or `pitfall`, a line written into the profile's pitfalls document. Both are verified rather than believed: an unknown command key is refused, and so is a pitfall the document does not actually carry.
+
+A free-text note is not accepted. "We will be careful" is what this framework exists to replace.
+
+The two answers are not equivalent, and the order matters. A gate is worth more than a pitfall, because it does not depend on anyone reading it. The pitfall exists for what no command can express — a trap of judgement, a surprising interaction, a cost discovered too late.
+
+**It still does not choose another approach when one fails**, and that remains deliberate: a pipeline that switched approach on its own would take a design decision without the person who owns the product. What it now does is report.
+
+## An escalation reports, it does not merely stop
+
+An escalation carries `attempts`, one entry per approach tried, each with `approach` and `failed_because`. The count is confronted with `qa_code_rejections`: a report shorter than the number of failures leaves some of them unaccounted for, and the ones left out are exactly what the operator would suggest first.
+
+Until 2026-08-19 the escalation carried only the fact of failure. Three cycles were paid for and none of them reached the person who then had to decide. `render-decisions` now prints them under **Already tried**, on the page that page exists for.
+
+**A defect found while writing this:** an escalation from QA was *unrepresentable*. `rules.json` declared the transition and the QA prompt prescribed it, but `validate-handoff` required a `fault` on every non-closing QA handoff, and every fault in the table routes somewhere that is not `operator_escalation`. Any escalation QA submitted was refused, whatever it carried. An escalation is now its own shape: no routed fault, and `attempts` instead.
+
 ## A code fault goes back to the Implementer
 
 QA never fixes. A code fault returns to the Implementer, **who pins it with a red test before correcting it**: a fix with no test that failed first proves nothing about the next regression.

@@ -33,9 +33,16 @@ function card(entry) {
     entry.chip ? `<span class="chip${entry.urgent ? " alarm" : ""}">${esc(entry.chip)}</span>` : ""
   }</h3>
 ${entry.why ? `<p>${esc(entry.why)}</p>` : ""}
-${entry.paths?.length ? `<p class="lbl">Perimetre</p><p class="paths">${entry.paths.map((p) => esc(p)).join(" · ")}</p>` : ""}
+${entry.paths?.length ? `<p class="lbl">Scope</p><p class="paths">${entry.paths.map((p) => esc(p)).join(" · ")}</p>` : ""}
 ${entry.recommendation ? `<p class="lbl">Recommendation</p><p class="reco">${esc(entry.recommendation)}</p>` : ""}
-${alts ? `<p class="lbl">Autres options</p><ul class="alts">${alts}</ul>` : ""}
+${alts ? `<p class="lbl">Other options</p><ul class="alts">${alts}</ul>` : ""}
+${
+    entry.attempts?.length
+      ? `<p class="lbl">Already tried</p><ul class="alts">${entry.attempts
+          .map((attempt) => `<li><span><strong>${esc(attempt.approach)}</strong> &mdash; ${esc(attempt.failed_because)}</span></li>`)
+          .join("")}</ul>`
+      : ""
+  }
 </div>`;
 }
 
@@ -93,6 +100,7 @@ function main() {
         urgent: true,
         why: `This issue is stopped in ${phase} and waits to be released. As long as it stays there it holds its reservations and blocks any issue that crosses them.`,
         paths: reservations,
+        attempts: issue.attempts ?? [],
       });
       continue;
     }

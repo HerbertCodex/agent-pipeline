@@ -1,9 +1,8 @@
 import { test, describe, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync, mkdirSync, existsSync, cpSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { createSandbox, destroySandbox, run } from "./harness.mjs";
+import { createSandbox, destroySandbox, run, seedFramework } from "./harness.mjs";
 
 let sandbox = null;
 afterEach(() => {
@@ -154,8 +153,6 @@ describe("apply-profile: an interface project declares its design system", () =>
   });
 });
 
-const FRAMEWORK = join(fileURLToPath(new URL(".", import.meta.url)), "..");
-
 /**
  * Declares the accessibility command a project with screens must carry.
  *
@@ -166,26 +163,6 @@ function withAccessibility(root) {
   const config = JSON.parse(readFileSync(path, "utf8"));
   config.commands.accessibility = "true";
   writeFileSync(path, JSON.stringify(config, null, 2));
-}
-
-/**
- * Copies into a sandbox the framework pieces apply-profile needs to run.
- *
- * Without them the script stops on a missing template long before it reaches
- * the skills, and a test written against its output would be measuring the
- * absence of a template rather than the behaviour it targets.
- *
- * @param root - sandbox root
- */
-function seedFramework(root) {
-  const into = join(root, "agent-pipeline");
-  for (const directory of ["templates", "prompts", "schemas"]) {
-    cpSync(join(FRAMEWORK, directory), join(into, directory), { recursive: true });
-  }
-  mkdirSync(join(into, "profiles", "test"), { recursive: true });
-  writeFileSync(join(into, "profiles", "test", "invariants.md"), "- The clock is injected.\n");
-  mkdirSync(join(root, "pipeline"), { recursive: true });
-  writeFileSync(join(root, "pipeline", "project-context.md"), "<!-- claude:summary -->\nx\n<!-- /claude -->\n<!-- claude:commands -->\nx\n<!-- /claude -->\n<!-- claude:context -->\nx\n<!-- /claude -->\n");
 }
 
 describe("apply-profile: a skill can name the project types it applies to", () => {

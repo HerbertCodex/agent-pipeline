@@ -1,0 +1,136 @@
+import { test, describe, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { createSandbox, destroySandbox, writeStore, run, issue, state, seedFramework } from "./harness.mjs";
+
+let sandbox = null;
+afterEach(() => {
+  if (sandbox != null) destroySandbox(sandbox);
+  sandbox = null;
+});
+
+/**
+ * Prepares a sandbox holding one issue that fixes an escaped defect.
+ *
+ * @param overrides - fields to merge into that issue's record
+ * @param pitfalls - content of the pitfalls document, or null to omit the file
+ * @returns the sandbox root
+ */
+function withEscape(overrides = {}, pitfalls = "- A book id was read as an id.\n") {
+  const root = createSandbox();
+  const closed = issue({
+    id: "i-0009",
+    escaped_from: "i-0002",
+    pipeline_state: state({ phase: "closed", owner: "none" }),
+    acceptance_criteria: ["the swapped identifier is refused"],
+    criteria_ledger: [{ status: "verified", evidence: "e2e run 41" }],
+    ...overrides,
+  });
+  writeStore(root, "issues", [closed]);
+  if (pitfalls != null) {
+    mkdirSync(join(root, "agent-pipeline", "profiles", "test"), { recursive: true });
+    writeFileSync(join(root, "agent-pipeline", "profiles", "test", "pitfalls.md"), pitfalls);
+  }
+  return root;
+}
+
+describe("store-verify: an escaped defect leaves a rule behind, not only a fix", () => {
+  test("refuses to close an escaped-defect issue that prevents nothing", () => {
+    sandbox = withEscape();
+    const result = run(sandbox, "store-verify.mjs");
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /prevention/);
+    assert.match(
+      result.output,
+      /again|recur|next/i,
+      "the refusal says what it is for, or it reads as one more field to fill",
+    );
+  });
+
+  test("accepts a prevention that names the command now refusing it", () => {
+    sandbox = withEscape({ prevention: { gate: "check" } });
+    const result = run(sandbox, "store-verify.mjs");
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("refuses a command that the configuration does not declare", () => {
+    sandbox = withEscape({ prevention: { gate: "imaginary_gate" } });
+    const result = run(sandbox, "store-verify.mjs");
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /imaginary_gate/);
+  });
+
+  test("accepts a prevention written into the pitfalls document", () => {
+    sandbox = withEscape({ prevention: { pitfall: "A book id was read as an id" } });
+    const result = run(sandbox, "store-verify.mjs");
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("refuses a pitfall the document does not actually carry", () => {
+    sandbox = withEscape({ prevention: { pitfall: "something nobody wrote down" } });
+    const result = run(sandbox, "store-verify.mjs");
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /pitfall/);
+  });
+
+  test("refuses a prevention block that names neither", () => {
+    sandbox = withEscape({ prevention: { note: "we will be careful" } });
+    const result = run(sandbox, "store-verify.mjs");
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /gate|pitfall/);
+  });
+
+  test("asks nothing of an issue that escaped nothing", () => {
+    const root = createSandbox();
+    writeStore(root, "issues", [
+      issue({
+        id: "i-0010",
+        pipeline_state: state({ phase: "closed", owner: "none" }),
+        acceptance_criteria: ["x"],
+        criteria_ledger: [{ status: "verified", evidence: "e" }],
+      }),
+    ]);
+    sandbox = root;
+    const result = run(sandbox, "store-verify.mjs");
+    assert.doesNotMatch(result.output, /prevention/);
+  });
+
+  test("asks nothing while the issue is still open", () => {
+    sandbox = withEscape({ pipeline_state: state({ phase: "in_progress", owner: "implementer" }) });
+    const result = run(sandbox, "store-verify.mjs");
+    assert.doesNotMatch(result.output, /prevention/, "the question is asked at closure, when the answer is known");
+  });
+});
+
+describe("apply-profile: a profile carries the traps it has already paid for", () => {
+  test("refuses a profile with no pitfalls document", () => {
+    const root = createSandbox();
+    const path = join(root, "pipeline.config.json");
+    const config = JSON.parse(readFileSync(path, "utf8"));
+    config.commands = {
+      check: "true",
+      lint: "true",
+      build: "true",
+      test_unit: "true",
+      audit: "true",
+      secrets_scan: "true",
+      project_map: "true",
+      design_limits: "true",
+      duplication: "true",
+    };
+    config.architecture = { id: "feature-modules", project_type: "backend" };
+    writeFileSync(path, JSON.stringify(config, null, 2));
+    seedFramework(root);
+    rmSync(join(root, "agent-pipeline", "profiles", "test", "pitfalls.md"));
+    sandbox = root;
+    const result = run(root, "apply-profile.mjs", ["--check"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /pitfalls\.md/);
+    assert.match(
+      result.output,
+      /escaped|paid for|again/i,
+      "the refusal says what the file receives, or it becomes an empty file nobody reads",
+    );
+  });
+});

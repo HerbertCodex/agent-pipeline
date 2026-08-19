@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
+import { cpSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -219,4 +219,33 @@ export function issue(overrides = {}) {
     pipeline_state: state(),
     ...overrides,
   };
+}
+
+/**
+ * Root of the framework, resolved from this file.
+ */
+const FRAMEWORK = join(here, "..");
+
+/**
+ * Copies into a sandbox the framework pieces apply-profile needs to run.
+ *
+ * Without them the script stops on a missing template long before it reaches
+ * the part under test, and a test written against its output would be
+ * measuring the absence of a template rather than the behaviour it targets.
+ *
+ * @param root - sandbox root
+ */
+export function seedFramework(root) {
+  const into = join(root, "agent-pipeline");
+  for (const directory of ["templates", "prompts", "schemas"]) {
+    cpSync(join(FRAMEWORK, directory), join(into, directory), { recursive: true });
+  }
+  mkdirSync(join(into, "profiles", "test"), { recursive: true });
+  writeFileSync(join(into, "profiles", "test", "invariants.md"), "- The clock is injected.\n");
+  writeFileSync(join(into, "profiles", "test", "pitfalls.md"), "- Nothing paid for yet.\n");
+  mkdirSync(join(root, "pipeline"), { recursive: true });
+  writeFileSync(
+    join(root, "pipeline", "project-context.md"),
+    ["summary", "commands", "context"].map((name) => `<!-- claude:${name} -->\nx\n<!-- /claude -->\n`).join(""),
+  );
 }

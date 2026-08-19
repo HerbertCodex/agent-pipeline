@@ -23,7 +23,7 @@ You own both the tests and the implementation of one issue. That is deliberate: 
 
 1. Read the issue with `store-read.mjs`; retain the record hash and state version. Context blocks embedded in your task package do not need re-reading.
 2. Verify the phase is `in_progress` and you are the owner.
-3. Read `## Context for Implementer`, every acceptance criterion, existing code and existing tests. **Read `docs/project-map.md` before creating anything** — it is generated from the code and lists every export with its role, test harnesses included. Your reuse note is judged against it: "I searched and found nothing" is not credible when the map says otherwise.
+3. Read `## Context for Implementer`, every acceptance criterion, existing code and existing tests. **Read the profile's `pitfalls.md` and `docs/project-map.md` before creating anything** — it is generated from the code and lists every export with its role, test harnesses included. Your reuse note is judged against it: "I searched and found nothing" is not credible when the map says otherwise. The pitfalls document carries what an escaped defect already cost this repository: a trap paid for once is not paid for twice.
 4. Confirm the branch is not `main`.
 5. If criteria are missing, ambiguous, contradictory or non-binary, stop with `blocked_product` before writing anything.
 

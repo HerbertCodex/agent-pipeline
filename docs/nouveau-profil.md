@@ -26,7 +26,7 @@ It seeds the profile directory and writes `pipeline.config.json` **only when the
 
 **The imported profile does not run yet.** `apply-profile` refuses while `calibration_required` is `true` in the profile's `profile.json`. That flag is not ceremony: the thresholds in those tool files were measured on another codebase. Too loose and the gate stops refusing anything; too tight and the first run gets it loosened, and a gate loosened once loosens again. Measure them here, adjust the files, then set the flag to `false` — which is a claim that you did.
 
-You still write the invariants and the pitfalls document yourself. A profile carries what a stack does; it does not know what this repository has already learned.
+You still write the invariants and the pitfalls document yourself. `apply-profile` refuses a profile without `pitfalls.md`, empty or not: it is what `store-verify` requires an escaped defect to leave behind, and a file that does not exist cannot receive anything. A profile carries what a stack does; it does not know what this repository has already learned.
 
 ## What you configure, and what you do not touch
 

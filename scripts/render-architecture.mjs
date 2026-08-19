@@ -157,7 +157,7 @@ function main() {
   }
   const project = PROJECT_TYPES[type];
   if (project == null) {
-    fail(`type de projet inconnu : ${type} (attendu ${Object.keys(PROJECT_TYPES).join(", ")})`);
+    fail(`unknown project type: ${type} (expected ${Object.keys(PROJECT_TYPES).join(", ")})`);
   }
 
   const retained = ARCHITECTURES.filter((entry) => entry.applies.includes(type));

@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig, loadRules, readJsonl, fail } from "./lib.mjs";
 
@@ -97,6 +98,75 @@ function verifyLedger(record, rules, path) {
   return problems;
 }
 
+
+/**
+ * Checks that an escaped defect left a rule behind, not only a fix.
+ *
+ * `escaped_from` marks an issue that repairs a defect QA let through. Until
+ * now the pipeline recorded that fact and did nothing with it: the fix
+ * shipped, the issue closed, and the next agent could reproduce the same
+ * mistake with nothing in the way. Counting escapes is not learning from
+ * them.
+ *
+ * Closure therefore requires a `prevention` block naming what now stops it
+ * recurring — either `gate`, a command in the configuration that refuses it,
+ * or `pitfall`, a line written into the profile's pitfalls document. Both are
+ * verified rather than believed: an unknown command key and a pitfall the
+ * document does not carry are refused.
+ *
+ * A free-text note is not accepted. "We will be careful" is what this whole
+ * framework exists to replace.
+ *
+ * @param record - Issue read from the store.
+ * @param config - Project configuration, for the declared commands.
+ * @param path - File path, for the error message.
+ * @returns The number of invariants violated.
+ */
+function verifyPrevention(record, config, path) {
+  if (record.escaped_from == null) return 0;
+  if (record.pipeline_state?.phase !== "closed") return 0;
+
+  const prevention = record.prevention;
+  if (prevention == null || typeof prevention !== "object") {
+    console.error(
+      `${path}: issue ${record.id} escaped from ${record.escaped_from} and closes with no prevention. ` +
+        "A defect that crossed QA once crosses it again unless something new refuses it: name the gate " +
+        "that now does, or the pitfall now written down.",
+    );
+    return 1;
+  }
+
+  if (typeof prevention.gate === "string" && prevention.gate.length > 0) {
+    if (config.commands?.[prevention.gate] == null) {
+      console.error(`${path}: issue ${record.id} prevention.gate "${prevention.gate}" is no declared command`);
+      return 1;
+    }
+    return 0;
+  }
+
+  if (typeof prevention.pitfall === "string" && prevention.pitfall.length > 0) {
+    const document = join(config.profiles_dir, config.profile, "pitfalls.md");
+    if (!existsSync(document)) {
+      console.error(`${path}: issue ${record.id} prevention.pitfall names ${document}, which does not exist`);
+      return 1;
+    }
+    if (!readFileSync(document, "utf8").includes(prevention.pitfall)) {
+      console.error(
+        `${path}: issue ${record.id} prevention.pitfall is not in ${document}. ` +
+          "A pitfall declared but never written is a pitfall nobody will read.",
+      );
+      return 1;
+    }
+    return 0;
+  }
+
+  console.error(
+    `${path}: issue ${record.id} prevention names neither a gate nor a pitfall. ` +
+      "A note saying it will not happen again is what this framework exists to replace.",
+  );
+  return 1;
+}
+
 /**
  * Checks the store invariants after a write.
  *
@@ -139,13 +209,14 @@ function main() {
           console.error(`${path}: issue ${id} with no pipeline_state`);
           problems += 1;
         } else if (rules.phases[state.phase] == null) {
-          console.error(`${path}: issue ${id} phase inconnue ${state.phase}`);
+          console.error(`${path}: issue ${id} unknown phase ${state.phase}`);
           problems += 1;
         } else if (rules.phases[state.phase].owner !== state.owner) {
           console.error(`${path}: issue ${id} owner ${state.owner} invalid for ${state.phase}`);
           problems += 1;
         }
         problems += verifyLedger(entry.record, rules, path);
+        problems += verifyPrevention(entry.record, config, path);
         problems += verifyDiscoveries(
           entry.record,
           entries.map((e) => e.record),
