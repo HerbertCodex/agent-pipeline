@@ -269,6 +269,35 @@ C’est précisément pour cette raison que le framework possède également sa 
 
 # 🚀 Installer le framework dans un projet
 
+## Le chemin complet, en un coup d'œil
+
+Cinq étapes. Les trois premières sont à vous, la quatrième à un agent, la cinquième à vous de nouveau.
+
+```text
+1. cloner                    → 2 commandes
+2. décrire le produit        → 8 questions en langue ordinaire
+3. choisir un rangement      → une page HTML à lire, une décision à prendre
+   ├─ projet à écrans ?      → + une page design system
+   └─ besoin d'une lib ?     → le pipeline argumente, vous installez
+4. faire configurer          → un agent écrit la config, les invariants, les pièges
+5. vérifier                  → avez-vous vu chaque commande échouer ?
+```
+
+Entre les étapes 3 et 4 se trouvent trois sections de référence — design system, dépendances, réutilisation d'un profil existant. **Elles ne sont pas des étapes** : lisez celle qui vous concerne, sautez les autres.
+
+> ⚠️ **Entre l'étape 1 et l'étape 4, presque rien ne marche, et c'est normal.**
+>
+> ```console
+> $ node agent-pipeline/scripts/preflight.mjs
+> not found: pipeline.config.json (run it from the project root)
+> ```
+>
+> Les scripts lisent une configuration qui n'existe pas encore. Seul `render-architecture` fonctionne dès le clone, parce qu'il sert justement à prendre la décision qui précède la configuration.
+>
+> Ce n'est pas cassé. C'est l'ordre.
+
+---
+
 ## 1. Ajouter `agent-pipeline/`
 
 Depuis la racine de votre projet :
@@ -286,6 +315,16 @@ agent-pipeline/
 ```
 
 Les scripts du framework s’attendent à le trouver à cet emplacement.
+
+**Vérifiez qu'il est sain avant de lui faire confiance** — il se prouve lui-même, sans rien installer :
+
+```console
+$ cd agent-pipeline && node --test "test/**/*.test.mjs" && cd ..
+ℹ pass 264
+ℹ fail 0
+```
+
+Un framework qui vous demande de vérifier votre code devrait pouvoir supporter la même question.
 
 ---
 
