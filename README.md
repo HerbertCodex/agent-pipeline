@@ -271,12 +271,12 @@ C’est précisément pour cette raison que le framework possède également sa 
 
 ## Le chemin complet, en un coup d'œil
 
-Cinq étapes. Les trois premières sont à vous, la quatrième à un agent, la cinquième à vous de nouveau.
+Quatre moments. Vous décidez, l'agent exécute, et chaque décision devient une ligne qu'une commande relit ensuite.
 
 ```text
-1. cloner                    → 2 commandes
-2. décrire le produit        → 8 questions en langue ordinaire
-3. choisir un rangement      → une page HTML à lire, une décision à prendre
+1. cloner                    → 2 commandes, puis lancer sa suite de tests
+2. décrire le produit  ─┐
+3. choisir un rangement ─┴─ une seule conversation avec l'agent, une décision à vous
    ├─ projet à écrans ?      → + une page design system
    └─ besoin d'une lib ?     → le pipeline argumente, vous installez
 4. faire configurer          → un agent écrit la config, les invariants, les pièges
@@ -328,66 +328,56 @@ Un framework qui vous demande de vérifier votre code devrait pouvoir supporter 
 
 ---
 
-## 2. Décrire le produit avant de parler d’architecture
+## 2 et 3. Décrire le produit, puis choisir un rangement
 
-Avant de choisir des bibliothèques ou une organisation de dossiers, le framework commence par le fonctionnement du produit.
+**Ces deux étapes sont une seule conversation avec votre agent.** Vous ne tapez pas les commandes vous-même : la seconde a besoin de ce que la première produit.
 
-La session pose huit questions en langage courant.
+Donnez-lui ceci :
 
-Parmi elles, une question est particulièrement importante :
+```text
+Ce dépôt contient un framework d'agents dans agent-pipeline/, fraîchement
+cloné. Avant toute configuration, aide-moi à décider comment ranger le code.
 
-> **Existe-t-il des situations où le produit doit refuser une action pour une raison métier ?**
+1. Pose-moi les huit questions de agent-pipeline/scripts/discovery.mjs, une
+   par une, en langue ordinaire. Ne passe pas à la suivante avant ma réponse.
 
-Par exemple :
+2. Écris mes réponses dans analyse.json : business_rules, integrations,
+   concurrent_workers, expected_churn, validations.
 
-> « Ce livre est déjà emprunté. »
+3. Lance render-architecture.mjs avec cette analyse, pour mon type de projet,
+   et donne-moi la page.
 
-ou :
-
-> « Ce compte ne dispose pas d’un solde suffisant. »
-
-Ce ne sont pas de simples validations techniques du type :
-
-> « Ce champ est obligatoire. »
-
-La distinction permet d’identifier les vraies règles métier du produit : les règles qui viennent du fonctionnement du domaine, et pas seulement de la structure des données.
-
-Une autre question aide à vérifier que ces règles sont exprimées correctement :
-
-> **Une personne connaissant le métier comprendrait-elle ce refus sans vocabulaire informatique ?**
-
----
-
-## 3. Choisir une organisation de code
-
-Une fois le produit compris, vous pouvez comparer plusieurs façons d’organiser le code.
-
-```bash
-node agent-pipeline/scripts/render-architecture.mjs archi.html backend
+Je tranche, tu ne tranches pas.
 ```
 
-La commande génère une page HTML qui présente différentes options :
+### Pourquoi passer par l'agent plutôt que taper la commande
 
-* organisation par fonctionnalité ;
-* architecture en couches ;
-* architecture hexagonale ;
-* Clean Architecture ;
-* etc.
+La commande accepte une analyse en troisième argument, et **c'est elle qui change tout** :
 
-Pour chaque option, la page indique notamment :
+```console
+$ render-architecture.mjs archi.html backend
+written: archi.html (backend, 5 options out of 8, questionnaire)
 
-* ce qu’elle signifie en langage courant ;
-* à quoi ressembleront réellement les dossiers ;
-* combien de fichiers devront être créés pour une modification typique ;
-* dans quelles situations cette architecture risque de devenir insuffisante.
+$ render-architecture.mjs archi.html backend analyse.json
+written: archi.html (backend, 5 options out of 8, advice grounded in the analysis)
+```
 
-Le framework ne choisit pas pour vous.
+Sans analyse, la page **pose les questions** et vous laisse conclure seul. Avec, elle **argumente** : elle cite vos règles métier, dit pourquoi Clean serait excessif chez vous, pourquoi des ports seraient une assurance jamais utilisée.
 
-L’objectif est justement d’éviter une décision fréquente : adopter dès le départ l’architecture la plus complexe « au cas où ».
+Les huit questions se répondent en langue ordinaire, et deux comptent plus que les autres :
 
-Une architecture plus lourde a un coût immédiat : davantage de fichiers, davantage d’abstractions et davantage de travail à chaque modification.
+> **Y a-t-il des situations où le système doit REFUSER quelque chose ?**
+> Pas « ce champ est obligatoire ». Un vrai refus : *« ce livre est déjà sorti »*, *« ce compte n'a pas assez »*.
+>
+> **Un professionnel du métier comprendrait-il ce refus sans qu'on parle informatique ?**
 
-Elle doit donc répondre à un besoin réel.
+C'est ce qui détermine si votre produit a de vraies règles à protéger, ou seulement des données à ranger — et donc si une architecture en couches vous coûterait plus qu'elle ne vous rapporte.
+
+### Ce que l'agent ne fait pas
+
+**Il ne choisit pas.** Il pose les questions, produit la page, vous la donne. La page dit elle-même que le pipeline ne tranche pas à votre place : la bonne réponse dépend de votre produit, pas d'un catalogue.
+
+Vous lisez, vous décidez, et votre décision devient une ligne de configuration qu'une commande relit ensuite.
 
 ---
 
