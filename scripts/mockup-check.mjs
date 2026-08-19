@@ -35,7 +35,7 @@ const EXEMPT_LENGTHS = new Set(["0px", "0rem", "0em", "1px", "100px"]);
  * @param body - content of the tokens file
  * @returns the declared names and the set of declared values
  */
-function tokensIn(body) {
+export function tokensIn(body) {
   const declared = new Map();
   for (const match of body.matchAll(/(--[\w-]+)\s*:\s*([^;\n}]+)/g)) {
     declared.set(match[1], match[2].trim());
@@ -88,7 +88,7 @@ function nearestToken(value, declared) {
  * @param declared - the declared tokens
  * @returns the offending values, and how many were examined
  */
-function offenders(body, declared) {
+export function offenders(body, declared) {
   const values = new Set([...declared.values()].map((value) => value.toLowerCase().trim()));
   const fonts = [...declared.entries()]
     .filter(([name]) => name.includes("font"))

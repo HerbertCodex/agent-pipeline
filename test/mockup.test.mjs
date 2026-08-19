@@ -135,3 +135,97 @@ describe("mockup-check: a mockup assembles what exists, it does not invent a sca
     );
   });
 });
+
+describe("validate-handoff: a screen is coded against a mockup, not from memory", () => {
+  const BASE = {
+    schema_version: 1,
+    mode: "issue_handoff",
+    agent: "implementer",
+    scope: { spec_id: "s-0001", issue_id: "i-0003" },
+    basis: { record_hash: "abc", pipeline_version: 2 },
+    outcome: "ready_for_qa",
+    requested_transition: { from: "in_progress", to: "ready_for_qa" },
+    context: { heading: "## Context for QA", body: "x" },
+    evidence: {
+      commands: [],
+      files: ["src/ui/Card.tsx"],
+      commit_sha: "def5678",
+      notes: [],
+      red_proof: { cmd: "jest", exit: 1, observed_before_implementation: true, test_commit_sha: "abc1234" },
+    },
+    claims_to_replay: [{ claim: "scope verified", how_to_replay: "verify-scope handoff.json abc1234" }],
+  };
+
+  /**
+   * Submits an implementer handoff on a project with screens.
+   *
+   * @param overrides - fields to merge into the handoff
+   * @returns validate-handoff's result
+   */
+  function submit(overrides = {}) {
+    const path = join(sandbox, "handoff.json");
+    writeFileSync(path, JSON.stringify({ ...BASE, ...overrides }));
+    return run(sandbox, "validate-handoff.mjs", [path]);
+  }
+
+  test("refuses a handoff that neither declares a mockup nor says why there is none", () => {
+    sandbox = withMockup(`<style>.hero { color: var(--ink); }</style>`);
+    const result = submit();
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /mockup/);
+    assert.match(
+      result.output,
+      /not_applicable/,
+      "a rule with no stated exit gets satisfied by a fake path, and the check becomes decorative",
+    );
+  });
+
+  test("accepts a non-visual issue that says so", () => {
+    sandbox = withMockup(`<style>.hero { color: var(--ink); }</style>`);
+    const result = submit({ mockup: { not_applicable: "data layer only, no screen touched" } });
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("refuses an exemption asserted without a reason", () => {
+    sandbox = withMockup(`<style>.hero { color: var(--ink); }</style>`);
+    const result = submit({ mockup: { not_applicable: "" } });
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /mockup/);
+  });
+
+  test("accepts a mockup that only uses declared tokens", () => {
+    sandbox = withMockup(`<style>.hero { color: var(--ink); padding: var(--space-4); }</style>`);
+    const result = submit({ mockup: { path: "mockup/home.html" } });
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("refuses a mockup carrying values the design system never declared", () => {
+    sandbox = withMockup(`<style>.hero { color: #3b82f6; font-family: Inter; }</style>`);
+    const result = submit({ mockup: { path: "mockup/home.html" } });
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /#3b82f6/);
+  });
+
+  test("refuses a mockup the handoff names but that does not exist", () => {
+    sandbox = withMockup(`<style>.hero { color: var(--ink); }</style>`);
+    const result = submit({ mockup: { path: "mockup/ghost.html" } });
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /ghost\.html/);
+  });
+
+  test("asks nothing of a project with no screen", () => {
+    sandbox = withMockup(`<style>.hero { color: var(--ink); }</style>`);
+    const path = join(sandbox, "pipeline.config.json");
+    const config = JSON.parse(readFileSync(path, "utf8"));
+    config.architecture = { id: "feature-modules", project_type: "backend" };
+    writeFileSync(path, JSON.stringify(config, null, 2));
+    const result = submit();
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("asks nothing of a handoff that carries no commit", () => {
+    sandbox = withMockup(`<style>.hero { color: var(--ink); }</style>`);
+    const result = submit({ evidence: { ...BASE.evidence, commit_sha: null }, claims_to_replay: undefined });
+    assert.doesNotMatch(result.output, /mockup/, "nothing was built, so there is nothing to have built against");
+  });
+});

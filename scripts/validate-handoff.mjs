@@ -1,7 +1,8 @@
 import { readFileSync, existsSync } from "node:fs";
-import { loadRules, pathAllowed, sha256, fail } from "./lib.mjs";
+import { loadConfig, loadRules, pathAllowed, sha256, fail } from "./lib.mjs";
 import { reviewDigest } from "./render-proposal.mjs";
 import { dependencyDigest } from "./render-dependency.mjs";
+import { tokensIn, offenders } from "./mockup-check.mjs";
 
 /**
  * Confronts a document with the page the operator is supposed to have read.
@@ -111,6 +112,67 @@ function checkDependencyAssessment(handoff, errors) {
     );
   }
   checkPage(handoff, errors, dependencyDigest, "dependency-review-digest", "assessment");
+}
+
+/**
+ * Confronts a built screen with the mockup it was built against.
+ *
+ * The design-system page states the order: tokens, primitives, then a mockup
+ * assembled from the primitives that exist, then screens. Nothing made the
+ * last step depend on the one before it. An implementer could code a screen
+ * having seen no mockup at all, and the only trace of that would be an
+ * interface nobody had looked at before it existed.
+ *
+ * The exit is explicit rather than inferred. This validator cannot tell a
+ * visual issue from a data-layer one, and guessing from the touched paths
+ * would be wrong on the first refactor. `mockup.not_applicable` carries a
+ * reason, and a reason someone had to write is a reason someone had to mean.
+ *
+ * The mockup is also re-checked here, not trusted. A file approved a week ago
+ * and edited since is exactly the case a declaration alone cannot catch.
+ *
+ * @param handoff - the submitted handoff
+ * @param errors - list of errors to append to
+ */
+function checkMockup(handoff, errors) {
+  let config;
+  try {
+    config = loadConfig();
+  } catch {
+    return;
+  }
+  if (!["frontend", "mobile", "fullstack"].includes(config.architecture?.project_type)) return;
+  if (handoff.evidence?.commit_sha == null) return;
+
+  const mockup = handoff.mockup;
+  if (mockup == null || (typeof mockup.path !== "string" && typeof mockup.not_applicable !== "string")) {
+    errors.push(
+      "mockup missing: this project has screens, and a screen coded from memory is an interface nobody " +
+        "looked at before it existed. Declare mockup.path, or mockup.not_applicable with the reason this " +
+        "issue touches none.",
+    );
+    return;
+  }
+  if (typeof mockup.not_applicable === "string") {
+    if (mockup.not_applicable.trim().length === 0) {
+      errors.push("mockup.not_applicable is empty: an exemption nobody had to justify is an exemption always taken");
+    }
+    return;
+  }
+  if (!existsSync(mockup.path)) {
+    errors.push(`mockup.path not found: ${mockup.path}`);
+    return;
+  }
+  const tokensPath = config.design_system?.tokens;
+  if (typeof tokensPath !== "string" || !existsSync(tokensPath)) {
+    errors.push(`design_system.tokens not readable: nothing to check ${mockup.path} against`);
+    return;
+  }
+  const declared = tokensIn(readFileSync(tokensPath, "utf8"));
+  const { found } = offenders(readFileSync(mockup.path, "utf8"), declared);
+  for (const item of found) {
+    errors.push(`mockup ${mockup.path}: ${item.kind} ${item.raw} traces to no declared token`);
+  }
 }
 
 /**
@@ -290,6 +352,10 @@ function main() {
         }
       }
     }
+  }
+
+  if (handoff.mode === "issue_handoff" && handoff.agent === "implementer") {
+    checkMockup(handoff, errors);
   }
 
   if (handoff.mode === "dependency_assessment") {

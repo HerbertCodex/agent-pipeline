@@ -219,7 +219,11 @@ Une maquette est **un assemblage de ce qui existe, pas une image à reproduire**
 
 C'est là que se prend le look de machine : un agent à qui on demande un écran attrape une valeur plausible, et le plausible converge — le même presque-noir, le même bleu, la même police.
 
-> ℹ️ Une référence `var(--jeton)` compte comme une valeur correctement énoncée. Une maquette sans aucun style est refusée : les deux se ressemblent pour un compteur naïf et veulent dire le contraire.
+> ℹ️ Une référence `var(--jeton)` compte comme une valeur correctement énoncée.
+
+Et ce n'est pas facultatif : sur un projet à écrans, un handoff qui porte un commit déclare `mockup { path }`, ou `mockup { not_applicable }` avec la raison. Le validateur **relit le fichier** au lieu de croire la déclaration — une maquette approuvée la semaine dernière et éditée depuis est exactement ce qu'une déclaration seule ne rattrape pas.
+
+> 🎯 **Ce que ça achète, et ce que ça n'achète pas.** Les écrans d'un projet s'accordent entre eux et avec les jetons : rien ne s'invente en cours d'issue. Ils n'en deviennent pas *distinctifs* pour autant. Une maquette produite depuis rien reste la moyenne de ce que le modèle a vu. Le distinctif vient du brief et des références que **vous** fournissez — aucune commande ne remplace ça. Une maquette sans aucun style est refusée : les deux se ressemblent pour un compteur naïf et veulent dire le contraire.
 
 > 🎭 **« Est-ce que toutes mes apps vont se ressembler ? »** C'est le vrai risque, et il ne vient pas des défauts du framework — le skill de design les refuse nommément. Il vient de ce qu'un guide lu sans brief devient un gabarit : on échappe au template SaaS pour atterrir dans le suivant, reconnaissable comme « une IA qui a lu un guide anti-générique ».
 >
@@ -377,7 +381,7 @@ Ses deux refus sont le cœur : **aucun fichier trouvé**, et **aucune déclarati
 | `docs/` | **en anglais** — les modèles suivent mieux l'anglais. `nouveau-profil.md` pour installer, `operateur.md` pour vous |
 | `templates/` | les fichiers de politique, le workflow CI |
 | `skills/` | conseils de code, indépendants de toute stack. Un skill peut déclarer `applies_to` : celui sur l'interface n'est pas installé sur un service sans écran |
-| `test/` | **238 tests** sur le framework lui-même |
+| `test/` | **246 tests** sur le framework lui-même |
 
 **Prérequis** : Node, git, et le client de votre forge (`gh`, `glab`). Rien d'autre.
 
