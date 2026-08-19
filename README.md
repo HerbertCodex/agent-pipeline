@@ -1,46 +1,71 @@
-<div align="center">
-
 # no-name-driven
 
-**Vous faites écrire du code par des agents IA.
-Ce framework vérifie ce qu'ils ont fait, au lieu de les croire sur parole.**
+**Vous utilisez des agents IA pour écrire du code.
+`no-name-driven` vérifie ce qu’ils ont réellement fait au lieu de simplement croire leur compte rendu.**
 
 `Node` · `aucune dépendance` · `toutes stacks` · `MIT`
 
-</div>
+---
+
+## 😤 Le problème
+
+Vous demandez à un agent IA d’implémenter une fonctionnalité.
+
+Quelques minutes plus tard, il vous répond :
+
+> « C’est fait. Les tests passent, la couverture est à 94 % et tous les critères sont validés. »
+
+Le problème, c’est que vous ne savez pas si ces affirmations sont vraies.
+
+Pour le savoir, vous devez vous-même vérifier :
+
+* est-ce que les tests ont réellement été exécutés ?
+* est-ce qu’ils vérifient vraiment quelque chose ?
+* est-ce que l’agent a uniquement modifié les fichiers prévus ?
+* est-ce que les règles du projet ont réellement été respectées ?
+
+Un test peut très bien passer sans vérifier le moindre résultat.
+Un agent peut oublier de mentionner un fichier qu’il a modifié.
+Et une règle écrite dans un prompt peut être ignorée sans que personne ne s’en rende compte.
+
+Résultat : vous finissez par relire tout le diff.
+
+Vous perdez alors une partie du temps que l’agent devait justement vous faire gagner.
+
+Le problème devient encore plus important lorsque plusieurs agents travaillent les uns après les autres.
+
+Le premier écrit par exemple :
+
+> « Les tests sont corrects. »
+
+Le deuxième considère cette information comme vraie et continue à partir de là.
+
+Puis le troisième fait la même chose.
+
+Personne n’a forcément menti. Mais personne n’a vérifié non plus.
+
+Une erreur peut donc être transmise d’agent en agent jusqu’à devenir difficile à retrouver.
 
 ---
 
-## 😤 Le problème, concrètement
+## 💡 L’idée de no-name-driven
 
-Vous demandez à un agent d'implémenter une fonctionnalité. Il vous répond :
+Le principe du framework est simple :
 
-> *« C'est fait. Tests écrits et passants, couverture à 94 %, les cinq critères sont validés. »*
+**une affirmation d’un agent n’est jamais considérée comme une preuve lorsqu’elle peut être vérifiée automatiquement.**
 
-Trois questions auxquelles vous ne pouvez pas répondre sans tout relire :
+Si un agent affirme :
 
-- **A-t-il vraiment lancé les tests ?** Il dit oui. Vous n'avez que sa parole.
-- **Ces tests vérifient-ils quelque chose ?** Un test qui appelle une fonction sans rien contrôler passe, et compte dans les 94 %.
-- **A-t-il touché des fichiers qu'il ne devait pas ?** Le diff fait 400 lignes.
+> « J’ai modifié huit fichiers. »
 
-Alors vous relisez tout. Et vous perdez le temps que l'agent vous avait fait gagner.
-
-**Pire : quand plusieurs agents se relaient.** Le premier affirme. Le deuxième reprend l'affirmation comme un fait acquis et construit dessus. Le troisième hérite des deux. Personne n'a menti, personne n'a vérifié, et l'erreur est à trois étages de profondeur quand vous la trouvez.
-
----
-
-## 💡 Ce que fait ce framework
-
-Il coupe le travail en quatre rôles qui **ne se font pas confiance**, et il vérifie mécaniquement à chaque passage de relais.
-
-Un exemple réel. L'agent qui code affirme n'avoir touché que 8 fichiers. Le framework ne le croit pas — il compare avec `git` :
+le framework regarde directement ce que dit Git.
 
 ```console
 $ node agent-pipeline/scripts/verify-scope.mjs handoff.json abc1234
 scope verifie : 8 fichier(s), abc1234..def5678, role implementer, 2026-08-18T09:14:22.031Z
 ```
 
-Et quand la déclaration ne tient pas :
+Si l’agent a oublié de déclarer un fichier :
 
 ```console
 $ node agent-pipeline/scripts/verify-scope.mjs handoff.json abc1234
@@ -48,43 +73,56 @@ scope : modifie mais non declare : package.json
 scope : hors role implementer : package.json
 ```
 
-Ici l'agent a modifié un fichier qu'il n'a pas mentionné, **et** ce fichier ne fait pas partie de ce qu'il a le droit de toucher. Le travail est refusé. Personne n'a eu à relire 400 lignes de diff.
+Le framework constate ici deux choses :
 
-Deuxième exemple. L'agent dit avoir écrit ses tests **avant** le code. Le framework revient au commit de test, relance la suite, et exige qu'elle échoue :
+1. `package.json` a été modifié mais n’a pas été déclaré ;
+2. le rôle qui travaillait n’avait de toute façon pas le droit de modifier ce fichier.
+
+Le résultat n’est donc pas accepté.
+
+Même principe pour les tests.
+
+Si l’agent affirme avoir écrit les tests avant le code, le framework revient au commit correspondant aux tests et relance réellement la suite :
 
 ```console
 $ npx jest --runInBand
-Tests: 5 failed, 18 passed          ← rouge observé, pas déclaré
+Tests: 5 failed, 18 passed
 ```
 
-Si la suite passe au vert à ce commit-là, les tests ont été écrits après. Le travail est refusé.
+C’est exactement ce qu’on veut observer à ce moment-là : les nouveaux tests doivent échouer puisque le code qui les fait passer n’existe pas encore.
 
-**C'est tout le principe** : ce qui est enregistré, c'est ce qui a été mesuré. Jamais ce qui a été annoncé.
+S’ils passent déjà, quelque chose ne correspond pas au processus annoncé.
 
----
-
-## 📖 Quatre mots à connaître
-
-| Mot | Ce que ça veut dire ici |
-| :-- | :-- |
-| **une commande** | déclarée dans la configuration : `npm test`, `eslint`, un scan de secrets. Elle passe ou elle échoue. Si elle échoue, le travail ne passe pas. C'est tout. |
-| **un rôle** | un agent avec un seul métier et des droits limités. Celui qui code ne peut pas modifier la configuration. Celui qui vérifie ne peut rien écrire du tout. |
-| **un handoff** | le rapport qu'un rôle rend en terminant. Un fichier JSON, validé avant d'être accepté. |
-| **le store** | deux fichiers sur disque où vit l'état d'avancement. Pas dans la mémoire d'un agent : si la session s'arrête, rien n'est perdu. |
+**Le framework enregistre donc ce qu’il peut observer, pas simplement ce que l’agent raconte.**
 
 ---
 
-## 🧭 Comment les quatre rôles travaillent
+## 📖 Quatre notions à connaître
+
+Avant d’aller plus loin, voici les quelques termes utilisés dans le reste du projet.
+
+| Terme                    | Signification                                                                                                                                          |
+| :----------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Commande de contrôle** | Une commande définie dans la configuration du projet : tests, lint, scan de secrets, etc. Si elle échoue, l’étape ne peut pas être validée.            |
+| **Rôle**                 | Un agent chargé d’un type de travail précis, avec des permissions limitées.                                                                            |
+| **Handoff**              | Le rapport structuré qu’un agent remet lorsqu’il termine son étape. C’est un fichier JSON que le framework vérifie avant de l’accepter.                |
+| **État du pipeline**     | Les fichiers enregistrés sur disque qui indiquent où en est le travail. L’avancement ne dépend donc pas de la mémoire de la conversation avec l’agent. |
+
+---
+
+## 🧭 Comment le travail est organisé
+
+Le pipeline utilise quatre rôles.
 
 ```mermaid
 flowchart LR
     OP(["👤 Vous"]) -->|un besoin| P
-    P["📋 Product<br/><i>écrit la spec,<br/>la découpe en tâches</i>"] --> O
-    O{{"🎛️ Orchestrateur<br/><i>vérifie et enregistre</i>"}} --> I
-    I["🔨 Implementer<br/><i>écrit les tests,<br/>puis le code</i>"] --> O
+    P["📋 Product<br/><i>comprend le besoin<br/>et prépare la spec</i>"] --> O
+    O{{"🎛️ Orchestrateur<br/><i>contrôle et enregistre<br/>chaque étape</i>"}} --> I
+    I["🔨 Implementer<br/><i>écrit les tests<br/>puis le code</i>"] --> O
     O --> Q
-    Q["🔍 QA<br/><i>contrôle dans<br/>l'environnement réel</i>"] --> O
-    O -->|ce qui vous revient| OP
+    Q["🔍 QA<br/><i>vérifie le résultat<br/>sans le modifier</i>"] --> O
+    O -->|résultat validé| OP
 
     style OP fill:#5b3fa8,color:#fff
     style O fill:#1f6feb,color:#fff
@@ -93,29 +131,67 @@ flowchart LR
     style Q fill:#a3364a,color:#fff
 ```
 
-**Chaque rôle a des droits limités**, et ce n'est pas une consigne polie dans un prompt : c'est refusé automatiquement.
+Chaque rôle a une responsabilité précise.
 
-| Rôle | Peut écrire | Ne peut pas |
-| :-- | :-- | :-- |
-| 📋 Product | rien dans le code | ni code, ni tests |
-| 🔨 Implementer | le code et les tests | ni la config, ni les commandes |
-| 🔍 QA | **rien du tout** | lecture seule, elle ne corrige jamais |
-| 🎛️ Orchestrateur | l'état d'avancement | ni code, ni tests |
+### 📋 Product
 
-**Pourquoi QA ne répare rien ?** Parce que réparer va plus vite que signaler. Elle tombe sur un test qui ne teste rien : le corriger prend deux minutes, expliquer pourquoi il était creux en prend dix. Alors elle corrige. Le rapport dit « conforme », l'Implementer n'apprend rien, et le prochain test creux sera écrit exactement pareil.
+Il transforme votre besoin en spécification puis en tâches.
+
+Il ne touche pas au code.
+
+### 🔨 Implementer
+
+Il écrit les tests puis le code nécessaire pour les faire passer.
+
+Il ne peut pas modifier les règles du pipeline pour faciliter son propre travail.
+
+### 🔍 QA
+
+Il contrôle le résultat dans l’environnement réel.
+
+Il travaille en lecture seule : **QA signale les problèmes, mais ne les corrige pas.**
+
+Ce choix est volontaire.
+
+Si QA corrige elle-même ce qu’elle découvre, l’Implementer ne reçoit jamais réellement le retour. Le problème disparaît dans cette tâche, mais la même erreur risque d’être reproduite dans la suivante.
+
+### 🎛️ Orchestrateur
+
+Il décide quelle étape peut être exécutée ensuite, vérifie les résultats et enregistre l’avancement.
+
+Il n’écrit ni code ni tests.
 
 ---
 
-## 🔍 Ce qui est vérifié à chaque passage de relais
+### Les permissions ne reposent pas uniquement sur les prompts
+
+Le framework ne se contente pas d’écrire :
+
+> « S’il te plaît, ne touche pas à la configuration. »
+
+Il vérifie ce que chaque rôle a réellement modifié et refuse les modifications qui sortent de son périmètre.
+
+| Rôle              | Peut modifier      | Ne peut pas modifier                   |
+| :---------------- | :----------------- | :------------------------------------- |
+| 📋 Product        | la spécification   | code et tests                          |
+| 🔨 Implementer    | code et tests      | configuration et commandes du pipeline |
+| 🔍 QA             | rien               | tout est en lecture seule              |
+| 🎛️ Orchestrateur | l’état du pipeline | code et tests                          |
+
+---
+
+## 🔍 Ce qui est vérifié entre deux agents
+
+À chaque étape, le fonctionnement est toujours le même.
 
 ```mermaid
 flowchart TD
-    A["📍 Quelle est la prochaine étape ?<br/><i>calculé depuis le disque</i>"] --> D{{"🤖 le rôle travaille"}}
-    D --> E["📄 il rend son rapport"]
-    E --> F["✅ le rapport est-il bien formé ?"]
-    F --> G["🔎 a-t-il touché ce qu'il annonce ?<br/><i>comparé au diff git</i>"]
-    G --> H["🧪 ses tests échouaient-ils vraiment avant ?<br/><i>rejoué</i>"]
-    H --> I["💾 enregistré"]
+    A["📍 Calculer la prochaine étape<br/><i>à partir de l'état sur disque</i>"] --> D{{"🤖 L'agent travaille"}}
+    D --> E["📄 L'agent rend son rapport"]
+    E --> F["✅ Vérifier le format du rapport"]
+    F --> G["🔎 Comparer les fichiers déclarés<br/>avec le vrai git diff"]
+    G --> H["🧪 Rejouer les contrôles<br/>qui doivent être observés"]
+    H --> I["💾 Enregistrer le résultat"]
     I --> A
 
     style A fill:#1f6feb,color:#fff
@@ -123,37 +199,79 @@ flowchart TD
     style H fill:#a3364a,color:#fff
 ```
 
-Les deux étapes en rouge sont celles qui distinguent ce framework d'un simple enchaînement de prompts. **Elles ne demandent rien à l'agent : elles mesurent.**
+Deux contrôles sont particulièrement importants.
 
-Et l'orchestrateur ne fait **qu'une étape à la fois**, puis s'arrête. Il relit l'état sur le disque à chaque fois. Coupez la session au milieu : rien n'est perdu, l'étape suivante se recalcule.
+### 1. Vérifier ce qui a réellement été modifié
 
----
+Le framework compare la déclaration de l’agent avec le `git diff`.
 
-## 🎯 Ce qui le distingue des autres frameworks d'agents
+Un fichier oublié dans le rapport ou modifié hors du périmètre autorisé est donc détecté automatiquement.
 
-Il en existe beaucoup qui orchestrent des agents. La différence n'est pas là.
+### 2. Rejouer les preuves importantes
 
-| La plupart proposent | Ici |
-| :-- | :-- |
-| des phases (plan → code → review) | les phases **existent aussi**, mais chacune est vérifiée par une commande |
-| des rôles décrits dans des prompts | des rôles dont les droits sont **refusés par la plateforme**, pas demandés poliment |
-| « l'agent doit écrire les tests d'abord » | on **remonte au commit de test et on relance la suite** |
-| un rapport de l'agent | un rapport **confronté au `git diff`** avant d'être accepté |
-| de la mémoire dans le contexte | deux fichiers sur disque, avec verrou anti-écrasement |
+Certaines règles ne peuvent pas être vérifiées uniquement en regardant le résultat final.
 
-Et une règle qui s'applique au framework lui-même :
+Par exemple :
 
-> **Si une règle n'a pas de commande qui la fait échouer, elle n'existe pas.**
->
-> Exemple vécu : la documentation affirmait qu'un certain contrôle refusait les transitions invalides. En allant vérifier, le contrôle n'existait pas dans le code. Personne n'échouait, personne ne signalait, et la règle n'avait jamais lieu depuis le début.
->
-> C'est pour ça que ce dépôt a **132 tests sur son propre code** : le code qui décide si votre code est vérifié n'était vérifié par personne.
+> « Les tests ont été écrits avant le code. »
+
+Pour vérifier cette affirmation, le framework revient au commit correspondant et exécute réellement les tests.
+
+Le principe est toujours le même :
+
+**quand quelque chose peut être mesuré, le framework préfère la mesure à la déclaration de l’agent.**
 
 ---
 
-## 🚀 Démarrer un projet
+## 💾 Une session peut s’arrêter sans perdre l’avancement
 
-### 1️⃣ Poser le framework
+L’orchestrateur n’essaie pas d’exécuter tout le projet d’un seul coup.
+
+Il effectue une étape, enregistre le résultat sur disque, puis s’arrête.
+
+Lors du passage suivant, il relit cet état et recalcule ce qui doit être fait.
+
+Vous pouvez donc interrompre une session au milieu du travail.
+
+L’étape suivante n’est pas conservée uniquement dans la mémoire d’un modèle : elle est recalculée à partir de l’état enregistré.
+
+---
+
+## 🎯 Ce qui différencie ce framework d’un simple workflow d’agents
+
+Il existe déjà de nombreux systèmes capables d’enchaîner plusieurs agents.
+
+Ce n’est pas la partie originale ici.
+
+La différence se trouve dans la manière dont les règles sont vérifiées.
+
+| Approche courante                        | no-name-driven                                                                   |
+| :--------------------------------------- | :------------------------------------------------------------------------------- |
+| plan → code → review                     | les mêmes étapes existent, mais elles sont accompagnées de contrôles exécutables |
+| rôles décrits dans des prompts           | les modifications de chaque rôle sont vérifiées                                  |
+| « écris les tests avant le code »        | le framework revient au commit correspondant et exécute réellement les tests     |
+| rapport rédigé par l’agent               | le rapport est comparé avec le véritable `git diff`                              |
+| état conservé dans le contexte du modèle | état enregistré sur disque                                                       |
+
+La règle générale du projet est donc :
+
+> **Une règle importante doit pouvoir provoquer un échec vérifiable.**
+
+Autrement dit, écrire une règle dans la documentation ne suffit pas.
+
+Si rien dans le système ne détecte sa violation, il est très facile de croire qu’elle est appliquée alors qu’elle ne l’est pas.
+
+Ce problème s’est d’ailleurs produit dans le framework lui-même : une vérification était décrite dans la documentation, mais n’existait pas réellement dans le code.
+
+C’est précisément pour cette raison que le framework possède également sa propre suite de tests.
+
+---
+
+# 🚀 Installer le framework dans un projet
+
+## 1. Ajouter `agent-pipeline/`
+
+Depuis la racine de votre projet :
 
 ```bash
 cd mon-projet
@@ -161,52 +279,132 @@ git clone https://github.com/HerbertCodex/no-name-driven.git agent-pipeline
 rm -rf agent-pipeline/.git
 ```
 
-> ⚠️ Le dossier **doit** s'appeler `agent-pipeline/`.
+Le dossier doit conserver ce nom :
 
-### 2️⃣ Décrire votre produit, avant toute technique
+```text
+agent-pipeline/
+```
 
-Votre session vous pose huit questions en langue ordinaire. Deux comptent vraiment :
+Les scripts du framework s’attendent à le trouver à cet emplacement.
 
-> **Y a-t-il des cas où le système doit *refuser* quelque chose ?**
-> Pas « ce champ est obligatoire ». Un vrai refus : *« ce livre est déjà emprunté »*, *« ce compte n'a pas assez »*.
->
-> **Un professionnel du métier comprendrait-il ce refus sans qu'on parle informatique ?**
+---
 
-Ça détermine si votre produit a de vraies règles métier à protéger, ou seulement des données à ranger. Un logiciel qui ne refuse jamais rien pour une raison venue du monde réel n'a pas de métier.
+## 2. Décrire le produit avant de parler d’architecture
 
-### 3️⃣ Choisir comment ranger le code
+Avant de choisir des bibliothèques ou une organisation de dossiers, le framework commence par le fonctionnement du produit.
+
+La session pose huit questions en langage courant.
+
+Parmi elles, une question est particulièrement importante :
+
+> **Existe-t-il des situations où le produit doit refuser une action pour une raison métier ?**
+
+Par exemple :
+
+> « Ce livre est déjà emprunté. »
+
+ou :
+
+> « Ce compte ne dispose pas d’un solde suffisant. »
+
+Ce ne sont pas de simples validations techniques du type :
+
+> « Ce champ est obligatoire. »
+
+La distinction permet d’identifier les vraies règles métier du produit : les règles qui viennent du fonctionnement du domaine, et pas seulement de la structure des données.
+
+Une autre question aide à vérifier que ces règles sont exprimées correctement :
+
+> **Une personne connaissant le métier comprendrait-elle ce refus sans vocabulaire informatique ?**
+
+---
+
+## 3. Choisir une organisation de code
+
+Une fois le produit compris, vous pouvez comparer plusieurs façons d’organiser le code.
 
 ```bash
 node agent-pipeline/scripts/render-architecture.mjs archi.html backend
 ```
 
-Ça produit une page HTML qui explique les options — un dossier par fonctionnalité, en couches, hexagonale, Clean — avec pour chacune :
+La commande génère une page HTML qui présente différentes options :
 
-- **une phrase en clair**, sans jargon ;
-- **l'arborescence réelle** des dossiers ;
-- **combien de fichiers** il faut écrire pour ajouter une route (3 avec l'une, 6 avec l'autre) ;
-- **les signes concrets** qui diront un jour qu'il faut en changer.
+* organisation par fonctionnalité ;
+* architecture en couches ;
+* architecture hexagonale ;
+* Clean Architecture ;
+* etc.
 
-Le framework **ne choisit pas à votre place**. Et il vous met en garde contre l'erreur la plus fréquente : prendre l'architecture la plus lourde par précaution, c'est payer une assurance qu'on n'utilisera peut-être jamais — prélevée sur chaque fichier écrit, pendant des années.
+Pour chaque option, la page indique notamment :
 
-### 🎨 Si le projet a des écrans
+* ce qu’elle signifie en langage courant ;
+* à quoi ressembleront réellement les dossiers ;
+* combien de fichiers devront être créés pour une modification typique ;
+* dans quelles situations cette architecture risque de devenir insuffisante.
+
+Le framework ne choisit pas pour vous.
+
+L’objectif est justement d’éviter une décision fréquente : adopter dès le départ l’architecture la plus complexe « au cas où ».
+
+Une architecture plus lourde a un coût immédiat : davantage de fichiers, davantage d’abstractions et davantage de travail à chaque modification.
+
+Elle doit donc répondre à un besoin réel.
+
+---
+
+## 🎨 Pour les projets avec interface graphique
+
+Pour un projet frontend, mobile ou fullstack :
 
 ```bash
 node agent-pipeline/scripts/render-design-system.mjs design.html frontend
 ```
 
-La page pose **un ordre**, et l'ordre est tout son contenu : jetons → primitives → composants de produit → écrans.
+L’objectif est de définir les fondations visuelles avant de transformer une maquette en code.
 
-> 🎯 **« On fait la maquette d'abord ? »** Une maquette d'exploration, oui, tout de suite. LA maquette finie, non : dessinée avant les jetons, elle invente une échelle — des espacements choisis à l'œil, six gris presque identiques — et le code la recopie faute d'autre référence. Vous n'avez alors pas un design system, vous avez une maquette transcrite.
+L’ordre proposé est :
 
-Elle pèse aussi le choix qui revient partout — écrire ses primitives, prendre une bibliothèque sans style, prendre une bibliothèque complète — avec **l'accessibilité comme critère qui tranche**. Une bibliothèque qui ne gère ni le focus, ni le clavier, ni les annonces de lecteur d'écran n'est pas une bibliothèque de composants : c'est un jeu de styles.
+```text
+tokens → primitives → composants métier → écrans
+```
 
-`apply-profile` refuse un projet frontend, mobile ou fullstack sans bloc `design_system`. Un back-end n'est jamais interrogé.
+### Pourquoi cet ordre ?
 
-### 🖼️ La maquette se vérifie contre les jetons
+Une maquette d’exploration peut évidemment être créée très tôt.
+
+En revanche, figer toute l’interface avant d’avoir défini les règles visuelles peut conduire à choisir les espacements, les couleurs et les tailles au cas par cas.
+
+Le code finit alors par recopier ces décisions sans disposer d’un système commun.
+
+L’idée n’est donc pas :
+
+> « Ne faites pas de maquette. »
+
+mais plutôt :
+
+> **« Ne laissez pas la maquette devenir par défaut votre design system. »**
+
+La page compare également trois approches :
+
+* écrire ses propres primitives ;
+* utiliser une bibliothèque non stylisée ;
+* utiliser une bibliothèque de composants complète.
+
+L’accessibilité fait partie des critères importants : navigation clavier, gestion du focus et lecteurs d’écran doivent être pris en compte dans la décision.
+
+Pour les projets disposant d’une interface, `apply-profile` exige également un bloc `design_system`.
+
+Un projet backend n’est pas concerné.
+
+### Vérifier qu'une maquette n'invente pas ses valeurs
+
+Une maquette est **un assemblage de ce qui existe**, pas une image à reproduire.
+
+```bash
+node agent-pipeline/scripts/mockup-check.mjs mockup/home.html
+```
 
 ```console
-$ node agent-pipeline/scripts/mockup-check.mjs mockup/home.html
   colour  #0a0a0f — nearest declared token: --ink
   colour  #3b82f6
   length  13px
@@ -215,46 +413,104 @@ $ node agent-pipeline/scripts/mockup-check.mjs mockup/home.html
 4 value(s) the design system never declared, out of 12 checked.
 ```
 
-Une maquette est **un assemblage de ce qui existe, pas une image à reproduire**. Chaque couleur, longueur et police qui ne remonte à aucun jeton déclaré est refusée.
+Chaque couleur, longueur et police qui ne remonte à aucun token déclaré est refusée. Une référence `var(--token)` compte comme une valeur correctement exprimée ; une maquette sans aucun style est refusée, car les deux se ressemblent pour un compteur naïf et signifient l'inverse.
 
-C'est là que se prend le look de machine : un agent à qui on demande un écran attrape une valeur plausible, et le plausible converge — le même presque-noir, le même bleu, la même police.
+Sur un projet à écrans, un handoff qui porte un commit déclare `mockup { path }`, ou `mockup { not_applicable }` avec sa raison. Le validateur **relit le fichier** plutôt que de croire la déclaration : une maquette approuvée puis modifiée est exactement ce qu'une déclaration seule ne rattrape pas.
 
-> ℹ️ Une référence `var(--jeton)` compte comme une valeur correctement énoncée.
+> 🎯 **Ce que cela apporte, et ce que cela n'apporte pas.** Les écrans d'un projet s'accordent entre eux et avec les tokens : rien ne s'invente en cours de route. Ils n'en deviennent pas *distinctifs* pour autant — une maquette produite à partir de rien reste une moyenne. Le caractère distinctif vient du brief et des références que **vous** fournissez.
 
-Et ce n'est pas facultatif : sur un projet à écrans, un handoff qui porte un commit déclare `mockup { path }`, ou `mockup { not_applicable }` avec la raison. Le validateur **relit le fichier** au lieu de croire la déclaration — une maquette approuvée la semaine dernière et éditée depuis est exactement ce qu'une déclaration seule ne rattrape pas.
+### Éviter que tous les projets finissent par se ressembler
 
-> 🎯 **Ce que ça achète, et ce que ça n'achète pas.** Les écrans d'un projet s'accordent entre eux et avec les jetons : rien ne s'invente en cours d'issue. Ils n'en deviennent pas *distinctifs* pour autant. Une maquette produite depuis rien reste la moyenne de ce que le modèle a vu. Le distinctif vient du brief et des références que **vous** fournissez — aucune commande ne remplace ça. Une maquette sans aucun style est refusée : les deux se ressemblent pour un compteur naïf et veulent dire le contraire.
+Le framework ne choisit pas automatiquement une direction graphique.
 
-> 🎭 **« Est-ce que toutes mes apps vont se ressembler ? »** C'est le vrai risque, et il ne vient pas des défauts du framework — le skill de design les refuse nommément. Il vient de ce qu'un guide lu sans brief devient un gabarit : on échappe au template SaaS pour atterrir dans le suivant, reconnaissable comme « une IA qui a lu un guide anti-générique ».
->
-> D'où `design_system.direction` = `{ genre, because }`, exigée. Le framework ne choisit pas le genre. Il exige que vous finissiez la phrase **« ce genre convient au produit parce que ___ »**. Un genre que personne n'a eu à justifier a été pris par habitude, et l'habitude est ce qui fait converger deux produits.
+Il demande au contraire de l’expliciter :
 
-### 📦 Avant d'installer quoi que ce soit
+```text
+design_system.direction = {
+  genre,
+  because
+}
+```
 
-Aucun agent n'installe. Il **argumente et s'arrête** :
+L’idée est de pouvoir compléter une phrase du type :
+
+> « Cette direction visuelle convient à ce produit parce que… »
+
+Le but est d’éviter qu’un style soit choisi simplement parce qu’il est familier ou fréquent.
+
+---
+
+## 📦 Avant d’ajouter une dépendance
+
+Les agents ne peuvent pas installer eux-mêmes une nouvelle bibliothèque.
+
+Ils peuvent en revanche préparer une évaluation :
 
 ```bash
 node agent-pipeline/scripts/render-dependency.mjs evaluation.json page.html
 ```
 
-La page porte, pour chaque candidat : licence, poids transitif, date de dernière publication, **avis de sécurité ouverts**, privilèges d'exécution — et ce que coûterait de l'écrire à la main, pour que refuser soit un choix informé. `validate-handoff` refuse une demande à qui il manque une de ces mesures : elles ne se remplissent pas sans avoir regardé.
+La page présente notamment :
 
-### ♻️ Si un projet de la même stack tourne déjà
+* la licence ;
+* le poids transitif ;
+* la date de la dernière publication ;
+* les éventuels avis de sécurité ouverts ;
+* les privilèges d’exécution ;
+* une estimation de ce qu’il faudrait développer pour ne pas utiliser cette dépendance.
 
-Ne réécrivez pas ses commandes. Exportez-les :
+L’objectif n’est pas de refuser les dépendances.
+
+L’objectif est que la décision soit prise avec les informations nécessaires.
+
+Si une évaluation ne contient pas les mesures demandées, `validate-handoff` la refuse.
+
+---
+
+## ♻️ Réutiliser la configuration d’un projet existant
+
+Si vous avez déjà un projet de la même stack, vous pouvez exporter certaines règles au lieu de tout reconstruire.
 
 ```bash
 node agent-pipeline/scripts/export-profile.mjs mon-profil/ eslint.config.mjs knip.json
-node agent-pipeline/scripts/import-profile.mjs mon-profil/ .    # dans le nouveau dépôt
+node agent-pipeline/scripts/import-profile.mjs mon-profil/ .
 ```
 
-Le paquet emporte les **commandes, les politiques et les fichiers d'outils** — pas l'endroit où l'autre projet range son état, ni sa forge, ni l'architecture qu'il a choisie.
+Le profil peut transporter :
 
-> ⚠️ **Il n'est pas utilisable tel quel.** `apply-profile` refuse tant que `calibration_required` vaut `true`. Les seuils ont été mesurés sur un *autre* code : trop larges, la commande ne refuse plus rien ; trop serrés, la première exécution les fait desserrer. Mesurez-les chez vous, puis passez le drapeau à `false` — c'est une affirmation, pas une case à cocher.
+* les commandes ;
+* les politiques ;
+* les fichiers de configuration des outils.
 
-### 4️⃣ Laisser un agent l'installer
+En revanche, il ne copie pas automatiquement :
 
-Donnez-lui ceci, en remplaçant `<votre stack>` :
+* l’état du projet précédent ;
+* sa plateforme Git ;
+* son choix d’architecture.
+
+### Pourquoi faut-il recalibrer le profil ?
+
+Un profil importé démarre avec :
+
+```text
+calibration_required = true
+```
+
+`apply-profile` refuse de continuer tant que cette valeur n’a pas été changée après vérification.
+
+La raison est simple : des seuils adaptés à un autre dépôt ne sont pas forcément adaptés au nouveau.
+
+Un seuil trop permissif ne détectera plus certains problèmes.
+
+Un seuil trop strict produira des erreurs en permanence et finira probablement par être désactivé.
+
+Il faut donc mesurer les commandes sur le nouveau projet avant de considérer le profil comme calibré.
+
+---
+
+## 4. Laisser un agent préparer le projet
+
+Une fois vos choix effectués, vous pouvez donner cette instruction à un agent :
 
 ```text
 Ce dépôt contient un framework d'agents dans agent-pipeline/. Il n'est pas
@@ -273,9 +529,17 @@ Deux choses restent à moi : installer une dépendance, et modifier la
 configuration une fois le pipeline en service. Demande-les moi.
 ```
 
-> 🔒 **Le choix de l'étape 3 n'est pas qu'une indication.** Il est écrit dans la configuration, et `apply-profile` refuse de démarrer sans lui — comme il refuse un rangement qui ne vaut pas pour votre type de projet. Sans ça, le choix ne vivrait que dans une page HTML : l'agent qui installe rangerait à sa façon, le suivant autrement, et personne ne pourrait dire qu'il y a dérive puisque rien ne dirait de quoi ça dérive.
+Le choix d’architecture effectué précédemment est enregistré dans la configuration.
 
-### 5️⃣ Vérifier avant de croire
+Il ne reste donc pas simplement dans une page HTML que les agents suivants pourraient ignorer.
+
+`apply-profile` vérifie que ce choix existe et qu’il correspond au type de projet avant de continuer.
+
+---
+
+## 5. Vérifier que les contrôles fonctionnent réellement
+
+Une fois le framework configuré :
 
 ```console
 $ node agent-pipeline/scripts/preflight.mjs
@@ -284,56 +548,134 @@ $ node agent-pipeline/scripts/preflight.mjs
   ABSENT secrets_scan    /bin/sh: gitleaks: command not found
 ```
 
-Une commande dont l'outil n'est pas installé **échoue au lieu de protéger** — et une commande toujours rouge finit par être ignorée. `preflight` distingue « cette commande a trouvé un problème » de « cette commande ne peut pas tourner ».
+`preflight` distingue deux situations très différentes :
 
-Puis la question qui compte le plus :
+1. une commande a été exécutée et a trouvé un problème ;
+2. la commande n’a même pas pu être exécutée parce que l’outil nécessaire manque.
 
-> ⭐ **Avez-vous vu chaque commande échouer au moins une fois ?**
->
-> Cassez volontairement ce qu'elle est censée attraper. Une commande qui passe sur du code sain ne prouve rien — elle peut passer parce qu'elle ne mesure rien. Ça s'est produit trois fois sur ce dépôt en une journée.
+Cette distinction est importante.
+
+Une vérification qui ne peut jamais fonctionner ne protège rien.
+
+Et une commande constamment en erreur finit généralement par être ignorée.
 
 ---
 
-## ✍️ Écrire une spec avec vous, pas à votre place
+### Le test le plus important : faire échouer chaque contrôle volontairement
+
+Une commande qui passe sur un projet sain ne prouve pas forcément qu’elle fonctionne.
+
+Elle peut aussi passer parce qu’elle ne vérifie rien.
+
+Pour chaque contrôle important, provoquez donc volontairement le problème qu’il est censé détecter.
+
+Par exemple :
+
+* ajoutez temporairement une erreur de lint ;
+* créez volontairement un test qui doit échouer ;
+* ajoutez une duplication connue ;
+* simulez un secret si votre environnement de test le permet.
+
+Puis vérifiez que la commande devient réellement rouge.
+
+**Un contrôle que vous n’avez jamais vu échouer n’a pas encore prouvé qu’il était capable de détecter son problème.**
+
+---
+
+# ✍️ Écrire une spécification avec vous, pas à votre place
+
+La préparation d’une fonctionnalité se fait en deux étapes.
 
 ```mermaid
 flowchart LR
-    A["📝 Étape 1<br/><b>Ce que le produit fait</b><br/><i>en langue ordinaire,<br/>aucune tâche technique</i>"] -->|autant d'allers-retours qu'il faut| B{{"👤 Vous validez"}}
-    B -->|empreinte du document| C["🧩 Étape 2<br/><b>Le découpage en tâches</b>"]
-    B -.->|il manque quelque chose| A
+    A["📝 Étape 1<br/><b>Décrire le comportement du produit</b><br/><i>sans tâches techniques</i>"] -->|discussion et corrections| B{{"👤 Vous validez"}}
+    B -->|version validée| C["🧩 Étape 2<br/><b>Découper le travail en tâches</b>"]
+    B -.->|quelque chose manque| A
 
     style A fill:#1a7f37,color:#fff
     style B fill:#5b3fa8,color:#fff
     style C fill:#1f6feb,color:#fff
 ```
 
-**Pourquoi deux étapes.** Sans ça, l'agent écrit 70 Ko de tâches détaillées avant que quiconque ait confirmé qu'il a compris le produit. Quand vous découvrez l'erreur, tout est à refaire.
+## Étape 1 : comprendre le produit
 
-À l'étape 1, il vous soumet **chaque choix que vous pourriez faire autrement** — la durée d'un prêt, faut-il valider le format d'un email, que se passe-t-il si on rend deux fois le même livre. Avec sa recommandation et les autres options.
+L’agent décrit ce que la fonctionnalité doit faire en langage courant.
 
-La page n'est pas une politesse : `render-proposal` y grave l'empreinte de ce qu'elle affiche, et `validate-handoff` **refuse un tour qui n'en déclare aucune** — ou dont la page a été rendue avant que le périmètre bouge. Si vous n'avez jamais reçu de page, aucun tour n'a été soumis.
+Il vous soumet également les décisions qui pourraient raisonnablement être prises autrement.
 
-Quand vous validez, le document est **figé par une empreinte**. Si le découpage de l'étape 2 s'appuie sur autre chose, ou sur ce document modifié après coup, il est refusé. On ne peut pas vous faire approuver 14 jours et en programmer 30.
+Par exemple :
+
+* combien de temps dure un prêt ?
+* faut-il vérifier le format d’une adresse email ?
+* que se passe-t-il si quelqu’un rend deux fois le même livre ?
+
+Pour chaque décision, l’agent peut proposer une recommandation et les alternatives possibles.
+
+Vous pouvez corriger le document autant de fois que nécessaire.
 
 ---
 
-## 🛠️ Au quotidien
+## Étape 2 : seulement après validation, créer les tâches
+
+Le découpage technique n’est créé qu’après votre validation de la première étape.
+
+Cela évite de produire des dizaines de tâches détaillées avant même d’avoir confirmé que le besoin a été correctement compris.
+
+Lorsque vous validez la spécification, le framework enregistre son empreinte cryptographique.
+
+Concrètement, cette empreinte sert simplement d’identifiant de la version que vous avez approuvée.
+
+Si le document est ensuite modifié, son empreinte change.
+
+Le framework peut donc vérifier que les tâches techniques ont bien été créées à partir de **la version exacte que vous aviez validée**.
+
+Par exemple, il ne doit pas être possible de vous faire approuver une durée de 14 jours puis de générer silencieusement des tâches basées sur 30 jours.
+
+---
+
+# 🛠️ Commandes utiles au quotidien
 
 ```bash
-node agent-pipeline/scripts/next-step.mjs        # 📍 quelle est la prochaine étape ?
-node agent-pipeline/scripts/render-decisions.mjs q.html  # ⚖️ qu'est-ce qui attend ma décision ?
-node agent-pipeline/scripts/preflight.mjs        # 🚦 mes commandes tournent-elles vraiment ?
-node agent-pipeline/scripts/metrics.mjs          # 📊 combien de défauts sont passés ?
-node agent-pipeline/scripts/status.mjs           # 👁️ où en est-on ?
+node agent-pipeline/scripts/next-step.mjs
+node agent-pipeline/scripts/render-decisions.mjs q.html
+node agent-pipeline/scripts/preflight.mjs
+node agent-pipeline/scripts/metrics.mjs
+node agent-pipeline/scripts/status.mjs
 ```
 
-⚖️ **`render-decisions`** est calculée depuis l'état réel, pas rédigée. Une tâche qu'aucun agent n'a le droit de prendre y apparaît **même si personne ne l'a signalée**.
+### `next-step`
+
+Indique quelle étape du pipeline peut être exécutée ensuite.
+
+### `render-decisions`
+
+Génère une page contenant les décisions qui nécessitent votre intervention.
+
+Cette liste est calculée à partir de l’état réel du pipeline.
+
+Une tâche qu’aucun agent n’est autorisé à prendre y apparaît donc même si aucun agent n’a pensé à vous la signaler.
+
+### `preflight`
+
+Vérifie que les commandes de contrôle peuvent réellement fonctionner.
+
+### `metrics`
+
+Affiche les métriques du pipeline, notamment les défauts qui sont passés malgré les contrôles.
+
+### `status`
+
+Affiche l’état actuel du projet.
 
 ---
 
-## 🧬 La commande qui empêche l'agent de réécrire la même chose
+# 🧬 Détecter la duplication
 
-Chaque prompt exige une **note de réutilisation** pour toute création. Jusqu'ici elle était jugée en revue — donc quand quelqu'un pensait à regarder. Sur deux cents petits composants, personne ne regarde.
+Le framework demande à l’agent de vérifier s’il peut réutiliser quelque chose avant de créer un nouveau composant ou une nouvelle fonction.
+
+Mais une simple consigne dans un prompt ne suffit pas.
+
+Le projet fournit donc également une détection automatique de duplication.
 
 ```console
 $ npm run duplication
@@ -342,11 +684,31 @@ $ npm run duplication
   test/health.e2e-spec.ts:19
 ```
 
-Le framework fournit le détecteur, sans aucune dépendance, pour qu'aucun projet n'attende un outil. Pointez la clé sur `jscpd` ou `pmd cpd` quand vous voulez une analyse par jetons.
+Un détecteur sans dépendance est fourni par défaut afin que cette vérification soit disponible sur n’importe quel projet.
 
-> 💡 **Attendez-vous à ce qu'elle soit rouge au premier lancement**, et lisez avant de toucher au seuil. Sur ce dépôt elle a trouvé trois vraies copies dès le premier jour — dont tout l'amorçage e2e recopié dans trois suites, alors que la carte du projet annonçait ces harnais comme réutilisables.
+Vous pouvez ensuite remplacer cette commande par un outil plus spécialisé comme `jscpd` ou `pmd cpd`.
 
-## 🗺️ La carte du projet, fournie sans connaître votre langage
+### Ne modifiez pas immédiatement le seuil
+
+Il est normal que la première exécution trouve des duplications existantes.
+
+Commencez par regarder ce qu’elle détecte.
+
+Sur le dépôt du framework, cette vérification a notamment trouvé plusieurs duplications réelles dès son introduction.
+
+Le but n’est pas d’obtenir artificiellement une commande verte.
+
+Le but est de choisir un seuil qui détecte des problèmes utiles sans générer constamment du bruit.
+
+---
+
+# 🗺️ Générer une carte du projet
+
+Avant de créer quelque chose de nouveau, une question revient souvent :
+
+> **Est-ce que quelque chose de similaire existe déjà ?**
+
+Pour faciliter cette vérification :
 
 ```console
 $ node agent-pipeline/scripts/project-map.mjs
@@ -354,50 +716,120 @@ written: docs/project-map.md (23 file(s), 40 declaration(s))
   5 file(s) with no recognised declaration — the map lists them and says so.
 ```
 
-Elle répond à **« est-ce que ça existe déjà ? »** — la question que la note de réutilisation oblige à poser, et que la commande de duplication fait respecter.
+La commande génère une carte des déclarations trouvées dans le projet.
 
-Le générateur reconnaît les déclarations **par motif**, sans analyser aucune syntaxe : `export function`, `export class`, `pub fn`, `def`, `func`. Il marche sur du React, du Python, du Go, du Rust.
+Elle reconnaît des motifs courants comme :
 
-> ⚠️ **Il est volontairement plus faible qu'un vrai analyseur**, et la carte le dit d'elle-même. Pointez `commands.project_map` sur un générateur qui parse votre langage le jour où vous voulez les rôles et les routes dedans.
+```text
+export function
+export class
+pub fn
+def
+func
+```
 
-Ses deux refus sont le cœur : **aucun fichier trouvé**, et **aucune déclaration reconnue**. C'est exactement ce qu'une carte vide masque — un générateur écrit pour une autre stack rend un document quasi vide, `--check` compare vide à vide, et sort en 0.
+Elle peut donc produire une première carte sur plusieurs langages, notamment JavaScript/TypeScript, Python, Go ou Rust.
 
-## 🔑 Trois décisions ne partent jamais à un agent
+### Ce n’est pas un véritable parseur
 
-| | Pourquoi |
-| :-- | :-- |
-| 📦 **Installer une dépendance** | un agent qui peut ajouter une bibliothèque peut contourner n'importe quelle règle en important quelque chose qui la contourne |
-| ⚙️ **Modifier la configuration** | c'est le fichier qui définit les commandes. Qui peut les redéfinir peut les faire passer |
-| 🔀 **Merger** | QA valide une tâche à la fois ; elle ne garantit pas que l'ensemble tient debout |
+Le générateur fonctionne à partir de motifs textuels.
 
----
+Il est volontairement plus simple qu’un analyseur syntaxique propre à chaque langage.
 
-## 📦 Ce qu'il y a dedans
+Pour un projet qui a besoin d’informations plus précises — routes, types, relations entre symboles, etc. — `commands.project_map` peut être remplacé par un outil adapté à la stack.
 
-| | |
-| :-- | :-- |
-| `scripts/` | 25 scripts Node, **sans aucune dépendance à installer** |
-| `prompts/` | les quatre rôles |
-| `docs/` | **en anglais** — les modèles suivent mieux l'anglais. `nouveau-profil.md` pour installer, `operateur.md` pour vous |
-| `templates/` | les fichiers de politique, le workflow CI |
-| `skills/` | conseils de code, indépendants de toute stack. Un skill peut déclarer `applies_to` : celui sur l'interface n'est pas installé sur un service sans écran |
-| `test/` | **246 tests** sur le framework lui-même |
+Le générateur par défaut refuse cependant deux situations dangereuses :
 
-**Prérequis** : Node, git, et le client de votre forge (`gh`, `glab`). Rien d'autre.
+* aucun fichier n’a été trouvé ;
+* aucune déclaration n’a été reconnue.
 
-🛡️ Un test automatique empêche ce dépôt de dépendre d'une stack : aucun script n'appelle `npm`, aucun n'importe un paquet, aucun ne suppose un chemin que vous pourriez déplacer. Il se copie tel quel dans un projet Python, Go ou Rust.
+Cela évite qu’un générateur incompatible avec votre stack produise silencieusement une carte vide tout en indiquant que tout va bien.
 
 ---
 
-## ⚠️ Ce qu'il ne fait pas
+# 🔑 Trois décisions restent toujours humaines
 
-Écrit ici plutôt que découvert par vous.
+Certaines actions ne sont jamais confiées automatiquement à un agent.
 
-- **Aucune mesure comparative.** Ce framework compte ses propres défauts échappés. Il ne prouve pas encore qu'il fait mieux qu'une session sans lui.
-- **Ouvert-fermé et Liskov ne sont vérifiés qu'en partie.** Deux formes sont attrapées par une commande — une méthode de classe dérivée qui lève inconditionnellement, une chaîne d'`instanceof` qui décide du comportement. Une précondition resserrée, elle, reste invisible à toute requête syntaxique : ça reste en revue humaine, et c'est écrit plutôt que sous-entendu.
+| Décision                                     | Pourquoi                                                                                                             |
+| :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
+| 📦 **Installer une dépendance**              | Ajouter une bibliothèque peut modifier fortement les capacités et la surface de sécurité du projet.                  |
+| ⚙️ **Modifier la configuration du pipeline** | Celui qui peut redéfinir les contrôles peut aussi les rendre inoffensifs.                                            |
+| 🔀 **Merger**                                | QA valide une tâche isolée ; cela ne garantit pas automatiquement que l’ensemble des changements doit être fusionné. |
+
+Les agents peuvent préparer les informations nécessaires à ces décisions.
+
+La décision finale vous appartient.
 
 ---
 
-## 📄 Licence
+# 📦 Contenu du dépôt
 
-MIT — voir [`LICENSE`](LICENSE). Copier `agent-pipeline/` dans un projet privé, commercial ou non, est l'usage prévu.
+| Dossier      | Contenu                                            |
+| :----------- | :------------------------------------------------- |
+| `scripts/`   | 25 scripts Node, sans dépendance à installer       |
+| `prompts/`   | les instructions des quatre rôles                  |
+| `docs/`      | la documentation du framework                      |
+| `templates/` | politiques et workflow CI                          |
+| `skills/`    | conseils de développement indépendants de la stack |
+| `test/`      | les tests du framework                             |
+
+La documentation destinée aux modèles est principalement en anglais, car ils suivent généralement mieux ces instructions dans cette langue.
+
+Pour démarrer :
+
+* `docs/nouveau-profil.md` explique l’installation ;
+* `docs/operateur.md` explique l’utilisation côté humain.
+
+### Prérequis
+
+Vous avez uniquement besoin de :
+
+* Node ;
+* Git ;
+* le client de votre plateforme Git, par exemple `gh` ou `glab`.
+
+Les scripts du framework eux-mêmes ne doivent dépendre d’aucune stack particulière.
+
+Un contrôle automatique vérifie notamment qu’ils ne supposent pas l’utilisation de `npm`, d’un package spécifique ou d’une structure propre à un langage.
+
+L’objectif est que le dossier `agent-pipeline/` puisse être copié dans un projet JavaScript, Python, Go, Rust ou autre sans devoir réécrire le framework.
+
+---
+
+> 🧩 **Un skill peut déclarer `applies_to`.** Celui qui traite de l'interface n'est pas installé sur un service sans écran : un conseil sur les écrans, posé dans un projet qui n'en a pas, n'est pas inerte — un agent le lit et essaie de le suivre.
+
+# ⚠️ Ce que le framework ne prétend pas résoudre
+
+Le projet documente également ses limites.
+
+## Pas encore de comparaison expérimentale
+
+Le framework mesure ses propres défauts qui passent à travers les contrôles.
+
+En revanche, il ne dispose pas encore d’une comparaison démontrant qu’un projet utilisant ce système produit de meilleurs résultats qu’une session d’agents sans framework.
+
+Cette affirmation n’est donc pas faite.
+
+## Certaines règles de conception restent difficiles à automatiser
+
+Les principes ouvert-fermé et de substitution de Liskov ne sont vérifiés que partiellement.
+
+Certaines formes peuvent être détectées automatiquement, par exemple :
+
+* une méthode de classe dérivée qui lève systématiquement une erreur ;
+* une chaîne de `instanceof` utilisée pour décider du comportement.
+
+En revanche, d’autres problèmes — comme une précondition rendue plus stricte dans une sous-classe — restent difficiles à détecter avec une simple analyse syntaxique.
+
+Ces cas nécessitent encore une revue humaine.
+
+La limite est explicitement indiquée plutôt que présentée comme résolue.
+
+---
+
+# 📄 Licence
+
+MIT — voir [`LICENSE`](LICENSE).
+
+Le framework est conçu pour que le dossier `agent-pipeline/` puisse être copié dans un projet privé ou commercial.
