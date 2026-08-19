@@ -344,11 +344,23 @@ cloné. Avant toute configuration, aide-moi à décider comment ranger le code.
 2. Écris mes réponses dans analyse.json : business_rules, integrations,
    concurrent_workers, expected_churn, validations.
 
-3. Lance render-architecture.mjs avec cette analyse, pour mon type de projet,
-   et donne-moi la page.
+3. Lance render-architecture.mjs avec cette analyse, pour mon type de projet.
+   Le script écrit un fichier HTML : publie-le si ton harnais sait héberger
+   une page, sinon donne-moi son chemin. Ne recopie pas son contenu ici.
 
 Je tranche, tu ne tranches pas.
 ```
+
+> 📄 **La page est un fichier, pas un message.** 28 Ko de HTML mis en forme, sans aucune ressource externe : il s'ouvre dans un navigateur, hors ligne. Collé dans une conversation il serait illisible — et c'est exactement ce qu'il existe pour éviter.
+>
+> Le script imprime lui-même la consigne à l'agent :
+>
+> ```console
+> to publish: if the harness can host an HTML page, publish it and hand the
+> operator the link; otherwise hand them this path.
+> ```
+>
+> Le framework ne suppose ni qu'un navigateur existe, ni qu'un lien peut vous être rendu. Ces capacités appartiennent à l'outil qui exécute les agents — un framework qui les supposerait ne tournerait que sur celui pour lequel il a été écrit.
 
 ### Pourquoi passer par l'agent plutôt que taper la commande
 
