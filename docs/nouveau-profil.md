@@ -202,6 +202,26 @@ Three things stay with the human operator, in every profile: **installing a depe
 
 Report, do not invent: an unavailable command is escalated, never replaced by a substitute pretending to prove the real system.
 
+## Seeing the tokens before drawing anything with them
+
+```
+node agent-pipeline/scripts/render-tokens.mjs <output.html>
+```
+
+This is the one part of the visual work the framework can render honestly. A spec page lays out fields somebody already wrote; a screen mockup has no such source, because the drawing **is** the content — a script that rendered one would be inventing it, and an invented design is the average of everything the model has seen. The tokens do have a source, and it is declared.
+
+The page puts them side by side, which catches in one look what no reading of the file catches:
+
+```
+--ink     / --accent     3.28:1  too weak for text (needs 4.5:1)
+--paper   / --grey-1     1.03:1  nearly indistinguishable
+--space-3 15px                   a step away from --space-4, which is no step at all
+```
+
+Contrast is computed for every pair, using the formula the accessibility guidelines define — reproduced in the script rather than installed, since the core depends on nothing and a ratio nobody can compute is a ratio nobody checks.
+
+Two colours a reader cannot tell apart are **named, not refused**: a hover state may legitimately sit that close. The page shows the distance and the operator decides. What the accessibility command refuses is a separate question, and it belongs to the project's tool.
+
 ## The mockup is checked against the tokens, not drawn beside them
 
 The design-system page states the order that holds: tokens, then primitives, then a finished mockup built from the primitives that exist, then screens. It also states what a mockup is — *an assembly of things that exist, not an image to reproduce*. Nothing made that true until `mockup-check.mjs` existed.

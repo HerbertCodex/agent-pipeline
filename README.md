@@ -437,6 +437,26 @@ Pour les projets disposant d’une interface, `apply-profile` exige également u
 
 Un projet backend n’est pas concerné.
 
+### Voir vos couleurs avant de dessiner un écran
+
+```bash
+node agent-pipeline/scripts/render-tokens.mjs tokens.html
+```
+
+Une page qui met vos couleurs et vos espacements côte à côte. Ce qu'un fichier cache devient visible d'un coup d'œil :
+
+```console
+--paper   / --grey-1     1.03:1  nearly indistinguishable
+--ink     / --accent     3.28:1  too weak for text (needs 4.5:1)
+--space-3 15px                   a step away from --space-4, which is no step at all
+```
+
+Trois pièges attrapés avant qu'un seul écran existe : **deux couleurs qu'on ne distingue pas**, **une paire qui ne peut pas porter de texte**, **un pas d'espacement qui répète le précédent**.
+
+Le contraste est calculé pour chaque paire, avec la formule des règles d'accessibilité. Deux couleurs trop proches sont **nommées, pas refusées** — un état de survol peut légitimement s'en approcher. La page montre, vous tranchez.
+
+> ℹ️ **C'est la seule partie du travail visuel que le framework produit lui-même.** Un écran, il ne peut pas : le dessin *est* le contenu, et un script qui l'inventerait produirait exactement la moyenne que vous cherchez à éviter. L'écran, c'est votre agent qui le dessine — et la commande ci-dessous vérifie qu'il n'a rien inventé.
+
 ### Vérifier qu'une maquette n'invente pas ses valeurs
 
 Une maquette est **un assemblage de ce qui existe**, pas une image à reproduire.
