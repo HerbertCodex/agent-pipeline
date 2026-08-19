@@ -50,6 +50,14 @@ Nothing in the plan contradicts the approved scope. If the decomposition reveals
 
 A QA rejection carries a `fault` among `spec`, `test`, `dependency`, `code`, `infrastructure`; an approval carries none. A `fault: code` carries a `regression` block (`required`, then `criterion` or `reason`).
 
+## A screen is coded against a mockup, not from memory
+
+On a project whose `architecture.project_type` has screens, an implementer handoff carrying a `commit_sha` declares `mockup { path }` or `mockup { not_applicable }` with a reason. The validator reads the named file and refuses every colour, length and font that traces back to no declared token — it re-checks rather than trusts, because a mockup approved a week ago and edited since is exactly what a declaration alone cannot catch.
+
+The exit is explicit rather than inferred. A validator cannot tell a visual issue from a data-layer one, and guessing from the touched paths would be wrong on the first refactor. A reason someone had to write is a reason someone had to mean.
+
+**What this does and does not buy.** It makes the screens of one project agree with each other and with the tokens: nothing is invented mid-issue. It does not make them distinctive. A mockup an agent produced from nothing is still the average of what it has seen, and coding faithfully from a generic mockup gives an interface that is consistently generic. Distinctiveness comes from the brief and from references the operator supplies, and no gate replaces either.
+
 ## A dependency is argued, and the argument is rendered
 
 No agent installs anything. `dependency_assessment` is how one stops and makes its case: `need` in product terms, `hand_rolled_cost` — how much code the package replaces and on which surface, so that refusing is an informed choice rather than a reflex — `candidates` each carrying `license`, `maintenance.last_release`, `security.advisories_open` and `security.runtime_privileges`, a `recommendation`, and `alternatives_rejected`, never empty because writing it by hand was always one of them.

@@ -396,6 +396,29 @@ Pour les projets disposant d’une interface, `apply-profile` exige également u
 
 Un projet backend n’est pas concerné.
 
+### Vérifier qu'une maquette n'invente pas ses valeurs
+
+Une maquette est **un assemblage de ce qui existe**, pas une image à reproduire.
+
+```bash
+node agent-pipeline/scripts/mockup-check.mjs mockup/home.html
+```
+
+```console
+  colour  #0a0a0f — nearest declared token: --ink
+  colour  #3b82f6
+  length  13px
+  font    Inter, sans-serif
+
+4 value(s) the design system never declared, out of 12 checked.
+```
+
+Chaque couleur, longueur et police qui ne remonte à aucun token déclaré est refusée. Une référence `var(--token)` compte comme une valeur correctement exprimée ; une maquette sans aucun style est refusée, car les deux se ressemblent pour un compteur naïf et signifient l'inverse.
+
+Sur un projet à écrans, un handoff qui porte un commit déclare `mockup { path }`, ou `mockup { not_applicable }` avec sa raison. Le validateur **relit le fichier** plutôt que de croire la déclaration : une maquette approuvée puis modifiée est exactement ce qu'une déclaration seule ne rattrape pas.
+
+> 🎯 **Ce que cela apporte, et ce que cela n'apporte pas.** Les écrans d'un projet s'accordent entre eux et avec les tokens : rien ne s'invente en cours de route. Ils n'en deviennent pas *distinctifs* pour autant — une maquette produite à partir de rien reste une moyenne. Le caractère distinctif vient du brief et des références que **vous** fournissez.
+
 ### Éviter que tous les projets finissent par se ressembler
 
 Le framework ne choisit pas automatiquement une direction graphique.
@@ -773,6 +796,8 @@ Un contrôle automatique vérifie notamment qu’ils ne supposent pas l’utilis
 L’objectif est que le dossier `agent-pipeline/` puisse être copié dans un projet JavaScript, Python, Go, Rust ou autre sans devoir réécrire le framework.
 
 ---
+
+> 🧩 **Un skill peut déclarer `applies_to`.** Celui qui traite de l'interface n'est pas installé sur un service sans écran : un conseil sur les écrans, posé dans un projet qui n'en a pas, n'est pas inerte — un agent le lit et essaie de le suivre.
 
 # ⚠️ Ce que le framework ne prétend pas résoudre
 
