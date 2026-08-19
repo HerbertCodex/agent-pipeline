@@ -320,7 +320,7 @@ Les scripts du framework s’attendent à le trouver à cet emplacement.
 
 ```console
 $ cd agent-pipeline && node --test "test/**/*.test.mjs" && cd ..
-ℹ pass 264
+ℹ pass 274
 ℹ fail 0
 ```
 
