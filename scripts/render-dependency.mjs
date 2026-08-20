@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fail, sha256 } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig } from "./page.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig, pageText } from "./page.mjs";
 
 /**
  * Digest of what the page submits to the operator.
@@ -35,22 +35,23 @@ export function dependencyDigest(handoff) {
  *
  * @param candidate - the candidate assessed
  * @param index - rank in the list
+ * @param t - the page's translated strings
  * @returns the card's HTML fragment
  */
-function card(candidate, index) {
+function card(candidate, index, t) {
   const weight = candidate.weight ?? {};
   const upkeep = candidate.maintenance ?? {};
   const safety = candidate.security ?? {};
   const rows = [
-    ["License", candidate.license],
-    ["Transitive dependencies", weight.transitive_dependencies],
-    ["Install size", weight.install_size_kb == null ? null : `${weight.install_size_kb} kB`],
-    ["Last release", upkeep.last_release],
-    ["Open issues", upkeep.open_issues],
-    ["Maintainers", upkeep.maintainers],
-    ["Open advisories", safety.advisories_open],
-    ["Runtime privileges", (safety.runtime_privileges ?? []).join(", ")],
-    ["Audited on", safety.audited_on],
+    [t.license, candidate.license],
+    [t.transitive, weight.transitive_dependencies],
+    [t.size, weight.install_size_kb == null ? null : `${weight.install_size_kb} kB`],
+    [t.last_release, upkeep.last_release],
+    [t.open_issues, upkeep.open_issues],
+    [t.maintainers, upkeep.maintainers],
+    [t.advisories, safety.advisories_open],
+    [t.privileges, (safety.runtime_privileges ?? []).join(", ")],
+    [t.audited_on, safety.audited_on],
   ]
     .filter(([, value]) => value !== null && value !== undefined && value !== "")
     .map(([label, value]) => `<li><span class="rid">${esc(label)}</span><p>${esc(String(value))}</p></li>`)
@@ -67,9 +68,10 @@ function card(candidate, index) {
  * Renders a list of rejections with their reasons.
  *
  * @param entries - alternatives set aside
+ * @param t - the page's translated strings
  * @returns the HTML fragment, empty if the list is
  */
-function rejected(entries) {
+function rejected(entries, t) {
   if (!entries?.length) return "";
   const items = entries
     .map(
@@ -77,8 +79,8 @@ function rejected(entries) {
         `<li><span class="rid">${pad(index)}</span><p><strong>${esc(entry.name ?? "")}</strong> &mdash; ${esc(entry.why ?? "")}</p></li>`,
     )
     .join("");
-  return `<section><div class="sec-head"><h2>What was rejected, and why</h2>
-<p>A decision taken in silence is exactly what this page exists to prevent. These were considered and set aside.</p></div>
+  return `<section><div class="sec-head"><h2>${esc(t.rejected_head)}</h2>
+<p>${esc(t.rejected_blurb)}</p></div>
 <ol class="excl">${items}</ol></section>`;
 }
 
@@ -99,33 +101,35 @@ function main() {
     fail(`mode ${handoff.mode}: only a dependency_assessment renders as a review page`);
   }
 
+  const config = safeConfig();
+  const t = pageText(config).pages.dependency;
   const candidates = handoff.candidates ?? [];
   const choice = handoff.recommendation ?? {};
   const issue = handoff.scope?.issue_id ?? "issue";
 
   const body = `<header class="masthead">
-<p class="eyebrow">Dependency decision &middot; ${esc(issue)} &middot; ${candidates.length} candidate(s)</p>
-<h1>${esc(choice.choice ?? "No recommendation")}</h1>
+<p class="eyebrow">${esc(t.eyebrow)} &middot; ${esc(issue)} &middot; ${esc(t.candidate_count.replace("{count}", String(candidates.length)))}</p>
+<h1>${esc(choice.choice ?? t.no_reco)}</h1>
 <p class="lede">${esc(handoff.need ?? "")}</p>
 <dl class="stamp">
-<div><dt>Writing it here would cost</dt><dd>${esc(handoff.hand_rolled_cost ?? "")}</dd></div>
-${choice.why ? `<div style="flex-basis:100%"><dt>Why this one</dt><dd>${esc(choice.why)}</dd></div>` : ""}
+<div><dt>${esc(t.hand_rolled)}</dt><dd>${esc(handoff.hand_rolled_cost ?? "")}</dd></div>
+${choice.why ? `<div style="flex-basis:100%"><dt>${esc(t.why_this)}</dt><dd>${esc(choice.why)}</dd></div>` : ""}
 </dl>
-<p class="verbatim"><strong>Installing is yours, not the pipeline's.</strong> No agent adds a dependency: it argues for one and stops. This page is that argument, taken verbatim from the request, with every field the agent measured rather than assumed.</p>
+<p class="verbatim">${t.verbatim}</p>
 </header>
 
-<section><div class="sec-head"><h2>The candidates, weighed</h2>
-<p>License, weight, upkeep and security surface. A library that does the job and is unmaintained does not do the job.</p></div>
-<div class="features">${candidates.map((candidate, index) => card(candidate, index)).join("")}</div></section>
+<section><div class="sec-head"><h2>${esc(t.candidates_head)}</h2>
+<p>${esc(t.candidates_blurb)}</p></div>
+<div class="features">${candidates.map((candidate, index) => card(candidate, index, t)).join("")}</div></section>
 
-${rejected(handoff.alternatives_rejected)}
+${rejected(handoff.alternatives_rejected, t)}
 
-<section><div class="sec-head"><h2>What approving commits you to</h2></div>
-<p class="note">A dependency on a public input surface becomes part of your security perimeter: its advisories become yours, its maintainers become your maintainers, and removing it later costs more than adding it now. Refusing is a valid answer, and the cost of writing it by hand is stated above so that refusing is an informed choice rather than a reflex.</p></section>
+<section><div class="sec-head"><h2>${esc(t.commits_head)}</h2></div>
+<p class="note">${esc(t.commits_note)}</p></section>
 `;
 
-  const page = `<meta name="dependency-review-digest" content="${dependencyDigest(handoff)}">\n` + shell(`Dependency ${issue}`, body);
-  const written = resolvePage(target, safeConfig());
+  const page = `<meta name="dependency-review-digest" content="${dependencyDigest(handoff)}">\n` + shell(t.doc_title.replace("{issue}", issue), body);
+  const written = resolvePage(target, config);
   writeFileSync(written, page);
   console.log(
     `written: ${written} (${candidates.length} candidate(s), ${(handoff.alternatives_rejected ?? []).length} rejected)`);

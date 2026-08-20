@@ -234,7 +234,7 @@ describe("the framework requires the code layout to be declared", () => {
   });
 
   test("every catalogue layout carries a real project type", () => {
-    const types = new Set(Object.keys(PROJECT_TYPES));
+    const types = new Set(PROJECT_TYPES);
     const offenders = [];
     for (const item of ARCHITECTURES) {
       for (const applies of item.applies) {

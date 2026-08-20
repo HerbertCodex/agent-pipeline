@@ -1,9 +1,12 @@
 import { test, describe, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createSandbox, destroySandbox, run } from "./harness.mjs";
-import { ARCHITECTURES, PROJECT_TYPES } from "../scripts/architectures.mjs";
+import { ARCHITECTURES, PROJECT_TYPES, catalogue } from "../scripts/architectures.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 let sandbox = null;
 afterEach(() => {
@@ -32,7 +35,7 @@ function render(type) {
 
 describe("render-architecture: the project type filters the catalogue", () => {
   test("every recognised type renders a page", () => {
-    for (const type of Object.keys(PROJECT_TYPES)) {
+    for (const type of PROJECT_TYPES) {
       const { status, html } = render(type);
       assert.equal(status, 0, `${type} devrait rendre`);
       assert.match(html, /How should this project's code be arranged/);
@@ -82,13 +85,13 @@ describe("render-architecture: the page states what the gate will enforce", () =
     const { html } = render("backend");
     assert.match(html, /Dependency direction/);
     assert.match(html, /never the reverse/);
-    assert.match(html, /À quoi ça ressemble/);
+    assert.match(html, /What it looks like/);
   });
 
   test("every option names its cost, its benefit and how it fails", () => {
     const { html } = render("backend");
     for (const label of ["Cost", "Buys", "Trap"]) assert.match(html, new RegExp(label));
-    assert.match(html, /En résumé/);
+    assert.match(html, /In short/);
   });
 
   test("the page states the pipeline does not choose for the operator", () => {
@@ -129,7 +132,7 @@ describe("architectures: the catalogue is coherent", () => {
     for (const entry of ARCHITECTURES) {
       assert.ok(entry.applies.length > 0, `${entry.id} ne s'applique nulle part`);
       for (const type of entry.applies) {
-        assert.ok(PROJECT_TYPES[type] != null, `${entry.id} vise ${type}, type inconnu`);
+        assert.ok(PROJECT_TYPES.includes(type), `${entry.id} vise ${type}, type inconnu`);
       }
     }
   });
@@ -251,20 +254,37 @@ describe("render-architecture: what happens as the project grows", () => {
 });
 
 describe("architectures: the catalogue says how each option is left", () => {
+  // The prose is read through `catalogue`, never off the structural entries:
+  // it lives in the language dictionary, and a test reading the structure
+  // would be checking a copy nobody displays.
+  const spoken = catalogue(null).architectures;
+
   test("every option carries a future, triggers and a migration cost", () => {
-    for (const entry of ARCHITECTURES) {
+    for (const entry of spoken) {
       assert.ok(entry.grows_into, `${entry.id} ne dit pas dans quoi il grandit`);
       assert.ok(entry.migration_triggers?.length > 0, `${entry.id} n'a aucun declencheur`);
       assert.ok(entry.migration_cost, `${entry.id} ne dit pas ce que couterait d'en sortir`);
     }
   });
 
+  test("every structural entry has prose behind it, in every language shipped", () => {
+    const required = ["name", "plain", "tree", "cost", "buys", "wrong_when", "verdict"];
+    for (const code of ["en", "fr"]) {
+      const text = JSON.parse(readFileSync(join(here, "..", "pages", `${code}.json`), "utf8"));
+      for (const entry of ARCHITECTURES) {
+        const said = text.architectures[entry.id];
+        assert.ok(said != null, `${code}: ${entry.id} has no prose, the page would render blank`);
+        for (const key of required) assert.ok(said[key], `${code}: ${entry.id} carries no ${key}`);
+      }
+    }
+  });
+
   test("heavy options announce there is no way out, light ones that you leave piece by piece", () => {
-    const lourdes = ARCHITECTURES.filter((e) => ["hexagonal", "clean", "onion"].includes(e.id));
+    const lourdes = spoken.filter((e) => ["hexagonal", "clean", "onion"].includes(e.id));
     for (const entry of lourdes) {
       assert.match(entry.migration_cost, /no going back|hardest in the catalogue|endure|hard to leave/i, `${entry.id} downplays its exit cost`);
     }
-    const legere = ARCHITECTURES.find((e) => e.id === "feature-modules");
+    const legere = spoken.find((e) => e.id === "feature-modules");
     assert.match(legere.migration_cost, /local|piece by piece/i);
   });
 });

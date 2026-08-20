@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig, loadRules, readJsonl, pathAllowed, fail } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT, resolvePage } from "./page.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage, pageText } from "./page.mjs";
 
 /**
  * Says whether a role can take on all of an issue's reservations.
@@ -24,21 +24,22 @@ function roleCanTake(reservations, policy) {
  * Renders one decision card.
  *
  * @param entry - the card's content
+ * @param t - the page's translated strings
  * @returns the card's HTML fragment
  */
-function card(entry) {
+function card(entry, t) {
   const alts = (entry.options ?? []).map((option) => `<li><span>${esc(option)}</span></li>`).join("");
   return `<div class="open${entry.urgent ? " urgent" : ""}">
 <h3><span class="qid">${esc(entry.id)}</span>${esc(entry.question)}${
     entry.chip ? `<span class="chip${entry.urgent ? " alarm" : ""}">${esc(entry.chip)}</span>` : ""
   }</h3>
 ${entry.why ? `<p>${esc(entry.why)}</p>` : ""}
-${entry.paths?.length ? `<p class="lbl">Scope</p><p class="paths">${entry.paths.map((p) => esc(p)).join(" · ")}</p>` : ""}
-${entry.recommendation ? `<p class="lbl">Recommendation</p><p class="reco">${esc(entry.recommendation)}</p>` : ""}
-${alts ? `<p class="lbl">Other options</p><ul class="alts">${alts}</ul>` : ""}
+${entry.paths?.length ? `<p class="lbl">${t.scope}</p><p class="paths">${entry.paths.map((p) => esc(p)).join(" · ")}</p>` : ""}
+${entry.recommendation ? `<p class="lbl">${t.recommendation}</p><p class="reco">${esc(entry.recommendation)}</p>` : ""}
+${alts ? `<p class="lbl">${t.other_options}</p><ul class="alts">${alts}</ul>` : ""}
 ${
     entry.attempts?.length
-      ? `<p class="lbl">Already tried</p><ul class="alts">${entry.attempts
+      ? `<p class="lbl">${t.already_tried}</p><ul class="alts">${entry.attempts
           .map((attempt) => `<li><span><strong>${esc(attempt.approach)}</strong> &mdash; ${esc(attempt.failed_because)}</span></li>`)
           .join("")}</ul>`
       : ""
@@ -53,11 +54,12 @@ ${
  * @param blurb - framing sentence
  * @param entries - cards to render
  * @param empty - sentence shown when the list is empty
+ * @param t - the page's translated strings
  * @returns the section's HTML fragment
  */
-function section(heading, blurb, entries, empty) {
+function section(heading, blurb, entries, empty, t) {
   const body = entries.length > 0
-    ? `<div class="features">${entries.map(card).join("")}</div>`
+    ? `<div class="features">${entries.map((entry) => card(entry, t)).join("")}</div>`
     : `<p class="empty">${esc(empty)}</p>`;
   return `<section><div class="sec-head"><h2>${esc(heading)}</h2><p>${esc(blurb)}</p></div>${body}</section>`;
 }
@@ -78,6 +80,7 @@ function main() {
   if (!target) fail("usage: render-decisions.mjs <output.html> [proposal.json]");
 
   const config = loadConfig();
+  const t = pageText(config).pages.decisions;
   const rules = loadRules();
   const issues = readJsonl(join(config.store_dir, "issues.jsonl")).map((entry) => entry.record);
   const blockingPhases = Object.entries(rules.phases ?? {})
@@ -98,7 +101,7 @@ function main() {
         question: issue.title,
         chip: phase,
         urgent: true,
-        why: `This issue is stopped in ${phase} and waits to be released. As long as it stays there it holds its reservations and blocks any issue that crosses them.`,
+        why: t.blocked_why.replace("{phase}", phase),
         paths: reservations,
         attempts: issue.attempts ?? [],
       });
@@ -109,9 +112,9 @@ function main() {
       orphaned.push({
         id: issue.id,
         question: issue.title,
-        chip: "no possible agent",
+        chip: t.orphan_chip,
         urgent: true,
-        why: "Its whole scope is outside the file policy of every writing role. No implementer can take it: this is operator work, not an issue waiting to be dispatched.",
+        why: t.orphan_why,
         paths: reservations,
       });
     }
@@ -140,46 +143,46 @@ function main() {
     if (proposal.scope_final === true) {
       pending.push({
         id: "OK",
-        question: `Approve the scope of round ${proposal.round} for decomposition?`,
-        chip: "scope settled",
+        question: t.approve.replace("{round}", String(proposal.round)),
+        chip: t.chip_settled,
         recommendation:
-          "Product declares the scope settled and submits no further choice. Approving freezes the document: phase 2 is refused if its content moves by a single charactere.",
-        options: ["Approve and start the decomposition", "Demander un tour de plus en disant ce qui manque"],
+          t.approve_why,
+        options: [t.approve_yes, t.approve_no],
       });
     }
   }
 
   const counts = [
-    ["A trancher", pending.length],
-    ["Bloquees", blocked.length],
-    ["No possible agent", orphaned.length],
-    ["Dispatchables", dispatchable.length],
+    [t.counts_pending, pending.length],
+    [t.counts_blocked, blocked.length],
+    [t.counts_orphan, orphaned.length],
+    [t.counts_dispatchable, dispatchable.length],
   ]
     .map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${value}</dd></div>`)
     .join("");
 
   const total = pending.length + blocked.length + orphaned.length;
   const body = `<header class="masthead">
-<p class="eyebrow">Arbitration queue &middot; ${issues.length} issues in the store &middot; ${esc(new Date().toISOString().slice(0, 10))}</p>
-<h1>What awaits your decision</h1>
+<p class="eyebrow">${esc(t.eyebrow)} &middot; ${esc(t.store_count.replace("{count}", String(issues.length)))} &middot; ${esc(new Date().toISOString().slice(0, 10))}</p>
+<h1>${t.title}</h1>
 <p class="lede">${
     total === 0
-      ? "Nothing awaits arbitration: no blocked issue, none out of reach of the agents, no open spec question."
-      : `${total} point(s) cannot move without you. The pipeline carries on with the rest.`
+      ? t.nothing
+      : t.waiting.replace("{count}", String(total))
   }</p>
 <dl class="stamp">${counts}</dl>
-<p class="verbatim">This page is <strong>computed</strong> from the store and the file policy, not written. An issue whose scope no role can take appears here even if nobody reported it.</p>
+<p class="verbatim">${t.verbatim}</p>
 </header>
-${section("Spec questions", "Choices submitted by Product. Nothing is decomposed before your answer.", pending, "No open spec question.")}
-${section("Stopped, waiting to be released", "These issues hold their reservations for as long as they stay blocked.", blocked, "No blocked issue.")}
-${section("No agent can take these", "Scope entirely outside the file policy of the writing roles. next-issues presents them as dispatchable all the same.", orphaned, "Every open issue has a role able to take it.")}
-<section><div class="sec-head"><h2>What moves without you</h2></div>
-<p class="note">${dispatchable.length} issue(s) in <code>planned</code> have a role able to take them and await no decision. ${
-    total > 0 ? "The points above do not block them, unless their reservations intersect." : ""
+${section(t.spec_head, t.spec_blurb, pending, t.spec_empty, t)}
+${section(t.blocked_head, t.blocked_blurb, blocked, t.blocked_empty, t)}
+${section(t.orphan_head, t.orphan_blurb, orphaned, t.orphan_empty, t)}
+<section><div class="sec-head"><h2>${t.moves_head}</h2></div>
+<p class="note">${t.moves_note.replace("{count}", String(dispatchable.length))} ${
+    total > 0 ? t.moves_caveat : ""
   }</p></section>`;
 
   const written = resolvePage(target, config);
-  writeFileSync(written, shell("File d'arbitrage", body));
+  writeFileSync(written, shell(t.title, body));
   console.log(
     `written: ${written} (${pending.length} spec question(s), ${blocked.length} blocked, ${orphaned.length} with no agent, ${dispatchable.length} dispatchable)`,
   );

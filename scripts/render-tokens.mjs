@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { loadConfig, fail } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT, resolvePage } from "./page.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage, pageText } from "./page.mjs";
 import { tokensIn } from "./mockup-check.mjs";
 
 /**
@@ -73,7 +73,7 @@ function channel(value) {
  * @param colours - declared colours, name and channels
  * @returns the section's HTML fragment
  */
-function palette(colours) {
+function palette(colours, t) {
   const swatches = colours
     .map(
       (colour, index) => `<article class="feature">
@@ -99,19 +99,19 @@ function palette(colours) {
       const weak = pair.ratio < TEXT_CONTRAST;
       const same = pair.distance <= SAME_COLOUR;
       const verdict = same
-        ? "nearly indistinguishable &mdash; two decisions where one was meant"
+        ? t.indistinguishable
         : weak
-          ? `too weak for text (needs ${TEXT_CONTRAST}:1)`
-          : "carries text";
+          ? t.too_weak.replace("{ratio}", String(TEXT_CONTRAST))
+          : t.carries_text;
       return `<tr><td><code>${esc(pair.a)}</code> on <code>${esc(pair.b)}</code></td><td>${pair.ratio.toFixed(2)}:1</td><td>${verdict}</td></tr>`;
     })
     .join("");
 
-  return `<section><div class="sec-head"><h2>The colours, and what happens between them</h2>
-<p>Every pair, with its contrast ratio. This is the measurable half of accessibility, and the half a palette can hide until the first screen is built.</p></div>
+  return `<section><div class="sec-head"><h2>${t.colours_head}</h2>
+<p>${t.colours_blurb}</p></div>
 <div class="features">${swatches}</div>
 <div class="tablewrap"><table>
-<thead><tr><th>Pair</th><th>Contrast</th><th>Verdict</th></tr></thead>
+<thead><tr><th>${t.pair}</th><th>${t.contrast}</th><th>${t.verdict}</th></tr></thead>
 <tbody>${rows}</tbody></table></div></section>`;
 }
 
@@ -121,7 +121,7 @@ function palette(colours) {
  * @param lengths - declared lengths, name and pixel value
  * @returns the section's HTML fragment
  */
-function scale(lengths) {
+function scale(lengths, t) {
   if (lengths.length === 0) return "";
   const sorted = [...lengths].sort((a, b) => a.px - b.px);
   const widest = sorted[sorted.length - 1].px || 1;
@@ -130,12 +130,12 @@ function scale(lengths) {
       const previous = sorted[index - 1];
       const tight = previous != null && Math.abs(entry.px - previous.px) <= 2;
       return `<li><span class="rid">${esc(entry.name)}</span><p><span style="display:inline-block;height:10px;background:var(--stamp);width:${Math.max(2, Math.round((entry.px / widest) * 100))}%"></span> ${esc(entry.value)}${
-        tight ? ` &mdash; a step away from <code>${esc(previous.name)}</code>, which is no step at all` : ""
+        tight ? ` &mdash; ${t.no_step.replace("{name}", esc(previous.name))}` : ""
       }</p></li>`;
     })
     .join("");
-  return `<section><div class="sec-head"><h2>The spacing scale, in order</h2>
-<p>Sorted, because an unordered scale hides its own gaps &mdash; and its own repetitions.</p></div>
+  return `<section><div class="sec-head"><h2>${t.scale_head}</h2>
+<p>${t.scale_blurb}</p></div>
 <ol class="rules">${rows}</ol></section>`;
 }
 
@@ -145,17 +145,17 @@ function scale(lengths) {
  * @param fonts - declared font families
  * @returns the section's HTML fragment
  */
-function typefaces(fonts) {
+function typefaces(fonts, t) {
   if (fonts.length === 0) return "";
   const rows = fonts
     .map(
       (font) => `<li><span class="rid">${esc(font.name)}</span>
-<p style="font-family:${esc(font.value)};font-size:1.4rem">The quick brown fox &mdash; 0123456789</p>
+<p style="font-family:${esc(font.value)};font-size:1.4rem">${t.specimen}</p>
 <p class="plain"><code>${esc(font.value)}</code></p></li>`,
     )
     .join("");
-  return `<section><div class="sec-head"><h2>The typefaces</h2>
-<p>Rendered, not quoted. A font named but never shown tells you nothing about it, and two that read alike are one font too many.</p></div>
+  return `<section><div class="sec-head"><h2>${t.fonts_head}</h2>
+<p>${t.fonts_blurb}</p></div>
 <ol class="rules">${rows}</ol></section>`;
 }
 
@@ -207,17 +207,18 @@ function main() {
     if (name.includes("font") || /serif|sans|mono/i.test(value)) fonts.push({ name, value });
   }
 
+  const t = pageText(config).pages.tokens;
   const direction = config.design_system?.direction ?? {};
   const body = `<header class="masthead">
-<p class="eyebrow">Design system &middot; declared tokens &middot; ${declared.size} entries</p>
-<h1>What you are allowed to draw with</h1>
+<p class="eyebrow">${t.eyebrow} &middot; ${declared.size}</p>
+<h1>${t.title}</h1>
 ${direction.genre ? `<p class="lede">${esc(direction.genre)} &mdash; ${esc(direction.because ?? "")}</p>` : ""}
-<p class="verbatim"><strong>This page does not decide anything and it is not a screen.</strong> It shows the values already declared, side by side, so that what a file hides becomes visible: colours nobody can tell apart, a spacing step that repeats the one before it, a pair that cannot carry text. The screens come after, and they may use nothing that is not here.</p>
+<p class="verbatim">${t.verbatim}</p>
 </header>
 
-${palette(colours)}
-${scale(lengths)}
-${typefaces(fonts)}
+${palette(colours, t)}
+${scale(lengths, t)}
+${typefaces(fonts, t)}
 `;
 
   const written = resolvePage(target, config);

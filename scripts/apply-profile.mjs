@@ -195,10 +195,10 @@ function appliesTo(body, source) {
     .map((entry) => entry.trim().replace(/^\[|\]$/g, ""))
     .filter((entry) => entry.length > 0);
   for (const type of declared) {
-    if (PROJECT_TYPES[type] == null) {
+    if (!PROJECT_TYPES.includes(type)) {
       fail(
         `${source}: applies_to names "${type}", which is no known project type. ` +
-          `Known: ${Object.keys(PROJECT_TYPES).join(", ")}. A typo here hides the skill on every project.`,
+          `Known: ${PROJECT_TYPES.join(", ")}. A typo here hides the skill on every project.`,
       );
     }
   }
@@ -503,9 +503,9 @@ function checkArchitecture(config) {
         "Run render-architecture.mjs to decide, then write the result here.",
     );
   }
-  if (typeof chosen.project_type !== "string" || PROJECT_TYPES[chosen.project_type] == null) {
+  if (typeof chosen.project_type !== "string" || !PROJECT_TYPES.includes(chosen.project_type)) {
     fail(
-      `architecture.project_type invalid: expected one of ${Object.keys(PROJECT_TYPES).join(", ")}. ` +
+      `architecture.project_type invalid: expected one of ${PROJECT_TYPES.join(", ")}. ` +
         "The project type changes the answer, not just the vocabulary.",
     );
   }

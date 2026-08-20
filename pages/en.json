@@ -306,5 +306,335 @@
         "Simple screens carry the same machinery as complicated ones -> apply it only where the state deserves it."
       ]
     }
+  },
+  "pages": {
+    "tokens": {
+      "eyebrow": "Design system &middot; declared tokens",
+      "title": "What you are allowed to draw with",
+      "verbatim": "<strong>This page does not decide anything and it is not a screen.</strong> It shows the values already declared, side by side, so that what a file hides becomes visible: colours nobody can tell apart, a spacing step that repeats the one before it, a pair that cannot carry text. The screens come after, and they may use nothing that is not here.",
+      "colours_head": "The colours, and what happens between them",
+      "colours_blurb": "Every pair, with its contrast ratio. This is the measurable half of accessibility, and the half a palette can hide until the first screen is built.",
+      "pair": "Pair",
+      "contrast": "Contrast",
+      "verdict": "Verdict",
+      "indistinguishable": "nearly indistinguishable &mdash; two decisions where one was meant",
+      "too_weak": "too weak for text (needs {ratio}:1)",
+      "carries_text": "carries text",
+      "scale_head": "The spacing scale, in order",
+      "scale_blurb": "Sorted, because an unordered scale hides its own gaps &mdash; and its own repetitions.",
+      "no_step": "a step away from <code>{name}</code>, which is no step at all",
+      "fonts_head": "The typefaces",
+      "fonts_blurb": "Rendered, not quoted. A font named but never shown tells you nothing about it, and two that read alike are one font too many.",
+      "specimen": "The quick brown fox &mdash; 0123456789"
+    },
+    "decisions": {
+      "eyebrow": "Arbitration queue",
+      "title": "What awaits your decision",
+      "nothing": "Nothing awaits arbitration: no blocked issue, none out of reach of the agents, no open spec question.",
+      "waiting": "{count} point(s) cannot move without you. The pipeline carries on with the rest.",
+      "verbatim": "This page is <strong>computed</strong> from the store and the file policy, not written. An issue whose scope no role can take appears here even if nobody reported it.",
+      "scope": "Scope",
+      "recommendation": "Recommendation",
+      "other_options": "Other options",
+      "already_tried": "Already tried",
+      "spec_head": "Spec questions",
+      "spec_blurb": "Choices submitted by Product. Nothing is decomposed before your answer.",
+      "spec_empty": "No open spec question.",
+      "blocked_head": "Stopped, waiting to be released",
+      "blocked_blurb": "These issues hold their reservations for as long as they stay blocked.",
+      "blocked_empty": "No blocked issue.",
+      "blocked_why": "This issue is stopped in {phase} and waits to be released. As long as it stays there it holds its reservations and blocks any issue that crosses them.",
+      "orphan_head": "No agent can take these",
+      "orphan_blurb": "Scope entirely outside the file policy of the writing roles. next-issues presents them as dispatchable all the same.",
+      "orphan_empty": "Every open issue has a role able to take it.",
+      "orphan_chip": "no possible agent",
+      "orphan_why": "Its whole scope is outside the file policy of every writing role. No implementer can take it: this is operator work, whether it says so or not.",
+      "moves_head": "What moves without you",
+      "moves_note": "{count} issue(s) in <code>planned</code> have a role able to take them and await no decision.",
+      "moves_caveat": "The points above do not block them, unless their reservations intersect.",
+      "approve": "Approve the scope of round {round} for decomposition?",
+      "approve_why": "Product declares the scope settled and submits no further choice. Approving freezes the document: phase 2 is refused if its content moves by a single character.",
+      "approve_yes": "Approve and start the decomposition",
+      "approve_no": "Ask for one more round, saying what is missing",
+      "store_count": "{count} issues in the store",
+      "counts_pending": "To arbitrate",
+      "counts_blocked": "Blocked",
+      "counts_orphan": "No possible agent",
+      "counts_dispatchable": "Dispatchable",
+      "chip_settled": "scope settled"
+    },
+    "dependency": {
+      "license": "License",
+      "transitive": "Transitive dependencies",
+      "size": "Install size",
+      "last_release": "Last release",
+      "open_issues": "Open issues",
+      "maintainers": "Maintainers",
+      "advisories": "Open advisories",
+      "privileges": "Runtime privileges",
+      "audited_on": "Audited on",
+      "rejected_head": "What was rejected, and why",
+      "rejected_blurb": "A decision taken in silence is exactly what this page exists to prevent. These were considered and set aside.",
+      "eyebrow": "Dependency decision",
+      "candidate_count": "{count} candidate(s)",
+      "no_reco": "No recommendation",
+      "hand_rolled": "Writing it here would cost",
+      "why_this": "Why this one",
+      "verbatim": "<strong>Installing is yours, not the pipeline's.</strong> No agent adds a dependency: it argues for one and stops. This page is that argument, taken verbatim from the request, with every field the agent measured rather than assumed.",
+      "candidates_head": "The candidates, weighed",
+      "candidates_blurb": "License, weight, upkeep and security surface. A library that does the job and is unmaintained does not do the job.",
+      "commits_head": "What approving commits you to",
+      "commits_note": "A dependency on a public input surface becomes part of your security perimeter: its advisories become yours, its maintainers become your maintainers, and removing it later costs more than adding it now. Refusing is a valid answer, and the cost of writing it by hand is stated above so that refusing is an informed choice rather than a reflex.",
+      "doc_title": "Dependency {issue}"
+    },
+    "proposal": {
+      "does_head": "What the product does",
+      "does_blurb": "{count} features. Every numbered rule is a binding commitment, not an intention.",
+      "not_head": "What the product does not do",
+      "not_blurb": "{count} named exclusions. What is not written here is assumed built &mdash; which is why these are explicit.",
+      "recommendation": "Recommendation",
+      "other_options": "Other options",
+      "awaits_head": "What awaits your decision",
+      "awaits_blurb": "{count} choices submitted. Nothing is decomposed before your answer.",
+      "decomposition_head": "Envisaged decomposition",
+      "decomposition_blurb": "{count} issues. No issue content is written before the agreement.",
+      "design_head": "Design commitments",
+      "design_blurb": "Constraints carried into the issues and enforceable in review. These are not suggestions.",
+      "pr_head": "What the PR will say",
+      "pr_blurb": "Transparency commitments. The exposed surfaces are named, not softened.",
+      "eyebrow": "Spec {spec} &middot; phase 1 &middot; round {round}",
+      "settled": "scope settled",
+      "open_questions": "{count} open question(s)",
+      "default_title": "Scope {spec}",
+      "count_features": "Features",
+      "count_rules": "Rules",
+      "count_exclusions": "Exclusions",
+      "count_pledges": "Commitments",
+      "count_issues": "Issues planned",
+      "count_open": "Open questions",
+      "digest_label": "Document digest",
+      "verbatim": "Text taken <strong>verbatim</strong> from the proposal, with no rewording: an obliging re-read would open a gap between what you read and what the digest freezes.",
+      "since_last": "Since the previous round.",
+      "commits_head": "What approving commits you to",
+      "commits_freeze": "Approving this document freezes its content.",
+      "commits_digest": "Digest <code>{digest}&hellip;</code> binds phase 2:",
+      "commits_nodigest": "Phase 2 is bound to this document:",
+      "commits_tail": "any decomposition derived from another document, or from this one modified afterwards, is refused by <code>validate-handoff</code> with a non-zero exit code. <strong>What this document does not say will not be built; what it says wrongly will be built wrongly.</strong>"
+    },
+    "design_system": {
+      "layers": {
+        "tokens": {
+          "name": "1. Tokens",
+          "plain": "The raw values: colours, spacing, type sizes, radii, durations. A list of names and values, no component.",
+          "why": "Everything else refers to them. Putting them last means everything before carries hardcoded values, and a change of brand is made file by file.",
+          "decide": "Where they live, and in what form. A file of CSS variables, a TypeScript object, a style engine's configuration: it does not matter, as long as there is ONE.",
+          "trap": "Two sources of truth. Tokens in the code and a palette in the mockup tool, drifting apart in silence."
+        },
+        "primitives": {
+          "name": "2. Primitives",
+          "plain": "The bricks with no domain: button, field, label, modal. They know no product rule, only the tokens.",
+          "why": "This is the layer where duplication starts. An agent that finds none writes one more button, then another.",
+          "decide": "Write them yourself, or take an existing library. See below: that choice is weighed, not guessed.",
+          "trap": "A primitive taking a domain prop. From then on it is no longer reusable, and the next one gets copied."
+        },
+        "components": {
+          "name": "3. Product components",
+          "plain": "What knows the domain: a book card, a loan form. They assemble primitives.",
+          "why": "They change often, and that is fine. What must not change often is the two layers beneath.",
+          "decide": "Where they live: your architecture answers that, not this page.",
+          "trap": "A product component redefining a colour instead of using a token."
+        },
+        "screens": {
+          "name": "4. Screens and journeys",
+          "plain": "The final assembly, and the navigation between assemblies.",
+          "why": "It is what a user sees, so it is what gets discussed first, and yet it is what gets decided last.",
+          "decide": "Nothing structural here if the three layers above hold.",
+          "trap": "Starting here. That is the mockup drawn before the tokens."
+        }
+      },
+      "options": {
+        "full": {
+          "option": "Take a full component library",
+          "cost": "You inherit its visual choices, its weight and its upgrades. Getting out later costs more than getting in.",
+          "buys": "Primitives that work with a keyboard and a screen reader from day one. That is the most underestimated work in this list.",
+          "wrong_when": "When the brand is strong and specific: you will spend more time fighting the library than using it."
+        },
+        "unstyled": {
+          "option": "Take an unstyled library, and dress it yourself",
+          "cost": "You write every appearance. The behaviour is given to you.",
+          "buys": "Accessibility and focus management without inheriting a visual identity. The best ratio for a brand of your own.",
+          "wrong_when": "On three screens: setting it up costs more than it protects."
+        },
+        "own": {
+          "option": "Write everything",
+          "cost": "Accessibility is entirely yours. Focus traps, screen reader announcements, focus restoration: it is a craft.",
+          "buys": "No dependency, no inheritance. Justified when the product IS its interface.",
+          "wrong_when": "Almost always, at the start. It is the choice that looks cheapest and is not."
+        }
+      },
+      "lbl_why": "Why here",
+      "lbl_decide": "Decide",
+      "lbl_trap": "Trap",
+      "lbl_cost": "Cost",
+      "lbl_buys": "Buys",
+      "mockup_head": "&laquo; Do we draw the mockup first? &raquo;",
+      "mockup_blurb": "Short answer: a mockup, yes. THE finished mockup, no.",
+      "mockup_note": "<strong>An exploratory mockup is drawn right now</strong> &mdash; on paper, in grey, with no precise value. It exists to agree on what the product does, and that is exactly what phase 1 of a spec asks for.<br><br>\n<strong>A finished mockup drawn before the tokens invents a scale.</strong> Spacings picked by eye, half a dozen slightly different greys, three type sizes close together. The code copies them, because it has nothing else to refer to. You then do not have a design system: you have a transcribed mockup, and the first change request is paid for everywhere.<br><br>\n<strong>The order that holds:</strong> agreement on what the product does &rarr; tokens &rarr; primitives &rarr; finished mockup built from the primitives that exist &rarr; screens. The mockup then becomes an assembly of things that exist, not an image to reproduce.",
+      "library_head": "Write the primitives, or take an existing component library",
+      "library_blurb": "The pipeline installs nothing: it argues and stops. This choice is submitted like any dependency, with its licence, its upkeep and its security surface.",
+      "library_note": "<strong>The criterion that decides is accessibility.</strong> A library that handles neither focus, nor the keyboard, nor screen reader announcements is not a component library: it is a set of styles, and the hard work is still entirely ahead of you. Check that before the colours, not after.",
+      "eyebrow": "Configuration &middot; design system",
+      "title": "What is settled before the first screen",
+      "lede": "Four layers, and an order. The order is the content of this page: you do not reverse it afterwards without going over everything again.",
+      "verbatim": "The pipeline <strong>does not choose for you</strong>. It explains, then makes your choice enforceable: once declared it is read back by a gate instead of being recalled in review.",
+      "already": "<strong>Already in place:</strong> {library}. The choice below then reads as &laquo; keep or leave &raquo;, and leaving costs more than entering.",
+      "layers_head": "The four layers, in order",
+      "layers_blurb": "Each knows only the ones above it. A layer that jumps over its neighbour is an interface's first debt.",
+      "declare_head": "What you declare next",
+      "declare_note": "Three values in <code>pipeline.config.json</code>, under <code>design_system</code>: <code>tokens</code> (the path of the single source of truth), <code>primitives</code> (<code>own</code>, or the name of the library retained) and <code>decided_at</code>.<br><br>Without them, <code>apply-profile</code> refuses to run on a project with screens. The reason is the same as for the architecture: a choice that lives only in a page binds nobody, the agent taking the first issue will settle it alone, and every one after inherits it without anyone having approved it.",
+      "doc_title": "Design system {type}"
+    },
+    "architecture": {
+      "eyebrow": "Configuration &middot; architecture choice",
+      "title": "How should this project's code be arranged?",
+      "verbatim": "An architecture is <strong>where the files go</strong> and <strong>who is allowed to call whom</strong>. Nothing more. The complicated names are ways of answering those two questions.<br><br>The pipeline <strong>does not choose for you</strong>: the right answer depends on your product. It explains, then makes your choice enforceable &mdash; once declared, a file calling what it should not fails a gate instead of being flagged in review.",
+      "brief_head": "First: what is this project about?",
+      "brief_blurb": "Eight questions, in plain language. Answer them before looking at any architecture &mdash; that is what turns a generic recommendation into reasoned advice.",
+      "brief_reveals": "What the answer reveals",
+      "brief_note": "<strong>The question that really decides is B3.</strong> A system that never refuses anything for a reason coming from the real world has no domain: it has a schema. And B4 checks that the refusals quoted really are refusals &mdash; &laquo; this field is required &raquo; is not one.",
+      "says_head": "What your project says about itself",
+      "rules_found": "Business rules found",
+      "no_rule_found": "No business rule found: this product stores and returns.",
+      "validations_label": "What is not one",
+      "advice_head": "Our advice, and why",
+      "advice_blurb": "Grounded in the analysis above, not in a general preference. The detail of each option is still further down.",
+      "glance_head": "At a glance",
+      "glance_blurb": "{count} options relevant to this project type. The detail is further down if you hesitate between two rows.",
+      "col_option": "Option",
+      "col_files": "Files for {example}",
+      "col_when": "When it is the right call",
+      "axis_head": "The four questions that decide",
+      "axis_blurb": "Answer them before looking at the names. They are answered without knowing any architecture, and they eliminate most of the options.",
+      "detail_head": "Each option in detail",
+      "detail_blurb": "{kept} retained out of {total}. The others are not bad: they solve problems this project type does not have.",
+      "looks_like": "What it looks like",
+      "direction": "Dependency direction",
+      "reads_as": "reads as: &laquo; {outer} may use {inner}{more}, never the reverse &raquo;",
+      "and_so_on": " and so on",
+      "files_for": "For {example}: {count} files",
+      "lbl_cost": "Cost",
+      "lbl_buys": "Buys",
+      "lbl_trap": "Trap",
+      "grows": "As the project grows",
+      "migration_cost": "Migration cost &mdash;",
+      "verdict_label": "In short.",
+      "boundary_head": "What crosses between the front and the back",
+      "boundary_blurb": "On a full-stack repository this question counts for more than the internal structure of either side: it is what decides what breaks when one side moves.",
+      "boundary_cost": "Cost",
+      "boundary_buys": "Gain",
+      "boundary_trap": "Trap",
+      "wrong_head": "&laquo; What if I get it wrong? &raquo;",
+      "wrong_blurb": "That is the right objection. At the start of a project you do not know everything yet, and the files still have to go somewhere.",
+      "wrong_note": "<strong>Do not pick the heaviest option out of caution.</strong> That is the most common mistake: you pay immediately for insurance you may never claim, and the cost is taken out of every file you write, for years.<br><br>\n<strong>What decides is an asymmetry.</strong> Starting simple keeps the options open: you harden one folder the day it earns it, without touching the others. Starting complicated closes them: nobody removes layers, they endure them. A bad simple choice is corrected piece by piece; a bad heavy one, you live with.<br><br>\n<strong>Here, changing your mind is measured.</strong> Your architecture is declared in the configuration and checked by a gate. The day you change the declaration, the gate prints you <em>the exact list</em> of files that no longer obey the new rule. A migration becomes a task list, not an exploration &mdash; and that is the difference with a project where the architecture lives only in people's heads.",
+      "next_head": "What comes next",
+      "next_note": "Your choice becomes one line in the configuration: the folders, and who is allowed to call whom. The profile translates it into an automatically checked rule.<br><br><strong>Worth knowing before you choose:</strong> changing architecture later means moving files across the whole project. The cheapest moment to decide is now, before the first line of code.",
+      "doc_title": "Architecture — {label}"
+    }
+  },
+  "brief_questions": {
+    "B1": {
+      "question": "In one sentence, what is the product for, and for whom?",
+      "hint": "No jargon. If the sentence needs a technical word, it is describing the solution, not the need.",
+      "reveals": "the domain, and whether the product has an identifiable user"
+    },
+    "B2": {
+      "question": "Name three things a user does with it.",
+      "hint": "Actions, not screens. « borrow a book », not « the loan page ».",
+      "reveals": "the real operations, and whether they are more than storage"
+    },
+    "B3": {
+      "question": "Are there situations where the system must REFUSE something? Which ones?",
+      "hint": "Not required fields or formats. Real refusals: « this book is already out », « this account has too little ».",
+      "reveals": "THE question that detects a domain. No refusal of that kind, no domain."
+    },
+    "B4": {
+      "question": "Would a professional in the field understand those refusals without any talk of software?",
+      "hint": "A librarian, an accountant. If they nod, it is domain. If they cannot see why you are telling them, it is data entry.",
+      "reveals": "whether the refusals are business rules or validation in disguise"
+    },
+    "B5": {
+      "question": "Does the product talk to outside systems? Might you replace one some day?",
+      "hint": "Database, payment, email delivery, third-party service. And above all: which one will you REALLY replace.",
+      "reveals": "whether ports are justified, or would be insurance you never claim"
+    },
+    "B6": {
+      "question": "How many people or agents will work on it at the same time?",
+      "hint": "Count pipeline agents as people: they get in each other's way the same way.",
+      "reveals": "whether the layout should optimise for cohesion or for parallel work"
+    },
+    "B7": {
+      "question": "In your previous projects, what changed most often?",
+      "hint": "Screens, rules, integrations. Answer from experience, not from intention.",
+      "reveals": "what belongs at the centre, and what belongs at the edge"
+    },
+    "B8": {
+      "question": "What will the product NOT do?",
+      "hint": "What is not named is assumed built. That is true from the first conversation.",
+      "reveals": "the real scope, and often a business rule hidden inside an exclusion"
+    }
+  },
+  "verdicts": {
+    "recommande": "Recommended",
+    "possible": "Possible",
+    "excessif": "Excessive here"
+  },
+  "judgement": {
+    "teams_parallel": "Several teams in parallel: one folder each, nobody collides.",
+    "people_parallel": "Several people in parallel: one folder each, nobody collides.",
+    "cheap": "Almost no cost, and nothing forces you out of it until a precise pain demands it.",
+    "rules_fit": "{count} business rule(s) found: they fit inside their feature folder for as long as they are not shared.",
+    "layered_parallel": "Every feature crosses all three folders: with several people, everyone edits the same places.",
+    "layered_solo": "Readable by one person, and familiar.",
+    "hex_none": "No integration declared replaceable: ports would be insurance you never claim.",
+    "hex_many": "{count} integrations you expect to replace: that is exactly the problem hexagonal solves.",
+    "hex_one": "A single replaceable integration: isolate that one, not everything else.",
+    "clean_none": "No business rule found: the layers would fill with objects copying rows around.",
+    "clean_dense": "{count} business rules: dense enough to justify isolating them from any technology.",
+    "clean_thin": "{count} business rule(s): that is an invariant to protect, not a domain to isolate. Protect it in the right place rather than adding layers.",
+    "sliced": "Prevents circular imports in a codebase where everything tends to import everything.",
+    "mvvm": "Screen logic is testable without launching the interface.",
+    "mvi_churn": "Screens change often: reproducible state pays for itself.",
+    "mvi_stable": "With no complicated screen state, the machinery costs more than it protects."
+  },
+  "summary": {
+    "no_rule": "no business rule",
+    "few_rules": "{count} business rule(s) to protect",
+    "dense_rules": "{count} business rules, a dense domain",
+    "no_port": "no integration to replace",
+    "some_ports": "{count} replaceable integration(s)",
+    "one_person": "a single person",
+    "teams": "several teams",
+    "few_people": "a few people in parallel",
+    "sentence": "{domain}, {ports}, {workers}."
+  },
+  "fullstack_boundary": {
+    "generated": {
+      "option": "The back end generates the types, the front end uses them",
+      "cost": "A generation step, and a gate that refuses a stale contract.",
+      "buys": "The front end stops compiling once the back end changes its contract. The break shows at compile time, not at the user.",
+      "wrong_when": "When the two sides ship separately: the front end must then tolerate an older version of the back end."
+    },
+    "shared": {
+      "option": "A shared folder of types, written by hand",
+      "cost": "Almost nothing, but synchronisation rests on vigilance.",
+      "buys": "Simple and readable, with no tooling.",
+      "wrong_when": "As soon as the contract changes often: the shared folder becomes wrong with nothing to report it."
+    },
+    "redeclared": {
+      "option": "No sharing, the front end redeclares what it consumes",
+      "cost": "Duplication, accepted.",
+      "buys": "Each side evolves and ships alone. The front end declares exactly what it needs.",
+      "wrong_when": "When a single team holds both sides: you duplicate without gaining the independence that would justify it."
+    }
   }
 }

@@ -306,5 +306,335 @@
         "Des écrans simples portent la même machinerie que les compliqués -> appliquez-le seulement là où l'état le mérite."
       ]
     }
+  },
+  "pages": {
+    "tokens": {
+      "eyebrow": "Design system &middot; jetons déclarés",
+      "title": "Ce avec quoi vous avez le droit de dessiner",
+      "verbatim": "<strong>Cette page ne décide rien et n'est pas un écran.</strong> Elle montre côte à côte les valeurs déjà déclarées, pour que ce qu'un fichier cache devienne visible : des couleurs qu'on ne distingue pas, un pas d'espacement qui répète le précédent, une paire qui ne peut pas porter de texte. Les écrans viennent après, et ils ne peuvent utiliser que ce qui est ici.",
+      "colours_head": "Les couleurs, et ce qui se passe entre elles",
+      "colours_blurb": "Chaque paire, avec son rapport de contraste. C'est la moitié mesurable de l'accessibilité, et celle qu'une palette peut cacher jusqu'au premier écran construit.",
+      "pair": "Paire",
+      "contrast": "Contraste",
+      "verdict": "Verdict",
+      "indistinguishable": "quasi indistinguables &mdash; deux décisions là où une seule était voulue",
+      "too_weak": "trop faible pour du texte (il faut {ratio}:1)",
+      "carries_text": "porte du texte",
+      "scale_head": "L'échelle d'espacement, dans l'ordre",
+      "scale_blurb": "Triée, parce qu'une échelle en désordre cache ses propres trous &mdash; et ses propres répétitions.",
+      "no_step": "à un pas de <code>{name}</code>, ce qui n'est pas un pas",
+      "fonts_head": "Les polices",
+      "fonts_blurb": "Rendues, pas citées. Une police nommée et jamais montrée ne dit rien d'elle-même, et deux qui se lisent pareil font une police de trop.",
+      "specimen": "Portez ce vieux whisky au juge blond qui fume &mdash; 0123456789"
+    },
+    "decisions": {
+      "eyebrow": "File d'arbitrage",
+      "title": "Ce qui attend votre décision",
+      "nothing": "Rien n'attend d'arbitrage : aucune issue bloquée, aucune hors de portée des agents, aucune question de spec ouverte.",
+      "waiting": "{count} point(s) ne peuvent avancer sans vous. Le pipeline continue sur le reste.",
+      "verbatim": "Cette page est <strong>calculée</strong> depuis le magasin et la politique de fichiers, elle n'est pas rédigée. Une issue dont aucun rôle ne peut prendre le périmètre y figure même si personne ne l'a signalée.",
+      "scope": "Périmètre",
+      "recommendation": "Recommandation",
+      "other_options": "Autres options",
+      "already_tried": "Déjà essayé",
+      "spec_head": "Questions de spec",
+      "spec_blurb": "Choix soumis par Product. Rien n'est découpé avant votre réponse.",
+      "spec_empty": "Aucune question de spec ouverte.",
+      "blocked_head": "Arrêtées, en attente d'une levée",
+      "blocked_blurb": "Ces issues tiennent leurs réservations tant qu'elles restent bloquées.",
+      "blocked_empty": "Aucune issue bloquée.",
+      "blocked_why": "Cette issue est arrêtée en {phase} et attend une levée. Tant qu'elle y reste, elle tient ses réservations et bloque toute issue qui les croise.",
+      "orphan_head": "Aucun agent ne peut les prendre",
+      "orphan_blurb": "Périmètre entièrement hors de la politique de fichiers des rôles qui écrivent. next-issues les présente pourtant comme dispatchables.",
+      "orphan_empty": "Toute issue ouverte a un rôle capable de la prendre.",
+      "orphan_chip": "aucun agent possible",
+      "orphan_why": "Tout son périmètre est hors de la politique de fichiers de chaque rôle qui écrit. Aucun implementer ne peut la prendre : c'est du travail opérateur, qu'elle le dise ou non.",
+      "moves_head": "Ce qui avance sans vous",
+      "moves_note": "{count} issue(s) en <code>planned</code> ont un rôle capable de les prendre et n'attendent aucun arbitrage.",
+      "moves_caveat": "Les points ci-dessus ne les bloquent pas, sauf si leurs réservations se croisent.",
+      "approve": "Approuver le périmètre du tour {round} pour découpage ?",
+      "approve_why": "Product déclare le périmètre arrêté et ne soumet plus aucun choix. Approuver fige le document : la phase 2 est refusée si son contenu bouge d'un caractère.",
+      "approve_yes": "Approuver et lancer le découpage",
+      "approve_no": "Demander un tour de plus en disant ce qui manque",
+      "store_count": "{count} issues dans le magasin",
+      "counts_pending": "À trancher",
+      "counts_blocked": "Bloquées",
+      "counts_orphan": "Aucun agent possible",
+      "counts_dispatchable": "Dispatchables",
+      "chip_settled": "périmètre arrêté"
+    },
+    "dependency": {
+      "license": "Licence",
+      "transitive": "Dépendances transitives",
+      "size": "Taille installée",
+      "last_release": "Dernière publication",
+      "open_issues": "Issues ouvertes",
+      "maintainers": "Mainteneurs",
+      "advisories": "Avis de sécurité ouverts",
+      "privileges": "Privilèges à l'exécution",
+      "audited_on": "Auditée le",
+      "rejected_head": "Ce qui a été écarté, et pourquoi",
+      "rejected_blurb": "Une décision prise en silence est exactement ce que cette page existe pour empêcher. Celles-ci ont été examinées puis écartées.",
+      "eyebrow": "Décision de dépendance",
+      "candidate_count": "{count} candidate(s)",
+      "no_reco": "Aucune recommandation",
+      "hand_rolled": "L'écrire ici coûterait",
+      "why_this": "Pourquoi celle-ci",
+      "verbatim": "<strong>L'installation vous revient, pas au pipeline.</strong> Aucun agent n'ajoute de dépendance : il argumente pour une et s'arrête. Cette page est cet argumentaire, repris tel quel depuis la demande, avec chaque champ que l'agent a mesuré au lieu de le supposer.",
+      "candidates_head": "Les candidates, pesées",
+      "candidates_blurb": "Licence, poids, entretien et surface de sécurité. Une bibliothèque qui fait le travail et n'est plus maintenue ne fait pas le travail.",
+      "commits_head": "Ce qu'approuver vous engage à",
+      "commits_note": "Une dépendance sur une surface d'entrée publique entre dans votre périmètre de sécurité : ses avis de sécurité deviennent les vôtres, ses mainteneurs deviennent vos mainteneurs, et la retirer plus tard coûte plus cher que l'ajouter maintenant. Refuser est une réponse valable, et le coût de l'écrire à la main est indiqué plus haut pour que refuser soit un choix informé plutôt qu'un réflexe.",
+      "doc_title": "Dépendance {issue}"
+    },
+    "proposal": {
+      "does_head": "Ce que le produit fait",
+      "does_blurb": "{count} fonctionnalités. Chaque règle numérotée est un engagement qui lie, pas une intention.",
+      "not_head": "Ce que le produit ne fait pas",
+      "not_blurb": "{count} exclusions nommées. Ce qui n'est pas écrit ici est supposé construit &mdash; c'est pourquoi celles-ci sont explicites.",
+      "recommendation": "Recommandation",
+      "other_options": "Autres options",
+      "awaits_head": "Ce qui attend votre décision",
+      "awaits_blurb": "{count} choix soumis. Rien n'est découpé avant votre réponse.",
+      "decomposition_head": "Découpage envisagé",
+      "decomposition_blurb": "{count} issues. Aucun contenu d'issue n'est écrit avant l'accord.",
+      "design_head": "Engagements de conception",
+      "design_blurb": "Contraintes reportées dans les issues et opposables en revue. Ce ne sont pas des suggestions.",
+      "pr_head": "Ce que la PR dira",
+      "pr_blurb": "Engagements de transparence. Les surfaces exposées sont nommées, pas adoucies.",
+      "eyebrow": "Spec {spec} &middot; phase 1 &middot; tour {round}",
+      "settled": "périmètre arrêté",
+      "open_questions": "{count} question(s) ouverte(s)",
+      "default_title": "Périmètre {spec}",
+      "count_features": "Fonctionnalités",
+      "count_rules": "Règles",
+      "count_exclusions": "Exclusions",
+      "count_pledges": "Engagements",
+      "count_issues": "Issues prévues",
+      "count_open": "Questions ouvertes",
+      "digest_label": "Empreinte du document",
+      "verbatim": "Texte repris <strong>tel quel</strong> depuis la proposition, sans reformulation : une relecture complaisante ouvrirait un écart entre ce que vous lisez et ce que l'empreinte fige.",
+      "since_last": "Depuis le tour précédent.",
+      "commits_head": "Ce qu'approuver vous engage à",
+      "commits_freeze": "Approuver ce document fige son contenu.",
+      "commits_digest": "L'empreinte <code>{digest}&hellip;</code> lie la phase 2 :",
+      "commits_nodigest": "La phase 2 est liée à ce document :",
+      "commits_tail": "tout découpage dérivé d'un autre document, ou de celui-ci modifié après coup, est refusé par <code>validate-handoff</code> avec un code de sortie non nul. <strong>Ce que ce document ne dit pas ne sera pas construit ; ce qu'il dit de travers sera construit de travers.</strong>"
+    },
+    "design_system": {
+      "layers": {
+        "tokens": {
+          "name": "1. Jetons",
+          "plain": "Les valeurs brutes : couleurs, espacements, tailles de texte, rayons, durées. Une liste de noms et de valeurs, aucun composant.",
+          "why": "Tout le reste s'y réfère. Les mettre en dernier, c'est que tout ce qui précède porte des valeurs en dur, et qu'un changement de marque se fait fichier par fichier.",
+          "decide": "Où ils vivent, et sous quelle forme. Un fichier de variables CSS, un objet TypeScript, la configuration d'un moteur de styles : peu importe, tant qu'il n'y en a QU'UN.",
+          "trap": "Deux sources de vérité. Des jetons dans le code et une palette dans l'outil de maquette, qui divergent en silence."
+        },
+        "primitives": {
+          "name": "2. Primitives",
+          "plain": "Les briques sans métier : bouton, champ, libellé, fenêtre modale. Elles ne connaissent aucune règle produit, seulement les jetons.",
+          "why": "C'est la couche où la duplication commence. Un agent qui n'en trouve aucune écrit un bouton de plus, puis un autre.",
+          "decide": "Les écrire soi-même, ou prendre une bibliothèque existante. Voir plus bas : ce choix se pèse, il ne se devine pas.",
+          "trap": "Une primitive qui prend une propriété métier. À partir de là elle n'est plus réutilisable, et la suivante sera copiée."
+        },
+        "components": {
+          "name": "3. Composants produit",
+          "plain": "Ce qui connaît le métier : une fiche de livre, un formulaire d'emprunt. Ils assemblent des primitives.",
+          "why": "Ils changent souvent, et c'est très bien. Ce qui ne doit pas changer souvent, ce sont les deux couches en dessous.",
+          "decide": "Où ils vivent : c'est votre architecture qui répond, pas cette page.",
+          "trap": "Un composant produit qui redéfinit une couleur au lieu d'utiliser un jeton."
+        },
+        "screens": {
+          "name": "4. Écrans et parcours",
+          "plain": "L'assemblage final, et la navigation entre les assemblages.",
+          "why": "C'est ce que voit l'utilisateur, donc c'est ce dont on discute en premier, et pourtant c'est ce qui se décide en dernier.",
+          "decide": "Rien de structurel ici si les trois couches au-dessus tiennent.",
+          "trap": "Commencer par là. C'est la maquette dessinée avant les jetons."
+        }
+      },
+      "options": {
+        "full": {
+          "option": "Prendre une bibliothèque de composants complète",
+          "cost": "Vous héritez de ses choix visuels, de son poids et de ses montées de version. En sortir plus tard coûte plus cher que d'y entrer.",
+          "buys": "Des primitives qui fonctionnent au clavier et au lecteur d'écran dès le premier jour. C'est le travail le plus sous-estimé de cette liste.",
+          "wrong_when": "Quand la marque est forte et spécifique : vous passerez plus de temps à combattre la bibliothèque qu'à l'utiliser."
+        },
+        "unstyled": {
+          "option": "Prendre une bibliothèque sans styles, et l'habiller vous-même",
+          "cost": "Vous écrivez toute l'apparence. Le comportement vous est donné.",
+          "buys": "L'accessibilité et la gestion du focus sans hériter d'une identité visuelle. Le meilleur rapport pour une marque à soi.",
+          "wrong_when": "Sur trois écrans : la mettre en place coûte plus qu'elle ne protège."
+        },
+        "own": {
+          "option": "Tout écrire",
+          "cost": "L'accessibilité est entièrement à vous. Pièges à focus, annonces au lecteur d'écran, restauration du focus : c'est un métier.",
+          "buys": "Aucune dépendance, aucun héritage. Justifié quand le produit EST son interface.",
+          "wrong_when": "Presque toujours, au démarrage. C'est le choix qui paraît le moins cher et ne l'est pas."
+        }
+      },
+      "lbl_why": "Pourquoi ici",
+      "lbl_decide": "À décider",
+      "lbl_trap": "Piège",
+      "lbl_cost": "Coût",
+      "lbl_buys": "Achète",
+      "mockup_head": "&laquo; On dessine la maquette d'abord ? &raquo;",
+      "mockup_blurb": "Réponse courte : une maquette, oui. LA maquette finie, non.",
+      "mockup_note": "<strong>Une maquette exploratoire se dessine tout de suite</strong> &mdash; sur papier, en gris, sans valeur précise. Elle existe pour se mettre d'accord sur ce que fait le produit, et c'est exactement ce que demande la phase 1 d'une spec.<br><br>\n<strong>Une maquette finie dessinée avant les jetons invente une échelle.</strong> Des espacements choisis à l'œil, une demi-douzaine de gris légèrement différents, trois tailles de texte proches. Le code les recopie, parce qu'il n'a rien d'autre où se référer. Vous n'avez alors pas de design system : vous avez une maquette transcrite, et la première demande de changement se paie partout.<br><br>\n<strong>L'ordre qui tient :</strong> accord sur ce que fait le produit &rarr; jetons &rarr; primitives &rarr; maquette finie construite avec les primitives qui existent &rarr; écrans. La maquette devient alors un assemblage de choses qui existent, pas une image à reproduire.",
+      "library_head": "Écrire les primitives, ou prendre une bibliothèque de composants existante",
+      "library_blurb": "Le pipeline n'installe rien : il argumente et s'arrête. Ce choix se soumet comme n'importe quelle dépendance, avec sa licence, son entretien et sa surface de sécurité.",
+      "library_note": "<strong>Le critère qui tranche, c'est l'accessibilité.</strong> Une bibliothèque qui ne gère ni le focus, ni le clavier, ni les annonces au lecteur d'écran n'est pas une bibliothèque de composants : c'est un jeu de styles, et le travail difficile reste entièrement devant vous. Vérifiez cela avant les couleurs, pas après.",
+      "eyebrow": "Configuration &middot; design system",
+      "title": "Ce qui se décide avant le premier écran",
+      "lede": "Quatre couches, et un ordre. L'ordre est le contenu de cette page : on ne l'inverse pas après coup sans tout reprendre.",
+      "verbatim": "Le pipeline <strong>ne choisit pas à votre place</strong>. Il explique, puis rend votre choix opposable : une fois déclaré, il est relu par une commande au lieu d'être rappelé en revue.",
+      "already": "<strong>Déjà en place :</strong> {library}. Le choix ci-dessous se lit alors comme &laquo; garder ou partir &raquo;, et partir coûte plus cher qu'entrer.",
+      "layers_head": "Les quatre couches, dans l'ordre",
+      "layers_blurb": "Chacune ne connaît que celles au-dessus d'elle. Une couche qui saute sa voisine est la première dette d'une interface.",
+      "declare_head": "Ce que vous déclarez ensuite",
+      "declare_note": "Trois valeurs dans <code>pipeline.config.json</code>, sous <code>design_system</code> : <code>tokens</code> (le chemin de la source de vérité unique), <code>primitives</code> (<code>own</code>, ou le nom de la bibliothèque retenue) et <code>decided_at</code>.<br><br>Sans elles, <code>apply-profile</code> refuse de tourner sur un projet à écrans. La raison est la même que pour l'architecture : un choix qui ne vit que dans une page n'engage personne, l'agent qui prend la première issue le tranchera seul, et tous les suivants en héritent sans que personne l'ait approuvé.",
+      "doc_title": "Design system {type}"
+    },
+    "architecture": {
+      "eyebrow": "Configuration &middot; choix d'architecture",
+      "title": "Comment ranger le code de ce projet ?",
+      "verbatim": "Une architecture, c'est <strong>où vont les fichiers</strong> et <strong>qui a le droit d'appeler qui</strong>. Rien de plus. Les noms compliqués sont des façons de répondre à ces deux questions.<br><br>Le pipeline <strong>ne choisit pas à votre place</strong> : la bonne réponse dépend de votre produit. Il explique, puis rend votre choix opposable &mdash; une fois déclaré, un fichier qui appelle ce qu'il ne devrait pas fait échouer une commande au lieu d'être signalé en revue.",
+      "brief_head": "D'abord : de quoi parle ce projet ?",
+      "brief_blurb": "Huit questions, en langage courant. Répondez-y avant de regarder la moindre architecture &mdash; c'est ce qui transforme une recommandation générique en conseil raisonné.",
+      "brief_reveals": "Ce que la réponse révèle",
+      "brief_note": "<strong>La question qui tranche vraiment, c'est B3.</strong> Un système qui ne refuse jamais rien pour une raison venue du monde réel n'a pas de métier : il a un schéma. Et B4 vérifie que les refus cités sont bien des refus &mdash; &laquo; ce champ est obligatoire &raquo; n'en est pas un.",
+      "says_head": "Ce que votre projet dit de lui-même",
+      "rules_found": "Règles métier repérées",
+      "no_rule_found": "Aucune règle métier repérée : ce produit range et restitue.",
+      "validations_label": "Ce qui n'en est pas",
+      "advice_head": "Notre conseil, et pourquoi",
+      "advice_blurb": "Fondé sur l'analyse ci-dessus, pas sur une préférence générale. Le détail de chaque option reste plus bas.",
+      "glance_head": "En un coup d'œil",
+      "glance_blurb": "{count} options pertinentes pour ce type de projet. Le détail est plus bas si vous hésitez entre deux lignes.",
+      "col_option": "Option",
+      "col_files": "Fichiers pour {example}",
+      "col_when": "Quand c'est le bon choix",
+      "axis_head": "Les quatre questions qui tranchent",
+      "axis_blurb": "Répondez-y avant de regarder les noms. Elles se répondent sans connaître aucune architecture, et elles éliminent la plupart des options.",
+      "detail_head": "Chaque option en détail",
+      "detail_blurb": "{kept} retenues sur {total}. Les autres ne sont pas mauvaises : elles résolvent des problèmes que ce type de projet n'a pas.",
+      "looks_like": "À quoi ça ressemble",
+      "direction": "Sens des dépendances",
+      "reads_as": "se lit : &laquo; {outer} peut utiliser {inner}{more}, jamais l'inverse &raquo;",
+      "and_so_on": " et ainsi de suite",
+      "files_for": "Pour {example} : {count} fichiers",
+      "lbl_cost": "Coût",
+      "lbl_buys": "Gain",
+      "lbl_trap": "Piège",
+      "grows": "Quand le projet grossit",
+      "migration_cost": "Coût de migration &mdash;",
+      "verdict_label": "En résumé.",
+      "boundary_head": "Ce qui traverse entre le front et le back",
+      "boundary_blurb": "Sur un dépôt full-stack, cette question compte plus que la structure interne de chaque côté : c'est elle qui décide de ce qui casse quand un côté bouge.",
+      "boundary_cost": "Coût",
+      "boundary_buys": "Gain",
+      "boundary_trap": "Piège",
+      "wrong_head": "&laquo; Et si je me trompe ? &raquo;",
+      "wrong_blurb": "C'est la bonne objection. Au début d'un projet on ne sait pas encore tout, et les fichiers doivent quand même aller quelque part.",
+      "wrong_note": "<strong>Ne prenez pas l'option la plus lourde par prudence.</strong> C'est l'erreur la plus courante : vous payez tout de suite une assurance que vous n'activerez peut-être jamais, et le coût se prélève sur chaque fichier que vous écrivez, pendant des années.<br><br>\n<strong>Ce qui tranche, c'est une asymétrie.</strong> Commencer simple garde les options ouvertes : vous durcissez un dossier le jour où il le mérite, sans toucher aux autres. Commencer compliqué les ferme : personne n'enlève des couches, on les subit. Un mauvais choix simple se corrige morceau par morceau ; un mauvais choix lourd, on vit avec.<br><br>\n<strong>Ici, changer d'avis se mesure.</strong> Votre architecture est déclarée dans la configuration et vérifiée par une commande. Le jour où vous changez la déclaration, la commande vous imprime <em>la liste exacte</em> des fichiers qui n'obéissent plus à la nouvelle règle. Une migration devient une liste de tâches, pas une exploration &mdash; et c'est la différence avec un projet où l'architecture ne vit que dans les têtes.",
+      "next_head": "Ce qui vient ensuite",
+      "next_note": "Votre choix devient une ligne dans la configuration : les dossiers, et qui a le droit d'appeler qui. Le profil la traduit en règle vérifiée automatiquement.<br><br><strong>Bon à savoir avant de choisir :</strong> changer d'architecture plus tard, c'est déplacer des fichiers dans tout le projet. Le moment le moins cher pour décider, c'est maintenant, avant la première ligne de code.",
+      "doc_title": "Architecture — {label}"
+    }
+  },
+  "brief_questions": {
+    "B1": {
+      "question": "En une phrase, à quoi sert le produit, et pour qui ?",
+      "hint": "Aucun jargon. Si la phrase a besoin d'un mot technique, elle décrit la solution, pas le besoin.",
+      "reveals": "le métier, et si le produit a un utilisateur identifiable"
+    },
+    "B2": {
+      "question": "Citez trois choses qu'un utilisateur fait avec.",
+      "hint": "Des actions, pas des écrans. « emprunter un livre », pas « la page d'emprunt ».",
+      "reveals": "les opérations réelles, et si elles vont au-delà du stockage"
+    },
+    "B3": {
+      "question": "Y a-t-il des situations où le système doit REFUSER quelque chose ? Lesquelles ?",
+      "hint": "Ni champs obligatoires ni formats. De vrais refus : « ce livre est déjà sorti », « ce compte n'a pas assez ».",
+      "reveals": "LA question qui détecte un métier. Aucun refus de ce genre, aucun métier."
+    },
+    "B4": {
+      "question": "Un professionnel du domaine comprendrait-il ces refus sans qu'on parle de logiciel ?",
+      "hint": "Un bibliothécaire, un comptable. S'il acquiesce, c'est du métier. S'il ne voit pas pourquoi vous lui dites ça, c'est de la saisie.",
+      "reveals": "si les refus sont des règles métier ou de la validation déguisée"
+    },
+    "B5": {
+      "question": "Le produit parle-t-il à des systèmes extérieurs ? En remplacerez-vous un un jour ?",
+      "hint": "Base de données, paiement, envoi d'e-mails, service tiers. Et surtout : lequel vous remplacerez VRAIMENT.",
+      "reveals": "si des ports sont justifiés, ou seraient une assurance que vous n'activerez jamais"
+    },
+    "B6": {
+      "question": "Combien de personnes ou d'agents y travailleront en même temps ?",
+      "hint": "Comptez les agents du pipeline comme des personnes : ils se gênent de la même façon.",
+      "reveals": "si le rangement doit optimiser la cohésion ou le travail en parallèle"
+    },
+    "B7": {
+      "question": "Dans vos projets précédents, qu'est-ce qui changeait le plus souvent ?",
+      "hint": "Écrans, règles, intégrations. Répondez d'après l'expérience, pas d'après l'intention.",
+      "reveals": "ce qui doit être au centre, et ce qui doit être en périphérie"
+    },
+    "B8": {
+      "question": "Qu'est-ce que le produit ne fera PAS ?",
+      "hint": "Ce qui n'est pas nommé est supposé construit. C'est vrai dès la première conversation.",
+      "reveals": "le périmètre réel, et souvent une règle métier cachée dans une exclusion"
+    }
+  },
+  "verdicts": {
+    "recommande": "Recommandée",
+    "possible": "Possible",
+    "excessif": "Excessive ici"
+  },
+  "judgement": {
+    "teams_parallel": "Plusieurs équipes en parallèle : un dossier chacune, personne ne se marche dessus.",
+    "people_parallel": "Plusieurs personnes en parallèle : un dossier chacune, personne ne se marche dessus.",
+    "cheap": "Presque aucun coût, et rien ne vous en fait sortir tant qu'une douleur précise ne l'exige pas.",
+    "rules_fit": "{count} règle(s) métier repérée(s) : elles tiennent dans leur dossier de fonctionnalité tant qu'elles ne sont pas partagées.",
+    "layered_parallel": "Chaque fonctionnalité traverse les trois dossiers : à plusieurs, tout le monde édite les mêmes endroits.",
+    "layered_solo": "Lisible par une personne seule, et familière.",
+    "hex_none": "Aucune intégration déclarée remplaçable : les ports seraient une assurance que vous n'activerez jamais.",
+    "hex_many": "{count} intégrations que vous comptez remplacer : c'est exactement le problème que l'hexagonale résout.",
+    "hex_one": "Une seule intégration remplaçable : isolez celle-là, pas tout le reste.",
+    "clean_none": "Aucune règle métier repérée : les couches se rempliraient d'objets qui recopient des lignes.",
+    "clean_dense": "{count} règles métier : assez dense pour justifier de les isoler de toute technologie.",
+    "clean_thin": "{count} règle(s) métier : c'est un invariant à protéger, pas un métier à isoler. Protégez-le au bon endroit plutôt que d'ajouter des couches.",
+    "sliced": "Empêche les imports circulaires dans une base où tout tend à importer tout.",
+    "mvvm": "La logique d'écran est testable sans lancer l'interface.",
+    "mvi_churn": "Les écrans changent souvent : un état reproductible se rentabilise.",
+    "mvi_stable": "Sans état d'écran compliqué, la machinerie coûte plus qu'elle ne protège."
+  },
+  "summary": {
+    "no_rule": "aucune règle métier",
+    "few_rules": "{count} règle(s) métier à protéger",
+    "dense_rules": "{count} règles métier, un métier dense",
+    "no_port": "aucune intégration à remplacer",
+    "some_ports": "{count} intégration(s) remplaçable(s)",
+    "one_person": "une seule personne",
+    "teams": "plusieurs équipes",
+    "few_people": "quelques personnes en parallèle",
+    "sentence": "{domain}, {ports}, {workers}."
+  },
+  "fullstack_boundary": {
+    "generated": {
+      "option": "Le back-end génère les types, le front-end les utilise",
+      "cost": "Une étape de génération, et une commande qui refuse un contrat périmé.",
+      "buys": "Le front-end cesse de compiler dès que le back-end change son contrat. La casse apparaît à la compilation, pas chez l'utilisateur.",
+      "wrong_when": "Quand les deux côtés se déploient séparément : le front doit alors tolérer une version plus ancienne du back."
+    },
+    "shared": {
+      "option": "Un dossier de types partagé, écrit à la main",
+      "cost": "Presque rien, mais la synchronisation repose sur la vigilance.",
+      "buys": "Simple et lisible, sans outillage.",
+      "wrong_when": "Dès que le contrat change souvent : le dossier partagé devient faux sans que rien ne le signale."
+    },
+    "redeclared": {
+      "option": "Aucun partage, le front redéclare ce qu'il consomme",
+      "cost": "De la duplication, assumée.",
+      "buys": "Chaque côté évolue et se déploie seul. Le front déclare exactement ce dont il a besoin.",
+      "wrong_when": "Quand une seule équipe tient les deux côtés : vous dupliquez sans gagner l'indépendance qui le justifierait."
+    }
   }
 }

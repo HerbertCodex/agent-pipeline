@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fail, sha256 } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig } from "./page.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig, pageText } from "./page.mjs";
 
 /**
  * Digest of what the page shows the operator.
@@ -31,9 +31,10 @@ export function reviewDigest(handoff) {
  * Renders a features section with their numbered rules.
  *
  * @param features - the scope's list of features
+ * @param t - the page's translated strings
  * @returns the section's HTML fragment, empty if the list is
  */
-function renderFeatures(features) {
+function renderFeatures(features, t) {
   if (!features?.length) return "";
   const items = features
     .map(
@@ -46,8 +47,8 @@ function renderFeatures(features) {
 </article>`,
     )
     .join("");
-  return `<section><div class="sec-head"><h2>What the product does</h2>
-<p>${features.length} features. Every numbered rule is a binding commitment, not an intention.</p></div>
+  return `<section><div class="sec-head"><h2>${esc(t.does_head)}</h2>
+<p>${esc(t.does_blurb.replace("{count}", String(features.length)))}</p></div>
 <div class="features">${items}</div></section>`;
 }
 
@@ -55,12 +56,13 @@ function renderFeatures(features) {
  * Renders the list of declared exclusions.
  *
  * @param entries - content of functional_scope.out_of_scope
+ * @param t - the page's translated strings
  * @returns the HTML fragment, empty if no exclusion is declared
  */
-function renderExclusions(entries) {
+function renderExclusions(entries, t) {
   if (!entries?.length) return "";
-  return `<section><div class="sec-head"><h2>What the product does not do</h2>
-<p>${entries.length} named exclusions. What is not written here is assumed built &mdash; which is why these are explicit.</p></div>
+  return `<section><div class="sec-head"><h2>${esc(t.not_head)}</h2>
+<p>${t.not_blurb.replace("{count}", String(entries.length))}</p></div>
 <ol class="excl">${entries
     .map((e, i) => `<li><span class="rid">${pad(i)}</span><p>${esc(e)}</p></li>`)
     .join("")}</ol></section>`;
@@ -89,22 +91,23 @@ function renderPledges(entries, heading, blurb) {
  * asks, not by what it proposes.
  *
  * @param decisions - content of decisions_for_operator
+ * @param t - the page's translated strings
  * @returns the HTML fragment, empty once nothing is open
  */
-function renderDecisions(decisions) {
+function renderDecisions(decisions, t) {
   if (!decisions?.length) return "";
   const cards = decisions
     .map(
       (d) => `<div class="open">
 <h3><span class="qid">${esc(d.id ?? "?")}</span>${esc(d.question)}</h3>
-<p class="lbl">Recommendation</p><p class="reco">${esc(d.product_recommendation)}</p>
-<p class="lbl">Autres options</p>
+<p class="lbl">${esc(t.recommendation)}</p><p class="reco">${esc(d.product_recommendation)}</p>
+<p class="lbl">${esc(t.other_options)}</p>
 <ul class="alts">${(d.alternatives ?? []).map((a) => `<li><span>${esc(a)}</span></li>`).join("")}</ul>
 </div>`,
     )
     .join("");
-  return `<section><div class="sec-head"><h2>What awaits your decision</h2>
-<p>${decisions.length} choices submitted. Nothing is decomposed before your answer.</p></div>
+  return `<section><div class="sec-head"><h2>${esc(t.awaits_head)}</h2>
+<p>${esc(t.awaits_blurb.replace("{count}", String(decisions.length)))}</p></div>
 <div class="features">${cards}</div></section>`;
 }
 
@@ -112,14 +115,15 @@ function renderDecisions(decisions) {
  * Renders the titles of the envisaged decomposition.
  *
  * @param titles - content of decomposition_titles
+ * @param t - the page's translated strings
  * @returns the HTML fragment, empty if no title is proposed
  */
-function renderTitles(titles) {
+function renderTitles(titles, t) {
   const list = titles?.titles;
   if (!list?.length) return "";
   const note = titles.parallelism_intent ?? titles.effect_of_n5 ?? titles.note;
-  return `<section><div class="sec-head"><h2>Envisaged decomposition</h2>
-<p>${list.length} issues. No issue content is written before the agreement.</p></div>
+  return `<section><div class="sec-head"><h2>${esc(t.decomposition_head)}</h2>
+<p>${esc(t.decomposition_blurb.replace("{count}", String(list.length)))}</p></div>
 <div class="waves">${list
     .map((t, i) => `<div class="wave"><span class="rid">${pad(i)}</span><p>${esc(t)}</p></div>`)
     .join("")}</div>
@@ -151,6 +155,8 @@ function main() {
     fail(`mode ${handoff.mode} : only a spec_proposal renders as a review page`);
   }
 
+  const config = safeConfig();
+  const t = pageText(config).pages.proposal;
   const scope = handoff.functional_scope ?? {};
   const open = handoff.decisions_for_operator ?? [];
   const features = scope.features ?? [];
@@ -158,16 +164,16 @@ function main() {
   const pledges =
     (handoff.design_commitments_carried_into_issues ?? []).length + (handoff.pr_commitments ?? []).length;
   const specId = handoff.scope?.spec_id ?? "spec";
-  const status = handoff.scope_final === true ? "scope settled" : `${open.length} open question(s)`;
-  const title = handoff.title ?? `Scope ${specId}`;
+  const status = handoff.scope_final === true ? t.settled : t.open_questions.replace("{count}", String(open.length));
+  const title = handoff.title ?? t.default_title.replace("{spec}", specId);
 
   const counts = [
-    ["Features", features.length],
-    ["Rules", rules],
-    ["Exclusions", (scope.out_of_scope ?? []).length],
-    ["Commitments", pledges],
-    ["Issues planned", (handoff.decomposition_titles?.titles ?? []).length],
-    ["Open questions", open.length],
+    [t.count_features, features.length],
+    [t.count_rules, rules],
+    [t.count_exclusions, (scope.out_of_scope ?? []).length],
+    [t.count_pledges, pledges],
+    [t.count_issues, (handoff.decomposition_titles?.titles ?? []).length],
+    [t.count_open, open.length],
   ]
     .filter(([, value]) => value > 0 || value === 0)
     .map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${value}</dd></div>`)
@@ -177,33 +183,33 @@ function main() {
   const feedback = handoff.operator_feedback?.summary;
 
   const body = `<header class="masthead">
-<p class="eyebrow">Spec ${esc(specId)} &middot; phase 1 &middot; round ${esc(handoff.round ?? "?")} &middot; ${esc(status)}</p>
+<p class="eyebrow">${t.eyebrow.split("{spec}").join(esc(specId)).split("{round}").join(esc(handoff.round ?? "?"))} &middot; ${esc(status)}</p>
 <h1>${esc(title)}</h1>
 ${scope.intent ? `<p class="lede">${esc(scope.intent)}</p>` : ""}
 <dl class="stamp">${counts}${
     digest
-      ? `<div style="flex-basis:100%"><dt>Document digest</dt><dd class="digest">${esc(digest)}</dd></div>`
+      ? `<div style="flex-basis:100%"><dt>${esc(t.digest_label)}</dt><dd class="digest">${esc(digest)}</dd></div>`
       : ""
   }</dl>
-<p class="verbatim">Text taken <strong>verbatim</strong> from the proposal, with no rewording: an obliging re-read would open a gap between what you read and what the digest freezes.</p>
-${feedback ? `<p class="note"><strong>Since the previous round.</strong> ${esc(feedback)}</p>` : ""}
+<p class="verbatim">${t.verbatim}</p>
+${feedback ? `<p class="note"><strong>${esc(t.since_last)}</strong> ${esc(feedback)}</p>` : ""}
 </header>
-${renderDecisions(open)}
-${renderFeatures(features)}
-${renderExclusions(scope.out_of_scope)}
-${renderPledges(handoff.design_commitments_carried_into_issues, "Design commitments", "Constraints carried into the issues and enforceable in review. These are not suggestions.")}
-${renderPledges(handoff.pr_commitments, "What the PR will say", "Transparency commitments. The exposed surfaces are named, not softened.")}
-${renderTitles(handoff.decomposition_titles)}
-<section><div class="sec-head"><h2>What approving commits you to</h2></div>
-<p class="note">Approving this document freezes its content. ${
-    digest ? `Digest <code>${esc(digest.slice(0, 8))}&hellip;</code> binds phase 2: ` : "Phase 2 is bound to this document: "
-  }any decomposition derived from another document, or from this one modified afterwards, is refused by <code>validate-handoff</code> with a non-zero exit code. <strong>What this document does not say will not be built; what it says wrongly will be built wrongly.</strong></p></section>
+${renderDecisions(open, t)}
+${renderFeatures(features, t)}
+${renderExclusions(scope.out_of_scope, t)}
+${renderPledges(handoff.design_commitments_carried_into_issues, t.design_head, t.design_blurb)}
+${renderPledges(handoff.pr_commitments, t.pr_head, t.pr_blurb)}
+${renderTitles(handoff.decomposition_titles, t)}
+<section><div class="sec-head"><h2>${esc(t.commits_head)}</h2></div>
+<p class="note">${esc(t.commits_freeze)} ${
+    digest ? t.commits_digest.split("{digest}").join(esc(digest.slice(0, 8))) : t.commits_nodigest
+  } ${t.commits_tail}</p></section>
 `;
 
   const page =
     `<meta name="proposal-review-digest" content="${reviewDigest(handoff)}">\n` +
-    shell(`Scope ${specId}`, body);
-  const written = resolvePage(target, safeConfig());
+    shell(t.default_title.replace("{spec}", specId), body);
+  const written = resolvePage(target, config);
   writeFileSync(written, page);
   console.log(
     `written: ${written} (round ${handoff.round}, ${features.length} features, ${rules} rules, ${open.length} open question(s))`,

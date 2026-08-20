@@ -1,9 +1,9 @@
 import { writeFileSync } from "node:fs";
 import { fail } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig } from "./page.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig, pageText } from "./page.mjs";
 import { PROJECT_TYPES, ARCHITECTURES, FULLSTACK_BOUNDARY, catalogue } from "./architectures.mjs";
 import { readFileSync, existsSync } from "node:fs";
-import { BRIEF_QUESTIONS, judge, summarise } from "./discovery.mjs";
+import { briefQuestions, judge, summarise } from "./discovery.mjs";
 
 /**
  * Renders the dependency direction as a chain of arrowed boxes.
@@ -13,9 +13,10 @@ import { BRIEF_QUESTIONS, judge, summarise } from "./discovery.mjs";
  * read.
  *
  * @param chain - layers, from the outermost to the innermost
+ * @param t - the page's translated strings
  * @returns the chain's HTML fragment
  */
-function arrows(chain) {
+function arrows(chain, t) {
   const boxes = chain
     .map((layer, index) => {
       const last = index === chain.length - 1;
@@ -23,9 +24,10 @@ function arrows(chain) {
     })
     .join("");
   return `<div class="chain">${boxes}</div>
-<p class="chain-legend">reads as: « ${esc(chain[0])} may use ${esc(chain[1] ?? chain[0])}${
-    chain.length > 2 ? " and so on" : ""
-  }, never the reverse &raquo;</p>`;
+<p class="chain-legend">${t.reads_as
+    .split("{outer}").join(esc(chain[0]))
+    .split("{inner}").join(esc(chain[1] ?? chain[0]))
+    .split("{more}").join(chain.length > 2 ? t.and_so_on : "")}</p>`;
 }
 
 /**
@@ -38,38 +40,39 @@ function arrows(chain) {
  * @param entry - catalogue architecture
  * @param index - display rank
  * @param example - concrete action used as the unit of cost
+ * @param t - the page's translated strings
  * @returns the card's HTML fragment
  */
-function card(entry, index, example) {
+function card(entry, index, example, t) {
   return `<article class="feature">
 <header><span class="num">${pad(index)}</span><h3>${esc(entry.name)}</h3></header>
 <p class="plain">${esc(entry.plain)}</p>
 
 <div class="split">
 <div>
-<p class="lbl">À quoi ça ressemble</p>
+<p class="lbl">${esc(t.looks_like)}</p>
 <pre class="tree">${entry.tree.map((line) => esc(line)).join("\n")}</pre>
 </div>
 <div>
-<p class="lbl">Dependency direction</p>
-${arrows(entry.chain)}
+<p class="lbl">${esc(t.direction)}</p>
+${arrows(entry.chain, t)}
 </div>
 </div>
 
-<p class="lbl">For ${esc(example)}: ${entry.files_for_example.length} files</p>
+<p class="lbl">${t.files_for.split("{example}").join(esc(example)).split("{count}").join(String(entry.files_for_example.length))}</p>
 <ul class="files">${entry.files_for_example.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
 
 <ol class="rules">
-<li><span class="rid">Cost</span><p>${esc(entry.cost)}</p></li>
-<li><span class="rid">Buys</span><p>${esc(entry.buys)}</p></li>
-<li><span class="rid">Trap</span><p>${esc(entry.wrong_when)}</p></li>
+<li><span class="rid">${esc(t.lbl_cost)}</span><p>${esc(entry.cost)}</p></li>
+<li><span class="rid">${esc(t.lbl_buys)}</span><p>${esc(entry.buys)}</p></li>
+<li><span class="rid">${esc(t.lbl_trap)}</span><p>${esc(entry.wrong_when)}</p></li>
 </ol>
-<p class="lbl">As the project grows</p>
+<p class="lbl">${esc(t.grows)}</p>
 <p class="grow">${esc(entry.grows_into)}</p>
 <ul class="alts">${entry.migration_triggers.map((t) => `<li><span>${esc(t)}</span></li>`).join("")}</ul>
-<p class="cost-move"><strong>Migration cost &mdash;</strong> ${esc(entry.migration_cost)}</p>
+<p class="cost-move"><strong>${t.migration_cost}</strong> ${esc(entry.migration_cost)}</p>
 
-<p class="note"><strong>En résumé.</strong> ${esc(entry.verdict)}</p>
+<p class="note"><strong>${esc(t.verdict_label)}</strong> ${esc(entry.verdict)}</p>
 </article>`;
 }
 
@@ -81,9 +84,10 @@ ${arrows(entry.chain)}
  *
  * @param retained - architectures retained for this project type
  * @param example - concrete action used as the unit of cost
+ * @param t - the page's translated strings
  * @returns the table's HTML fragment
  */
-function table(retained, example) {
+function table(retained, example, t) {
   const rows = retained
     .map(
       (entry) => `<tr><td><strong>${esc(entry.name)}</strong></td>
@@ -92,8 +96,61 @@ function table(retained, example) {
     )
     .join("");
   return `<div class="tablewrap"><table>
-<thead><tr><th>Option</th><th>Files for ${esc(example)}</th><th>When it is the right call</th></tr></thead>
+<thead><tr><th>${esc(t.col_option)}</th><th>${t.col_files.split("{example}").join(esc(example))}</th><th>${esc(t.col_when)}</th></tr></thead>
 <tbody>${rows}</tbody></table></div>`;
+}
+
+/**
+ * Renders the brief: the questions asked when no analysis is supplied.
+ *
+ * @param t - the page's translated strings
+ * @param text - the whole language dictionary
+ * @returns the section's HTML fragment
+ */
+function questionnaire(t, text) {
+  const items = briefQuestions(text).map(
+    (item) => `<div class="open">
+<h3><span class="qid">${esc(item.id)}</span>${esc(item.question)}</h3>
+<p class="short">${esc(item.hint)}</p>
+<p class="reveals">${esc(t.brief_reveals)} — ${esc(item.reveals)}</p>
+</div>`,
+  ).join("");
+  return `<section><div class="sec-head"><h2>${esc(t.brief_head)}</h2>
+<p>${t.brief_blurb}</p></div>
+<div class="features">${items}</div>
+<p class="note">${t.brief_note}</p></section>`;
+}
+
+/**
+ * Renders the recommendation grounded in the project analysis.
+ *
+ * @param retained - architectures relevant to the project type
+ * @param analysis - analysis drawn from the rough brief
+ * @param t - the page's translated strings
+ * @param text - the whole language dictionary
+ * @returns the recommendation's HTML fragment
+ */
+function recommendation(retained, analysis, t, text) {
+  const judged = retained
+    .map((entry) => ({ entry, ...judge(entry, analysis, text) }))
+    .sort((a, b) => a.rank - b.rank);
+  const rows = judged
+    .map(
+      (item) => `<div class="open${item.verdict === "recommande" ? "" : " muted"}">
+<h3><span class="chip${item.verdict === "recommande" ? "" : " alarm"}">${esc(item.label)}</span>${esc(item.entry.name)}</h3>
+<ul class="alts">${item.reasons.map((reason) => `<li><span>${esc(reason)}</span></li>`).join("")}</ul>
+</div>`,
+    )
+    .join("");
+  const rules = analysis.business_rules ?? [];
+  const validations = analysis.validations ?? [];
+  return `<section><div class="sec-head"><h2>${esc(t.says_head)}</h2>
+<p>${esc(summarise(analysis, text))}</p></div>
+${rules.length > 0 ? `<p class="lbl">${esc(t.rules_found)}</p><ol class="rules">${rules.map((r, i) => `<li><span class="rid">R${i + 1}</span><p>${esc(r.rule)}${r.why_it_matters ? ` — <em>${esc(r.why_it_matters)}</em>` : ""}</p></li>`).join("")}</ol>` : `<p class="empty">${esc(t.no_rule_found)}</p>`}
+${validations.length > 0 ? `<p class="lbl">${esc(t.validations_label)}</p><ul class="files">${validations.map((v) => `<li>${esc(v)}</li>`).join("")}</ul>` : ""}
+<div class="sec-head" style="margin-top:1rem"><h2>${esc(t.advice_head)}</h2>
+<p>${esc(t.advice_blurb)}</p></div>
+<div class="features">${rows}</div></section>`;
 }
 
 /**
@@ -106,61 +163,20 @@ function table(retained, example) {
  *
  * Usage: node render-architecture.mjs <output.html> <backend|frontend|mobile|fullstack>
  */
-function questionnaire() {
-  const items = BRIEF_QUESTIONS.map(
-    (item) => `<div class="open">
-<h3><span class="qid">${esc(item.id)}</span>${esc(item.question)}</h3>
-<p class="short">${esc(item.hint)}</p>
-<p class="reveals">Ce que la reponse revele — ${esc(item.reveals)}</p>
-</div>`,
-  ).join("");
-  return `<section><div class="sec-head"><h2>First: what is this project about?</h2>
-<p>Eight questions, in plain language. Answer them before looking at any architecture  &mdash; that is what turns a generic recommendation into reasoned advice.</p></div>
-<div class="features">${items}</div>
-<p class="note"><strong>The question that really decides is B3.</strong> A system that never refuses anything for a reason coming from the real world has no domain: it has a schema. And B4 checks that the refusals quoted really are refusals &mdash; &laquo; this field is required &raquo; is not one.</p></section>`;
-}
-
-/**
- * Renders the recommendation grounded in the project analysis.
- *
- * @param retained - architectures relevant to the project type
- * @param analysis - analysis drawn from the rough brief
- * @returns the recommendation's HTML fragment
- */
-function recommendation(retained, analysis) {
-  const judged = retained
-    .map((entry) => ({ entry, ...judge(entry, analysis) }))
-    .sort((a, b) => a.rank - b.rank);
-  const rows = judged
-    .map(
-      (item) => `<div class="open${item.verdict === "recommande" ? "" : " muted"}">
-<h3><span class="chip${item.verdict === "recommande" ? "" : " alarm"}">${esc(item.label)}</span>${esc(item.entry.name)}</h3>
-<ul class="alts">${item.reasons.map((reason) => `<li><span>${esc(reason)}</span></li>`).join("")}</ul>
-</div>`,
-    )
-    .join("");
-  const rules = analysis.business_rules ?? [];
-  const validations = analysis.validations ?? [];
-  return `<section><div class="sec-head"><h2>What your project says about itself</h2>
-<p>${esc(summarise(analysis))}</p></div>
-${rules.length > 0 ? `<p class="lbl">Regles metier reperees</p><ol class="rules">${rules.map((r, i) => `<li><span class="rid">R${i + 1}</span><p>${esc(r.rule)}${r.why_it_matters ? ` — <em>${esc(r.why_it_matters)}</em>` : ""}</p></li>`).join("")}</ol>` : '<p class="empty">No business rule found: this product stores and returns.</p>'}
-${validations.length > 0 ? `<p class="lbl">Ce qui n'is not</p><ul class="files">${validations.map((v) => `<li>${esc(v)}</li>`).join("")}</ul>` : ""}
-<div class="sec-head" style="margin-top:1rem"><h2>Our advice, and why</h2>
-<p>Fonde sur l'analyse ci-dessus, pas sur une preference generale. Le detail de chaque option reste plus bas.</p></div>
-<div class="features">${rows}</div></section>`;
-}
-
 function main() {
   const [target, type, analysisPath] = process.argv.slice(2);
   if (!target || !type) {
-    fail(`usage : render-architecture.mjs <sortie.html> <${Object.keys(PROJECT_TYPES).join("|")}> [analyse.json]`);
+    fail(`usage : render-architecture.mjs <sortie.html> <${PROJECT_TYPES.join("|")}> [analyse.json]`);
   }
   // The prose comes from the declared language's dictionary; the structure
   // stays the catalogue's. The two meet here and nowhere else.
-  const spoken = catalogue(safeConfig());
+  const config = safeConfig();
+  const text = pageText(config);
+  const t = text.pages.architecture;
+  const spoken = catalogue(config);
   const project = spoken.projectTypes[type];
   if (project == null) {
-    fail(`unknown project type: ${type} (expected ${Object.keys(PROJECT_TYPES).join(", ")})`);
+    fail(`unknown project type: ${type} (expected ${PROJECT_TYPES.join(", ")})`);
   }
 
   const retained = spoken.architectures.filter((entry) => entry.applies.includes(type));
@@ -189,47 +205,45 @@ function main() {
   const boundary =
     type !== "fullstack"
       ? ""
-      : `<section><div class="sec-head"><h2>What crosses between the front and the back</h2>
-<p>Sur un dépôt full-stack, cette question compte plus que la structure interne de chaque côté : c'is what decides what breaks when one side moves.</p></div>
-<ol class="pledges">${FULLSTACK_BOUNDARY.map(
+      : `<section><div class="sec-head"><h2>${esc(t.boundary_head)}</h2>
+<p>${esc(t.boundary_blurb)}</p></div>
+<ol class="pledges">${FULLSTACK_BOUNDARY.map((id) => text.fullstack_boundary[id]).map(
           (item, index) => `<li><span class="rid">${pad(index)}</span><p><strong>${esc(item.option)}</strong><br>
-<em>Coût</em> — ${esc(item.cost)}<br><em>Gain</em> — ${esc(item.buys)}<br><em>Piège</em> — ${esc(item.wrong_when)}</p></li>`,
+<em>${esc(t.boundary_cost)}</em> — ${esc(item.cost)}<br><em>${esc(t.boundary_buys)}</em> — ${esc(item.buys)}<br><em>${esc(t.boundary_trap)}</em> — ${esc(item.wrong_when)}</p></li>`,
         ).join("")}</ol></section>`;
 
   const body = `<header class="masthead">
-<p class="eyebrow">Configuration &middot; architecture choice &middot; ${esc(project.label)}</p>
-<h1>How should this project's code be arranged?</h1>
+<p class="eyebrow">${t.eyebrow} &middot; ${esc(project.label)}</p>
+<h1>${esc(t.title)}</h1>
 <p class="lede">${esc(project.blurb)}</p>
-<p class="verbatim">An architecture is <strong>where the files go</strong> and <strong>who is allowed to call whom</strong>. Nothing more. The complicated names are ways of answering those two questions.<br><br>The pipeline <strong>does not choose for you</strong>: the right answer depends on your product. It explains, then makes your choice enforceable &mdash; once declared, a file calling what it should not fails a gate instead of being flagged in review.</p>
+<p class="verbatim">${t.verbatim}</p>
 </header>
 
-${analysis == null ? questionnaire() : recommendation(retained, analysis)}
+${analysis == null ? questionnaire(t, text) : recommendation(retained, analysis, t, text)}
 
-<section><div class="sec-head"><h2>At a glance</h2>
-<p>${retained.length} options relevant to this project type. The detail is further down if you hesitate between two rows.</p></div>
-${table(retained, example)}</section>
+<section><div class="sec-head"><h2>${esc(t.glance_head)}</h2>
+<p>${esc(t.glance_blurb.split("{count}").join(String(retained.length)))}</p></div>
+${table(retained, example, t)}</section>
 
-<section><div class="sec-head"><h2>The four questions that decide</h2>
-<p>Answer them before looking at the names. They are answered without knowing any architecture, and they eliminate most of the options.</p></div>
+<section><div class="sec-head"><h2>${esc(t.axis_head)}</h2>
+<p>${esc(t.axis_blurb)}</p></div>
 <div class="features">${axis}</div></section>
 
-<section><div class="sec-head"><h2>Each option in detail</h2>
-<p>${retained.length} retained out of ${ARCHITECTURES.length}. The others are not bad: they solve problems this project type does not have.</p></div>
-<div class="features">${retained.map((entry, index) => card(entry, index, example)).join("")}</div></section>
+<section><div class="sec-head"><h2>${esc(t.detail_head)}</h2>
+<p>${esc(t.detail_blurb.split("{kept}").join(String(retained.length)).split("{total}").join(String(ARCHITECTURES.length)))}</p></div>
+<div class="features">${retained.map((entry, index) => card(entry, index, example, t)).join("")}</div></section>
 
 ${boundary}
 
-<section><div class="sec-head"><h2>&laquo; What if I get it wrong? &raquo;</h2>
-<p>That is the right objection. At the start of a project you do not know everything yet, and the files still have to go somewhere.</p></div>
-<p class="note"><strong>Do not pick the heaviest option out of caution.</strong> That is the most common mistake: you pay immediately for insurance you may never claim, and the cost is taken out of every file you write, for years.<br><br>
-<strong>What decides is an asymmetry.</strong> Starting simple keeps the options open: you harden one folder the day it earns it, without touching the others. Starting complicated closes them: nobody removes layers, they endure them. A bad simple choice is corrected piece by piece; a bad heavy one, you live with.<br><br>
-<strong>Here, changing your mind is measured.</strong> Your architecture is declared in the configuration and checked by a gate. The day you change the declaration, the gate prints you <em>the exact list</em> of files that no longer obey the new rule. A migration becomes a task list, not an exploration &mdash; and that is the difference with a project where the architecture lives only in people's heads.</p></section>
+<section><div class="sec-head"><h2>${t.wrong_head}</h2>
+<p>${esc(t.wrong_blurb)}</p></div>
+<p class="note">${t.wrong_note}</p></section>
 
-<section><div class="sec-head"><h2>What comes next</h2></div>
-<p class="note">Your choice becomes one line in the configuration: the folders, and who is allowed to call whom. The profile translates it into an automatically checked rule.<br><br><strong>Worth knowing before you choose:</strong> changing architecture later means moving files across the whole project. The cheapest moment to decide is now, before the first line of code.</p></section>`;
+<section><div class="sec-head"><h2>${esc(t.next_head)}</h2></div>
+<p class="note">${t.next_note}</p></section>`;
 
-  const written = resolvePage(target, safeConfig());
-  writeFileSync(written, shell(`Architecture — ${project.label}`, body));
+  const written = resolvePage(target, config);
+  writeFileSync(written, shell(t.doc_title.split("{label}").join(project.label), body));
   console.log(
     `written: ${written} (${type}, ${retained.length} options out of ${ARCHITECTURES.length}, ${analysis == null ? "questionnaire" : "advice grounded in the analysis"})`);
   console.log(SURFACE_HINT);
