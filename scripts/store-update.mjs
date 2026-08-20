@@ -310,7 +310,7 @@ function create(request, config, rules) {
   }
   const path = join(config.store_dir, `${kind}s.jsonl`);
   const entries = readJsonl(path);
-  if (entries.some((e) => e.record.id === record.id)) fail(`id deja present : ${record.id}`);
+  if (entries.some((e) => e.record.id === record.id)) fail(`id already present: ${record.id}`);
   if (kind === "issue") {
     const mirrored = sudocodeStatus(record.pipeline_state.phase, config.sudocode);
     if (mirrored != null && record.status == null) record.status = mirrored;

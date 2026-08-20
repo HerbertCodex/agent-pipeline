@@ -46,17 +46,17 @@ function actionFor(record, rules) {
   const owner = rules.phases?.[phase]?.owner ?? "inconnu";
 
   if (phase === ESCALATION) {
-    return { verb: "escalade", actor: "operator", reason: "three code rejections, or a fault the pipeline cannot route" };
+    return { verb: "escalate to", actor: "operator", reason: "three code rejections, or a fault the pipeline cannot route" };
   }
   if (phase.startsWith("blocked_")) {
-    return { verb: "debloquer", actor: owner, reason: `phase de blocage, tenue par ${owner}` };
+    return { verb: "unblock via", actor: owner, reason: `blocked phase, held by ${owner}` };
   }
   if (owner === "orchestrator") {
     const next = phase === "planned" ? "implementer" : "qa";
-    return { verb: "dispatcher", actor: next, reason: `la phase appartient a l'orchestrateur, qui transitionne puis dispatche ${next}` };
+    return { verb: "dispatch", actor: next, reason: `the phase belongs to the orchestrator, which transitions then dispatches ${next}` };
   }
   return {
-    verb: "redispatcher",
+    verb: "redispatch",
     actor: owner,
     reason: `${owner} has held the phase since ${record.pipeline_state?.last_transition_at ?? "an unknown moment"}; the store cannot tell a live role from a dead one`,
   };
@@ -92,7 +92,7 @@ function assertAdvanced(records, id, before) {
     fail(`${id} did not advance: still version ${after}. The step persisted nothing.`);
   }
   fail(
-    `${id} a avance de ${delta} transitions (version ${before} -> ${after}). ` +
+    `${id} advanced by ${delta} transitions (version ${before} -> ${after}). ` +
       `A step persists exactly one: the orchestrator chained them in the same conversation.`,
   );
 }

@@ -90,7 +90,16 @@ function main() {
     process.exit(1);
   }
 
-  writeFileSync(configPath, JSON.stringify({ ...slice, ...defaults }, null, 2));
+  // Merged key by key inside `commands`, not object against object: the
+  // template carries the gates the framework itself provides, the bundle
+  // carries the ones the stack provides, and a whole-object overwrite drops
+  // one of the two silently. The bundle wins where both name a key — it was
+  // written for a real project, the template was written for none.
+  const merged = { ...slice, ...defaults };
+  if (defaults.commands != null || slice.commands != null) {
+    merged.commands = { ...(defaults.commands ?? {}), ...(slice.commands ?? {}) };
+  }
+  writeFileSync(configPath, JSON.stringify(merged, null, 2));
   written.push("pipeline.config.json");
 
   for (const file of written) console.log(`  written  ${file}`);

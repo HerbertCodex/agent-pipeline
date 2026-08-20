@@ -77,7 +77,7 @@ export function sha256(text) {
  * @param glob - path pattern
  * @returns the equivalent regular expression
  */
-export function globToRegex(glob) {
+function globToRegex(glob) {
   const escaped = glob
     .replaceAll(/[.+^${}()|[\]\\]/g, "\\$&")
     .replaceAll("**/", "\u0000")
@@ -124,7 +124,7 @@ export function pathAllowed(path, policy) {
  * @param glob - path pattern
  * @returns the prefix with no wildcard
  */
-export function literalPrefix(glob) {
+function literalPrefix(glob) {
   const cut = glob.search(/[*?[]/);
   return cut === -1 ? glob : glob.slice(0, cut);
 }

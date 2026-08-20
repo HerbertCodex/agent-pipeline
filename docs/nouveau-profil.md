@@ -71,6 +71,10 @@ Also mandatory, outside `commands`: an `architecture` block, `{ id, project_type
 
 Mandatory paths, refused if absent: `profiles_dir`, `docs_dirs`, `briefs_dir`, `prompts_dir`, `skills_dir`, `rules_path`, `project_context`, `store_dir`.
 
+**A document may not prescribe a gate you do not have.** The briefs are compiled from these documents, and these documents describe gates a given project may never declare. Measured on a real port: nine rules across the four briefs named commands nothing answered for — in the very pages that teach the rules. A reader cannot tell such a rule from one that binds them, so they invent the gate, skip it in silence, or stop trusting the document; the third is the expensive one.
+
+`sync-briefs` therefore refuses to compile a brief naming a gate neither declared in `commands` nor shipped as a core script. The way out is not to delete the teaching but to condition it: wrap the passage in `<!-- gate:NAME -->` … `<!-- /gate -->` and it is dropped for projects without that gate, kept for the others.
+
 `project_map` needs three values, not one: `out` (where the map lives), `regenerate` (the command that WRITES it) and `commands.project_map` (the one that verifies it). Declaring only the verification is the state every project started in, and it leaves the map with no writer but the agents themselves — which is what serialised whole waves. `apply-profile` refuses a `project_map.out` with no `regenerate` beside it, and refuses a `file_policy.orchestrator` forbidding the path the Orchestrator is the only role allowed to write.
 
 `closure_gates` names the gates run once on the pull request rather than on every push — what is too slow to replay per commit. The map's gate is deferred whether or not it appears there: it is stale on the branch by construction, and that is not the operator's call to make.

@@ -96,7 +96,7 @@ function main() {
     console.log(`  ${key.padEnd(22)} ${value}`);
   }
 
-  console.log("\n## Par issue\n");
+  console.log("\n## Per issue\n");
   console.log("  id        phase           cycles  min   criteres  rejets  retours");
   for (const issue of issues) {
     console.log(

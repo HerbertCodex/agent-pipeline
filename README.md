@@ -320,11 +320,12 @@ Les scripts du framework s’attendent à le trouver à cet emplacement.
 
 ```console
 $ cd agent-pipeline && node --test "test/**/*.test.mjs" && cd ..
-ℹ pass 319
 ℹ fail 0
 ```
 
 Un framework qui vous demande de vérifier votre code devrait pouvoir supporter la même question.
+
+Le nombre de tests n'est volontairement pas écrit ici. Il a changé trois fois en une journée de travail, et à chaque fois la page qui vous demande de ne rien croire sur parole affirmait un chiffre que plus rien ne vérifiait. `fail 0` est la ligne qui compte, et elle reste vraie quel que soit le total.
 
 ---
 

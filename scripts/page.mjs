@@ -12,7 +12,7 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
  * reader can be in: an explicit light choice, an explicit dark choice, and
  * the system setting that stamps neither.
  */
-export const STYLE = `
+const STYLE = `
 :root{--paper:#f4f3f7;--card:#fff;--ink:#1b1f2a;--muted:#5c5a68;--faint:#86838f;--rule:#dedbe6;
 --stamp:#5b3fa8;--stamp-wash:#ece8f6;--exclude:#8d8896;--exclude-wash:#eceaf0;--alarm:#a3364a;
 --alarm-wash:#f7e9ec;--shadow:0 1px 2px rgba(27,31,42,.05),0 8px 24px -12px rgba(27,31,42,.12);
@@ -214,6 +214,7 @@ export function resolvePage(target, config) {
  * it is what produces the decision the configuration then records. It must
  * therefore ask where to write without depending on the answer.
  *
+ * @param path - configuration file to read
  * @returns the configuration, or null outside a configured project
  */
 export function safeConfig(path = "pipeline.config.json") {

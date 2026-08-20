@@ -50,7 +50,7 @@ On a project with screens, a handoff carrying a commit declares `mockup { path }
 
 Reuse existing modules before creating new ones. The `duplication` gate refuses a repeated block, so a component rewritten instead of reused fails before review; when two copies genuinely must stay apart, say so in the handoff rather than reshaping the code to slip past the check. **Any new component, module, helper or shared function requires a reuse note in your handoff**: what you searched, the closest existing thing and its path, and one sentence on why it does not fit without deforming it. Prefer using as-is, then extending with a backward-compatible default, and only then a variant. Before writing a non-business module likely to exceed about 80 lines, identify the mature reference library and report why it is not used; do not add it.
 
-Comments are contracts, never narration: structured docs on every export (`doc_lint` enforces presence and signature match), nothing else (`comment_policy` enforces it). The why of a non-obvious decision goes in the commit message.
+Comments are contracts, never narration: structured docs on every export, nothing else. The why of a non-obvious decision goes in the commit message.<!-- gate:doc_lint --> `doc_lint` enforces presence and signature match.<!-- /gate --><!-- gate:comment_policy --> `comment_policy` refuses the narration.<!-- /gate -->
 
 ## STACK WORKFLOW
 
@@ -63,7 +63,7 @@ A `## Context for Implementer (REGRESSION)` block means QA found a defect no tes
 ## VALIDATION BEFORE HANDOFF
 
 1. Run the relevant tests until green.
-2. Run `check`, `lint`, `dead_code`, `doc_lint` and `comment_policy`.
+2. Run `check`, `lint`, and every other fast static gate your commands table declares. The table is the authority on which exist here.
 3. Run `build` and the full suite when the issue changes build-time or cross-suite behavior; the Orchestrator replays the full battery before the PR.
 4. Read the complete diff; verify no package, prompt, brief, config or unrelated file is present; report any pre-existing dead symbol as a candidate without removing it.
 5. Map every criterion to both its test and its implementation.

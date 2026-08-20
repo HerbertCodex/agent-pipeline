@@ -55,7 +55,7 @@ export function computeWave(records, rules, specId = null, config = {}) {
   for (const record of candidates) {
     const blocking = (record.depends_on ?? []).filter((id) => phaseOf.get(id) !== "closed");
     if (blocking.length > 0) {
-      waiting.push({ id: record.id, reason: `depend de ${blocking.join(", ")}` });
+      waiting.push({ id: record.id, reason: `depends on ${blocking.join(", ")}` });
       continue;
     }
 

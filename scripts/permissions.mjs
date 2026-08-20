@@ -153,7 +153,7 @@ function main() {
     return;
   }
 
-  console.log("Refus declares par file_policy, role par role :\n");
+  console.log("Refusals declared by file_policy, role by role:\n");
   for (const [role, globs] of byRole) {
     console.log(`  ${role}`);
     for (const glob of globs) console.log(`    ${glob}`);

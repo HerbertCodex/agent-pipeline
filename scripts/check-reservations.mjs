@@ -51,7 +51,7 @@ function main() {
   }
 
   if (conflicts.length > 0) {
-    for (const conflict of conflicts) console.error(`conflit : ${conflict}`);
+    for (const conflict of conflicts) console.error(`conflict: ${conflict}`);
     fail(`dispatch refused for ${issueId}`);
   }
   console.log(`no collision: ${issueId} can be dispatched (${targetReservations.length} reservation(s))`);

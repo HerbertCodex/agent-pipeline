@@ -10,7 +10,7 @@
  * separation is the same one the architecture catalogue makes: an id is what
  * a gate reads, a sentence is what a human reads.
  */
-export const BRIEF_IDS = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"];
+const BRIEF_IDS = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"];
 
 /**
  * Verdicts an architecture can receive when faced with an analysed project.

@@ -3,13 +3,18 @@
 <!-- brief:orchestrator,product,implementer,qa -->
 ## What a green gate does and does not say
 
-Three commands guard the supply chain and the source: `audit` refuses a dependency carrying a vulnerability at or above the configured level, `secrets_scan` sweeps the tree for hard-coded credentials, `sast` looks for the classic dangerous constructs.
+Two commands guard the supply chain and the source: `audit` refuses a dependency carrying a vulnerability at or above the configured level, `secrets_scan` sweeps the tree for hard-coded credentials.
+<!-- gate:sast -->
+A third joins them where it is declared: `sast` looks for the classic dangerous constructs.
+<!-- /gate -->
 
 Each has a limit worth knowing, because a gate believed wider than it is protects less than no gate at all:
 
 - **`secrets_scan` sweeps the working tree, not the git history.** A secret already pushed is rotated, not scanned away. The gate will never catch it.
 - **`audit` reports what its database knows today.** A green result is a statement about the present, and it is the reason the command runs on every push rather than once.
+<!-- gate:sast -->
 - **`sast` finds patterns, not intentions.** It does not know your domain, so it cannot see an authorisation check that was never written.
+<!-- /gate -->
 <!-- /brief -->
 
 <!-- brief:qa,orchestrator -->

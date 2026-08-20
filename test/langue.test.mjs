@@ -40,6 +40,14 @@ const FRENCH = [
   "prevues", "valide", "motif", "mesures", "escalade", "escalades", "ferme", "valides", "rendu", "rendue", "amorce", "seme",
   "cible", "echappee", "echappees", "empreinte", "fonctionnalite",
   "fonctionnalites", "generee", "generees", "serialisee", "serialisees",
+  // Les mots les plus courants de la langue etaient absents, et c'est par eux
+  // que le francais est revenu : « repertoire de documents not found », « ##
+  // Commandes du projet », « le document source fait foi » ne portaient aucun
+  // des mots ci-dessus. Ils sont ecartes de l'anglais et du code par les
+  // bornes de mot : `questionnaire` ne contient pas `que`.
+  "de", "du", "la", "le", "ou", "que", "qui", "sur", "par", "faut",
+  "projet", "repertoire", "commandes", "executer", "conflit", "doute",
+  "foi", "deja",
 ];
 
 const WORDS = new RegExp(`(?<![-\\w])(${FRENCH.join("|")})\\b(?![-\\w])`, "i");

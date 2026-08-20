@@ -66,7 +66,7 @@ export function drift(graph) {
     if (out >= 3) {
       signals.push({
         level: "attention",
-        signal: `Le module « ${name} » importe ${out} autres modules.`,
+        signal: `Module "${name}" imports ${out} other modules.`,
         means: "A module that knows everyone is either a disguised orchestrator, or a sign the split follows technology rather than subject.",
         next: "Check whether it carries a responsibility that belongs elsewhere, before considering another layout.",
       });

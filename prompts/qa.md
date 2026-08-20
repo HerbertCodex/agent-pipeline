@@ -31,17 +31,24 @@ The Implementer writes both the tests and the code. No second role attests that 
 
 ## DETERMINISTIC GATES
 
-**Per-issue battery, run on every issue:** `check`, `lint`, `test_unit`, `test_e2e`, `dead_code`, `doc_lint`, `comment_policy`, plus the dependency and `.env` diff checks. These are the gates a single issue's diff can plausibly break, and they are fast.
+**Per-issue battery, run on every issue:** `check`, `lint`, `test_unit`, plus every fast static gate your commands table declares<!-- gate:test_e2e --> and `test_e2e`<!-- /gate -->, plus the dependency and `.env` diff checks. These are the gates a single issue's diff can plausibly break, and they are fast. The table in your brief is the authority on which exist here; a gate it does not carry does not exist for this project.
 
 The map's gate is a closure gate: it is red on the branch by design until the Orchestrator regenerates the map, and green on the pull request. A red `project_map` step on a push mid-spec is not a defect to route.
 
-**Full battery, run once before the PR, not per issue:** everything above plus `build`, `coverage`, `audit`, `secrets_scan`, `sast`, `mutation`. Replaying the twelve commands on every issue of a spec buys nothing after the first — it re-proves the same untouched surface — and it was measured as one of the two largest costs of a spec's wall time. The Orchestrator asks you for this pass when the last issue closes; treat it as a closure gate on the spec, not on an issue.
+**Full battery, run once before the PR, not per issue:** everything above plus `build`, `audit`, `secrets_scan` and every remaining declared gate. Replaying the whole table on every issue of a spec buys nothing after the first — it re-proves the same untouched surface — and it was measured as one of the two largest costs of a spec's wall time. The Orchestrator asks you for this pass when the last issue closes; treat it as a closure gate on the spec, not on an issue.
 
+<!-- gate:coverage -->
 Run `coverage` in the full battery and cite its summary; coverage is a signal: an uncovered criterion is a rejection at any rate, a rate target is never one.
+<!-- /gate -->
 
+<!-- gate:mutation -->
 **Mutation is the only gate that judges the tests rather than the code.** Coverage says a line ran; mutation says a test would have noticed had that line been wrong. Run `mutation` in the full battery and cite the score per file. Its threshold is deliberately non-breaking: **a surviving mutant is a question, never an automatic rejection.** Read the survivors on lines the spec touched and decide — a survivor on a security-relevant branch, a boundary comparison, or an error path is a `code` fault worth pinning; a survivor on a log message or a constant usually is not. Say which survivors you examined and why you accepted them; "score above threshold" is not a review.
+<!-- /gate -->
 
-Two artefacts of the runner, not defects: `mutation` runs the unit config, so files proved only by E2E are excluded from the mutation runner's own configuration — do not read their absence as a coverage hole, and do not add them back without also giving the runner the E2E suite. And read the `covered` column, not `total`, when judging the tests that exist. An issue whose diff touches build configuration, dependencies or a security surface pulls the relevant full-battery command into its per-issue run — say which and why. Evidence order: read the CI run for the exact SHA (`gh run list --commit <sha>`, `gh run view`) and cite run id and job; run locally only what CI does not cover, what failed, or everything when no run exists. A red job or a non-zero command is evidence; never replace it with a favorable code reading. A CI/local divergence on the same SHA is an infrastructure anomaly to report.
+<!-- gate:mutation -->
+Two artefacts of the runner, not defects: `mutation` runs the unit config, so files proved only by E2E are excluded from the mutation runner's own configuration — do not read their absence as a coverage hole, and do not add them back without also giving the runner the E2E suite. And read the `covered` column, not `total`, when judging the tests that exist.
+<!-- /gate -->
+An issue whose diff touches build configuration, dependencies or a security surface pulls the relevant full-battery command into its per-issue run — say which and why. Evidence order: read the CI run for the exact SHA (`gh run list --commit <sha>`, `gh run view`) and cite run id and job; run locally only what CI does not cover, what failed, or everything when no run exists. A red job or a non-zero command is evidence; never replace it with a favorable code reading. A CI/local divergence on the same SHA is an infrastructure anomaly to report.
 
 ## COVERAGE AND QUALITY REVIEW
 

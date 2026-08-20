@@ -191,6 +191,6 @@ describe("store-update: write isolation", () => {
     });
     const result = run(root, "store-update.mjs", [request]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /deja present/);
+    assert.match(result.output, /already present/);
   });
 });

@@ -142,6 +142,17 @@ describe("import-profile: installing a profile without silently overwriting", ()
     assert.equal(written.profile, "api-demo");
   });
 
+  test("the framework's own gates survive the bundle's, and the reverse", () => {
+    // The template carries the gates the core provides, the bundle the ones
+    // the stack provides. Merging object against object dropped one of the
+    // two without a word — the imported project came out with no dead_code.
+    const { bundle, host } = exported();
+    run(sandbox, "import-profile.mjs", [bundle, host]);
+    const written = JSON.parse(readFileSync(join(host, "pipeline.config.json"), "utf8"));
+    assert.match(written.commands.dead_code ?? "", /dead-code/, "the gate the framework ships was lost");
+    assert.equal(written.commands.design_limits, "eslint --config eslint.design.config.mjs .");
+  });
+
   test("refuses to touch a configuration that already exists, and prints what to merge", () => {
     const { bundle, host } = exported();
     writeFileSync(join(host, "pipeline.config.json"), JSON.stringify({ profile: "mine", commands: { check: "mine" } }));

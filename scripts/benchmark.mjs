@@ -72,7 +72,7 @@ function git(command) {
 /**
  * Opens a run: freezes the starting instant and the measurable state.
  *
- * @param args - Arguments de ligne de commande.
+ * @param args - Command-line arguments.
  */
 function start(args) {
   const labelIndex = args.indexOf("--label");

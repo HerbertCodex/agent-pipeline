@@ -1,5 +1,20 @@
 {
   "profiles_dir": "agent-pipeline/profiles",
+  "commands": {
+    "dead_code": "node agent-pipeline/scripts/dead-code.mjs",
+    "doc_lint": "node agent-pipeline/scripts/doc-lint.mjs",
+    "sast": "node agent-pipeline/scripts/sast.mjs",
+    "duplication": "node agent-pipeline/scripts/duplication.mjs",
+    "project_map": "node agent-pipeline/scripts/project-map.mjs --check",
+    "map_coverage": "node agent-pipeline/scripts/map-coverage.mjs"
+  },
+  "project_map": {
+    "out": "docs/project-map.md",
+    "roots": [
+      "src"
+    ],
+    "regenerate": "node agent-pipeline/scripts/project-map.mjs"
+  },
   "docs_dirs": [
     "agent-pipeline/docs"
   ],

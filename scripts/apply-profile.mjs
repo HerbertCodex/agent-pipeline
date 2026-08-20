@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, loadRules, pathAllowed, deferredGates, fail } from "./lib.mjs";
 import { ARCHITECTURES, PROJECT_TYPES } from "./architectures.mjs";
+import { stripUndeclaredGates, orphanGates } from "./gates.mjs";
 
 const CI_TEMPLATE = "agent-pipeline/templates/ci.template.yml";
 const AGENTS_TEMPLATE = "agent-pipeline/templates/AGENTS.template.md";
@@ -142,11 +143,27 @@ function renderPrompts(config) {
   if (!existsSync(PROMPTS_SRC)) fail(`not found: ${PROMPTS_SRC}`);
   const rendered = new Map();
   for (const file of readdirSync(PROMPTS_SRC).filter((f) => f.endsWith(".md")).sort()) {
-    const text = readFileSync(join(PROMPTS_SRC, file), "utf8")
-      .replaceAll("{{briefs_dir}}", config.briefs_dir)
-      .replaceAll("{{decisions_dir}}", config.decisions_dir);
+    const text = stripUndeclaredGates(
+      readFileSync(join(PROMPTS_SRC, file), "utf8")
+        .replaceAll("{{briefs_dir}}", config.briefs_dir)
+        .replaceAll("{{decisions_dir}}", config.decisions_dir),
+      config,
+    );
     const unresolved = text.match(/\{\{[a-z._]+\}\}/);
     if (unresolved) fail(`${PROMPTS_SRC}/${file}: unresolved variable ${unresolved[0]}`);
+    // The same rule as the briefs, one surface further. A prompt is the
+    // first thing a role reads, so a gate named there and declared nowhere
+    // is an obligation the role cannot satisfy and cannot recognise as
+    // inapplicable.
+    const orphans = orphanGates(text, config);
+    if (orphans.length > 0) {
+      console.error(`${PROMPTS_SRC}/${file}: ${orphans.length} rule(s) name a gate nothing answers for here:`);
+      for (const gate of orphans) console.error(`  \`${gate}\``);
+      fail(
+        "Declare the command, or wrap the passage in <!-- gate:NAME --> ... <!-- /gate --> in the prompt. " +
+          "A role cannot tell a rule that binds it from one that binds nobody.",
+      );
+    }
     rendered.set(file, text);
   }
   return rendered;
@@ -728,7 +745,7 @@ function main() {
     writeFileSync(AGENTS_OUT, agents);
     console.log(`written: ${AGENTS_OUT} (invariants of profile ${config.profile})`);
     writeFileSync(CLAUDE_OUT, claude);
-    console.log(`written: ${CLAUDE_OUT} (contexte de ${config.project_context})`);
+    console.log(`written: ${CLAUDE_OUT} (context from ${config.project_context})`);
     if (ciEnabled) {
       mkdirSync(dirname(CI_OUT), { recursive: true });
       writeFileSync(CI_OUT, ci);
