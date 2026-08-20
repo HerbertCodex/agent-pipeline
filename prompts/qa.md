@@ -33,6 +33,8 @@ The Implementer writes both the tests and the code. No second role attests that 
 
 **Per-issue battery, run on every issue:** `check`, `lint`, `test_unit`, `test_e2e`, `dead_code`, `doc_lint`, `comment_policy`, plus the dependency and `.env` diff checks. These are the gates a single issue's diff can plausibly break, and they are fast.
 
+The map's gate is a closure gate: it is red on the branch by design until the Orchestrator regenerates the map, and green on the pull request. A red `project_map` step on a push mid-spec is not a defect to route.
+
 **Full battery, run once before the PR, not per issue:** everything above plus `build`, `coverage`, `audit`, `secrets_scan`, `sast`, `mutation`. Replaying the twelve commands on every issue of a spec buys nothing after the first — it re-proves the same untouched surface — and it was measured as one of the two largest costs of a spec's wall time. The Orchestrator asks you for this pass when the last issue closes; treat it as a closure gate on the spec, not on an issue.
 
 Run `coverage` in the full battery and cite its summary; coverage is a signal: an uncovered criterion is a rejection at any rate, a rate target is never one.

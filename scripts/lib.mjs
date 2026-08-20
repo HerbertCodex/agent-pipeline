@@ -147,6 +147,64 @@ export function patternsMayOverlap(a, b) {
 }
 
 /**
+ * Paths a command produces, which no role authors by hand.
+ *
+ * The project map is the case that forced the notion: it is a function of
+ * the whole source tree, so every issue that adds an export changes it. Left
+ * as an ordinary path, it lands in every issue's reservations, and since
+ * reservations are what makes two issues parallel, the map alone serialises
+ * a whole wave. Naming it generated is what lets the framework treat it as
+ * what it is — output, with one writer, regenerated after the fact.
+ *
+ * @param config - the project configuration
+ * @returns the declared generated paths, without duplicates
+ */
+export function generatedPaths(config) {
+  const declared = Array.isArray(config?.generated_paths) ? config.generated_paths : [];
+  const map = config?.project_map?.out;
+  const all = typeof map === "string" ? [map, ...declared] : declared;
+  return [...new Set(all.filter((path) => typeof path === "string" && path.length > 0))];
+}
+
+/**
+ * Gates run once before the pull request rather than on every push.
+ *
+ * The map's gates are always among them, declared or not: the map is stale
+ * on the branch from the first export added until the orchestrator
+ * regenerates it, so running their checks on every push turns the branch red
+ * by design, and a job red by design is a job people stop reading. Both are
+ * named here because both READ the map — deferring the freshness check while
+ * leaving the coverage check on every push defers nothing, since the second
+ * fails on the same staleness as the first. `closure_gates` carries the rest
+ * — what the operator judges too slow to replay per commit.
+ *
+ * @param config - the project configuration
+ * @returns the keys of `commands` deferred to the pull request
+ */
+export function deferredGates(config) {
+  const declared = Array.isArray(config?.closure_gates) ? config.closure_gates : [];
+  const implicit = ["project_map", "map_coverage"].filter(
+    (key) => typeof config?.commands?.[key] === "string",
+  );
+  return new Set([...declared, ...implicit]);
+}
+
+/**
+ * Says whether a path is one a command produces.
+ *
+ * The comparison is exact, not a glob: a generated target is a file someone
+ * declared by name, and widening it to a pattern would silently exempt
+ * neighbours nobody generates.
+ *
+ * @param path - the path to classify
+ * @param config - the project configuration
+ * @returns true if the path is declared generated
+ */
+export function isGenerated(path, config) {
+  return generatedPaths(config).includes(path);
+}
+
+/**
  * Ends the process with an error message.
  *
  * @param message - message printed on stderr

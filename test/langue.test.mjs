@@ -107,18 +107,36 @@ function testTitles(source) {
 }
 
 /**
- * Extrait les blocs de commentaire d'un source.
+ * Removes string literals from a source.
  *
- * Ils etaient exclus des balayages jusqu'au 2026-08-18, au motif qu'un
- * commentaire n'est pas une sortie. C'etait faux dans les faits : ce sont
- * les premieres lignes que lit quiconque ouvre un script, et rien ne les
- * freinant, le francais y est revenu a chaque fichier ecrit.
+ * A glob ending a path with a star and a slash opens a comment as far as a
+ * regular expression is concerned: everything up to the next closing marker
+ * was then read as one, and a file declaring reservations was reported as
+ * French because of an issue title three functions below. Stripping the
+ * literals first is what makes the extractor read code rather than text
+ * that looks like code.
  *
- * @param source - contenu du fichier
- * @returns les blocs de commentaire, un par entree
+ * @param source - file contents
+ * @returns the same source, its string literals blanked out
+ */
+function withoutStrings(source) {
+  return source.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/g, '""');
+}
+
+/**
+ * Extracts the comment blocks of a source.
+ *
+ * They were excluded from the sweeps until 2026-08-18, on the grounds that a
+ * comment is not output. That was false in practice: they are the first
+ * lines anyone opening a script reads, and with nothing holding it back,
+ * French came back in every file written.
+ *
+ * @param source - file contents
+ * @returns the comment blocks, one per entry
  */
 function comments(source) {
-  return [...source.matchAll(/\/\*[\s\S]*?\*\//g), ...source.matchAll(/^\s*\/\/.*$/gm)].map((match) => match[0]);
+  const code = withoutStrings(source);
+  return [...code.matchAll(/\/\*[\s\S]*?\*\//g), ...code.matchAll(/^\s*\/\/.*$/gm)].map((match) => match[0]);
 }
 
 describe("the framework speaks one language", () => {
@@ -203,5 +221,19 @@ describe("the framework speaks one language", () => {
     ];
     const wrong = english.filter((line) => frenchIn(line) != null);
     assert.deepEqual(wrong, [], "un detecteur qui refuse de l'anglais rendrait la porte impossible a satisfaire");
+  });
+
+  test("stripping the literals did not blind the extractor", () => {
+    // The false positive fixed here came from a glob, so the witness carries
+    // one: the comment must still be found with a string beside it that ends
+    // in a star and a slash.
+    const source = [
+      'const policy = { allow: ["src/**", "docs/**"] };',
+      "// une regle que rien ne fait mordre s'annule toute seule",
+      'const title = "issue de test";',
+    ].join("\n");
+    const blocks = comments(source);
+    assert.equal(blocks.length, 1, `blocs extraits : ${JSON.stringify(blocks)}`);
+    assert.equal(frenchIn(blocks[0]), "une");
   });
 });

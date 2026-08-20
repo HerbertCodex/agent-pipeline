@@ -31,7 +31,13 @@ The note is judged against the project map. That is why the map exists, and why 
 
 `project_map` regenerates a map of every public export, its nature and the first line of its contract, at the path declared in the configuration. `map_coverage` fails if a source file is missing from it.
 
-**Profile contract.** The core cannot read your language: it requires only that the profile's `project_map` command regenerate the map at the declared path and support `--check`. `apply-profile` refuses a configuration that does not declare it. A TypeScript profile can go through the compiler API, a Dart profile through `analyzer`, a Swift profile through `sourcekitten` — the roles only ever see a path and a gate, never the tool.
+**Profile contract.** The core cannot read your language: `commands.project_map` verifies the map, `project_map.regenerate` writes it, and `project_map.out` says where. A TypeScript profile can go through the compiler API, a Dart profile through `analyzer`, a Swift profile through `sourcekitten` — the roles only ever see a path and two commands, never the tool. The regeneration deliberately stays out of `commands`: every key there becomes a CI step, and a CI that rewrites the map before checking it would make the check pass whatever the code says.
+
+**The map has one writer, and it is the Orchestrator.** It is a function of the whole source tree, so every issue adding an export changes it. Treated as an ordinary path it lands in every issue's reservations — and reservations are precisely what lets two issues run at once, so one generated file puts a whole wave in series. It measured as one of the two largest costs of a spec's wall time before it was named.
+
+Hence the rule, enforced in four places rather than written in one: `next-issues` and `check-reservations` ignore generated paths when computing overlap, `validate-handoff` refuses a plan that reserves one, `verify-scope` refuses one in any diff but the Orchestrator's, and the Orchestrator runs `regenerate.mjs` once an issue closes — from a tree where nobody is mid-write, which is the whole reason the job is not the Implementer's.
+
+**Its gate is a closure gate.** The map is stale on the branch from the first export added until the Orchestrator catches it up, so checking it on every push would mean a branch red by design — and a job red by design is a job people stop reading. The rendered workflow runs closure gates on `pull_request` only, and the `pre-push` hook leaves them alone. `closure_gates` in the configuration defers others the same way; the map is deferred whether or not it is listed, because that one is not a preference.
 
 The trap is not a red gate, it is a green one: **a `--check` that compares an empty map to an empty map exits 0**. Count the files under your roots against the entries rendered, once, before trusting it.
 <!-- /brief -->

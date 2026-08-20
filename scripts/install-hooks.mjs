@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { loadConfig, fail } from "./lib.mjs";
+import { loadConfig, fail, deferredGates } from "./lib.mjs";
 
 const MARKER = "# genere par agent-pipeline/scripts/install-hooks.mjs";
 
@@ -24,8 +24,11 @@ const HOOKS = {
 /**
  * Generated-target checks added to `pre-push`.
  *
- * `project_map` is not named here: its command comes from the configuration,
- * because it depends on the project's language.
+ * The map's own gate is not among them, and no longer runs here: it is a
+ * closure gate. The map is stale on the branch until the orchestrator
+ * regenerates it, so a hook checking it would refuse every push from the
+ * first export added until the pull request — and a hook that refuses
+ * legitimate work is a hook people learn to bypass.
  */
 const GENERATED_CHECKS = [
   "node agent-pipeline/scripts/sync-briefs.mjs --check",
@@ -47,7 +50,9 @@ function renderHook(name, config) {
   const spec = HOOKS[name];
   const lines = ["#!/bin/sh", MARKER, "# Do not edit by hand: re-run install-hooks.mjs.", "set -e", ""];
 
+  const deferred = deferredGates(config);
   for (const key of spec.commands) {
+    if (deferred.has(key)) continue;
     const command = config.commands?.[key];
     if (typeof command !== "string") fail(`commands.${key} missing: the ${name} hook cannot be rendered`);
     lines.push(`echo "[${name}] ${key}"`, command, "");
@@ -55,8 +60,6 @@ function renderHook(name, config) {
 
   if (spec.generated) {
     for (const check of GENERATED_CHECKS) lines.push(`echo "[${name}] generated target"`, check, "");
-    const projectMap = config.commands?.project_map;
-    if (typeof projectMap === "string") lines.push(`echo "[${name}] project_map"`, projectMap, "");
   }
 
   return lines.join("\n");

@@ -75,6 +75,7 @@ export function createSandbox({ issues = [], specs = [] } = {}) {
       profile: "test",
       profiles_dir: "agent-pipeline/profiles",
       commands: { check: "true" },
+      closure_gates: [],
       docs_dirs: ["agent-pipeline/docs"],
       briefs_dir: "pipeline/briefs",
       prompts_dir: ".claude/agents",

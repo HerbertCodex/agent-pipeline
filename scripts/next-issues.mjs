@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { loadConfig, loadRules, readJsonl, patternsMayOverlap, fail } from "./lib.mjs";
+import { loadConfig, loadRules, readJsonl, patternsMayOverlap, generatedPaths } from "./lib.mjs";
 
 /**
  * Computes the wave of issues dispatchable now, and those that are not yet,
@@ -19,16 +19,24 @@ import { loadConfig, loadRules, readJsonl, patternsMayOverlap, fail } from "./li
  * @param records - The store's issue records.
  * @param rules - The machine rules, for the reservation-holding phases.
  * @param specId - Restrict to one spec, or `null` for all.
+ * @param config - The project configuration, for its generated paths.
  * @returns The ready issues and the waiting ones with their reason.
  */
-export function computeWave(records, rules, specId = null) {
+export function computeWave(records, rules, specId = null, config = {}) {
   const phaseOf = new Map(records.map((r) => [r.id, r.pipeline_state?.phase]));
   const holding = new Set(rules.reservation_holding_phases);
+  // A generated path is nobody's to hold: it is rewritten from the source
+  // tree after the fact. Counted as a reservation it makes every issue that
+  // adds an export collide with every other, which is a whole wave
+  // serialised by a file no agent authored.
+  const generated = new Set(generatedPaths(config));
+  const guarded = (record) =>
+    (record.pipeline_state?.file_reservations ?? []).filter((pattern) => !generated.has(pattern));
 
   const heldElsewhere = records
     .filter((r) => holding.has(r.pipeline_state?.phase))
     .flatMap((r) =>
-      (r.pipeline_state?.file_reservations ?? []).map((pattern) => ({
+      guarded(r).map((pattern) => ({
         id: r.id,
         phase: r.pipeline_state.phase,
         pattern,
@@ -51,7 +59,7 @@ export function computeWave(records, rules, specId = null) {
       continue;
     }
 
-    const reservations = record.pipeline_state?.file_reservations ?? [];
+    const reservations = guarded(record);
     if (reservations.length === 0) {
       waiting.push({ id: record.id, reason: "unguarded: no reservation declared" });
       continue;
@@ -100,7 +108,7 @@ function main() {
   const config = loadConfig();
   const rules = loadRules();
   const records = readJsonl(join(config.store_dir, "issues.jsonl")).map((entry) => entry.record);
-  const { ready, waiting } = computeWave(records, rules, specId);
+  const { ready, waiting } = computeWave(records, rules, specId, config);
 
   if (asJson) {
     console.log(JSON.stringify({ ready, waiting }, null, 2));

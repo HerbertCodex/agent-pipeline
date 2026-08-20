@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadConfig, loadRules, fail } from "./lib.mjs";
+import { loadConfig, loadRules, pathAllowed, deferredGates, fail } from "./lib.mjs";
 import { ARCHITECTURES, PROJECT_TYPES } from "./architectures.mjs";
 
 const CI_TEMPLATE = "agent-pipeline/templates/ci.template.yml";
@@ -478,6 +478,53 @@ function checkLanguage(config) {
 }
 
 /**
+ * Refuses a configuration where the generated map has no honest place.
+ *
+ * Two things must hold, and each one alone is useless. The map must be
+ * regenerable by a command, or the orchestrator can only observe that it is
+ * stale. And the orchestrator's file policy must let it write the map, or
+ * the one role allowed to regenerate it is refused by the scope check the
+ * moment it does.
+ *
+ * Deferring the map's gate is not asked of anyone: the framework knows the
+ * map is stale on the branch by construction, so `deferredGates` defers it
+ * whether or not `closure_gates` mentions it. What the operator declares
+ * there is the rest — the gates they judge too slow to run on every push.
+ *
+ * @param config - the project configuration
+ * @returns nothing; fails the process on an incoherent declaration
+ */
+function checkGeneratedTargets(config) {
+  for (const key of config.closure_gates ?? []) {
+    if (typeof config.commands?.[key] !== "string") {
+      fail(
+        `closure_gates names "${key}", which no command declares. A gate nobody can run is not deferred, it is absent.`,
+      );
+    }
+  }
+
+  const out = config.project_map?.out;
+  if (typeof out !== "string") return;
+
+  if (typeof config.project_map?.regenerate !== "string") {
+    fail(
+      "project_map.regenerate missing: name the command that WRITES the map, not the one that checks it. " +
+        "The orchestrator regenerates the map after each issue closes; with only a check it can observe " +
+        "the staleness it is supposed to repair. It stays out of `commands` on purpose: a CI running the " +
+        "regeneration before the check would make the check pass whatever the code says.",
+    );
+  }
+
+  const policy = config.file_policy?.orchestrator;
+  if (policy != null && !pathAllowed(out, policy)) {
+    fail(
+      `file_policy.orchestrator forbids ${out}, the generated map it is the only role allowed to write. ` +
+        "Allow it there, or no role can regenerate what every role is forbidden to edit.",
+    );
+  }
+}
+
+/**
  * Refuses a configuration that does not declare how the code is laid out.
  *
  * `render-architecture` explains the options and the operator decides, but a
@@ -561,7 +608,11 @@ function main() {
   checkArchitecture(config);
   checkLanguage(config);
   checkDecisionsJournal(config);
+  // After calibration: an imported profile carries values nobody has read
+  // yet, and "this profile is not calibrated" is the answer worth printing
+  // first. Any missing key it names is downstream of that one sentence.
   checkCalibration(config);
+  checkGeneratedTargets(config);
   checkDesignSystem(config);
   for (const role of Object.keys(config.file_policy)) {
     if (!ROLES.includes(role)) fail(`file_policy: unknown role "${role}"`);
@@ -612,7 +663,16 @@ function main() {
       .map(([k, v]) => `          ${k}: ${v}`)
       .join("\n"),
     steps: Object.entries(config.commands)
-      .map(([key, cmd]) => `      - name: ${key.replaceAll("_", "-")}\n        run: ${cmd}`)
+      .map(([key, cmd]) => {
+        // A closure gate judges the spec, not the commit. Run on every push
+        // it would be red for the whole branch — the map is stale until the
+        // orchestrator regenerates it — and a job red by design is a job
+        // people stop reading.
+        const deferred = deferredGates(config).has(key)
+          ? "\n        if: ${{ github.event_name == 'pull_request' }}"
+          : "";
+        return `      - name: ${key.replaceAll("_", "-")}${deferred}\n        run: ${cmd}`;
+      })
       .join("\n\n"),
   };
   for (const [key, value] of Object.entries(vars)) ci = ci.replaceAll(`{{${key}}}`, value);

@@ -101,11 +101,15 @@ A QA handoff names its `fault`; the `rules_path` file maps it to the target phas
 
 ## PARALLEL WORK
 
-Dispatch in parallel only when dependencies are closed and `check-reservations.mjs` returns no conflict. An unguarded issue (no reservation) is blocking, not safe. If a global hook or shared generated file can collide, serialize the commits even with disjoint reservations. When an agent reports a correct change blocked by another file, expand or serialize the scope; never ask the agent to weaken the design.
+Dispatch in parallel only when dependencies are closed and `check-reservations.mjs` returns no conflict. An unguarded issue (no reservation) is blocking, not safe. When an agent reports a correct change blocked by another file, expand or serialize the scope; never ask the agent to weaken the design.
+
+**Generated files are yours, and nobody else's.** The project map is a function of the whole source tree, so every issue that adds an export changes it. Left as an ordinary path it lands in every issue's reservations, and reservations are exactly what makes two issues parallel — one generated file then puts a whole wave in series. `check-reservations.mjs` and `next-issues.mjs` therefore ignore the paths the configuration declares generated, `validate-handoff.mjs` refuses a plan that reserves one, and `verify-scope.mjs` refuses one in any diff but yours.
+
+So the map is stale on the branch, by design, and you are what makes it true again: **once an issue is closed and persisted, run `regenerate.mjs` and commit what it rewrote**, on its own commit. Do it from a tree where no other agent is mid-write — that is the whole reason the job is yours and not the Implementer's. Its gate is a closure gate: it runs on the pull request, not on every push, so a branch mid-spec is not red for carrying a map that has not caught up yet.
 
 ## SPEC COMPLETION
 
-When all issues are closed: dispatch QA once for the **full battery** described in its prompt — the commands skipped per issue, replayed on the final SHA. Then transition the spec to `ready_for_pr` with `store-update.mjs` and a `spec_state` request; dispatch Product with the branch, issue list, QA evidence and human-review surfaces; validate the `pr_result` handoff; persist the PR URL with a second `spec_state` request carrying `{ "phase": "pr_open", "pr_url": "..." }`; stop at the human review gate. The operator merges.
+When all issues are closed: run `regenerate.mjs` one last time and commit it, so the closure gate judges a map that matches the final tree. Then dispatch QA once for the **full battery** described in its prompt — the commands skipped per issue, replayed on the final SHA. Then transition the spec to `ready_for_pr` with `store-update.mjs` and a `spec_state` request; dispatch Product with the branch, issue list, QA evidence and human-review surfaces; validate the `pr_result` handoff; persist the PR URL with a second `spec_state` request carrying `{ "phase": "pr_open", "pr_url": "..." }`; stop at the human review gate. The operator merges.
 
 A spec handoff carries `mode: "spec_handoff"` and no `basis.pipeline_version` — a spec record has no `pipeline_state.version`, and inventing one is refused. Never fabricate a value to satisfy a validator: if a required field has no truthful value, the schema is wrong and you escalate.
 
