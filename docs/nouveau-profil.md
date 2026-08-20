@@ -285,6 +285,20 @@ It reads a `duplication` block: `roots` (required, because a scan of the wrong t
 
 **Expect it to be red on its first run**, and read what it found before touching the threshold. On this repository it found three real clones on day one: the whole e2e bootstrap copied across three suites — while the project map advertised nine reusable test harnesses — and the same fixture literal asserted in a unit spec and an e2e spec. Loosening the threshold would have hidden all three. A threshold loosened once loosens again.
 
+## The `actions_version` gate, and why the framework owes you this one
+
+```
+node agent-pipeline/scripts/actions-version.mjs [workflow-dir]
+```
+
+The CI template pins `actions/checkout`. That pin is the framework's, not the project's, so the drift it produces is the framework's to police. Nothing did, and the version went stale until a runner announced the deprecation — seen by a human, on a run, before any gate saw it. That is the lesson this repository claims to have paid most for, applied to itself.
+
+The gate reads the workflow files, takes every `owner/repo@vN`, asks the forge which major it has published, and refuses what has been superseded. It knows no stack: a Go project declares its actions the same way.
+
+**It fails closed.** An unreachable API is a refusal that says so, never a pass. A gate going green without having checked is worse than a missing one, because checking stops there and the repository claims a protection nobody exercises. It reads `GITHUB_TOKEN` or `GH_TOKEN` when present, which is what keeps a shared runner clear of the anonymous rate limit.
+
+It is not required of a profile: a project with no forge workflow has no actions to check, and the gate says so instead of passing quietly. Declare it as soon as `ci.provider` names one.
+
 ## The `design_limits` gate, required of every profile
 
 `apply-profile` refuses a configuration without `commands.design_limits`. The core does not know your tool, but it requires a gate bounding four things:
