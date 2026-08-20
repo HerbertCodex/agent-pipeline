@@ -226,6 +226,71 @@ function checkEscalation(handoff, errors) {
 }
 
 /**
+ * Confronts a cross-spec decision with the journal that must outlive its spec.
+ *
+ * `architecture_decision_proposal` was named in the documents and prescribed
+ * to Product for exactly this case, and the validator did not know it —
+ * neither did it refuse unknown modes, so such a handoff passed unseen and
+ * none of its rules ever applied.
+ *
+ * The consequence was observed on a real run: an orchestrator recorded that
+ * the interface layer lives outside the adapters, the reason was sound, and
+ * the decision reached only that spec's store record. The Product of the next
+ * spec would never have seen it, and would have decided again, differently.
+ *
+ * A decision therefore names the journal entry that carries it, the entry has
+ * to sit inside `decisions_dir`, and its text has to carry the reason. Filed
+ * elsewhere, or filed without the why, it is a decision nobody will apply and
+ * nobody can argue with.
+ *
+ * @param handoff - the submitted proposal
+ * @param errors - list of errors to append to
+ */
+function checkDecision(handoff, errors) {
+  const decision = handoff.decision;
+  for (const field of ["title", "because", "consequences"]) {
+    if (typeof decision?.[field] !== "string" || decision[field].trim().length === 0) {
+      errors.push(`decision.${field} missing`);
+    }
+  }
+
+  const record = handoff.journal_entry;
+  if (record == null || typeof record.path !== "string" || record.path.length === 0) {
+    errors.push(
+      "journal_entry.path missing: a cross-spec decision recorded only on this spec dies with it, and the " +
+        "next spec decides again, differently. Write the entry in the decisions journal and name it here.",
+    );
+    return;
+  }
+
+  let config;
+  try {
+    config = loadConfig();
+  } catch {
+    return;
+  }
+  const journal = config.decisions_dir;
+  const normalised = record.path.split("\\").join("/");
+  if (typeof journal === "string" && !normalised.startsWith(`${journal.split("\\").join("/")}/`)) {
+    errors.push(
+      `journal_entry.path is outside ${journal}: a decision filed elsewhere is a decision the next Product will not read`,
+    );
+    return;
+  }
+  if (!existsSync(record.path)) {
+    errors.push(`journal_entry.path not found: ${record.path}`);
+    return;
+  }
+  const body = readFileSync(record.path, "utf8");
+  if (decision?.because != null && !body.includes(decision.because)) {
+    errors.push(
+      `${record.path} does not carry the reason this decision was taken. A decision without its why is ` +
+        "one nobody can argue with, and therefore one the next reader either obeys blindly or ignores.",
+    );
+  }
+}
+
+/**
  * Validates an agent handoff against the machine source of the rules.
  *
  * Checks the shape, the emitting role, the requested transition, the context
@@ -409,6 +474,31 @@ function main() {
         }
       }
     }
+  }
+
+  // A mode the validator does not know used to pass through: none of its
+  // rules applied, and nothing said so. That is how `architecture_decision_
+  // proposal` lived for months as an instruction in Product's prompt with no
+  // implementation behind it. An unknown mode is now a refusal, so the gap
+  // between what the prompts prescribe and what the validator enforces
+  // cannot open silently again.
+  const KNOWN_MODES = [
+    "spec_proposal",
+    "spec_plan",
+    "issue_handoff",
+    "dependency_assessment",
+    "architecture_decision_proposal",
+    "pr_result",
+  ];
+  if (!KNOWN_MODES.includes(handoff.mode)) {
+    errors.push(
+      `mode "${handoff.mode}" is not one this validator knows. Known: ${KNOWN_MODES.join(", ")}. ` +
+        "A mode that passes unseen is a mode whose rules were never applied.",
+    );
+  }
+
+  if (handoff.mode === "architecture_decision_proposal") {
+    checkDecision(handoff, errors);
   }
 
   checkEscalation(handoff, errors);

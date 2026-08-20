@@ -53,6 +53,7 @@ function resolveRules() {
 export function createSandbox({ issues = [], specs = [] } = {}) {
   const root = mkdtempSync(join(tmpdir(), "pipeline-core-"));
   mkdirSync(join(root, "pipeline", "store"), { recursive: true });
+  mkdirSync(join(root, "docs", "decisions"), { recursive: true });
 
   const policy = {
     implementer: { allow: ["src/**", "test/**"], deny: ["package.json"] },
@@ -81,6 +82,7 @@ export function createSandbox({ issues = [], specs = [] } = {}) {
       rules_path: "pipeline/rules.json",
       project_context: "pipeline/project-context.md",
       store_dir: "pipeline/store",
+      decisions_dir: "docs/decisions",
       ci: { provider: "none" },
       file_policy: policy,
     }),

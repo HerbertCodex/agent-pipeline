@@ -8,7 +8,7 @@
 | --- | --- |
 | Always, first | `AGENTS.md` — roles, sources of truth, prohibitions |
 | Before creating anything at all | the project map — **generated**, lists every existing export with its role |
-| Before touching a past decision | the decisions journal — dependencies, trade-offs, accepted risks |
+| Before touching a past decision | `{{decisions_dir}}` — dependencies, trade-offs, accepted risks |
 | For the detail of a rule | `agent-pipeline/docs/` |
 
 The project map is the answer to "does this already exist?". Reading it before creating a module, a service, a helper or a test harness is not optional: the reuse note demanded of every addition is judged against it.

@@ -120,6 +120,7 @@ describe("apply-profile: a profile carries the traps it has already paid for", (
       duplication: "true",
     };
     config.architecture = { id: "feature-modules", project_type: "backend" };
+    config.decisions_dir = "docs/decisions";
     writeFileSync(path, JSON.stringify(config, null, 2));
     seedFramework(root);
     rmSync(join(root, "agent-pipeline", "profiles", "test", "pitfalls.md"));
@@ -132,5 +133,60 @@ describe("apply-profile: a profile carries the traps it has already paid for", (
       /escaped|paid for|again/i,
       "the refusal says what the file receives, or it becomes an empty file nobody reads",
     );
+  });
+});
+
+describe("apply-profile: the decisions journal has a place, not only a mention", () => {
+  /**
+   * Prepares a configured sandbox, with the journal present or absent.
+   *
+   * @param decisions - value of the `decisions_dir` key, or null to omit it
+   * @param create - whether the directory is created
+   * @returns the sandbox root
+   */
+  function withJournal(decisions, create) {
+    const root = createSandbox();
+    seedFramework(root);
+    const path = join(root, "pipeline.config.json");
+    const config = JSON.parse(readFileSync(path, "utf8"));
+    config.commands = {
+      check: "true", lint: "true", build: "true", test_unit: "true", audit: "true",
+      secrets_scan: "true", project_map: "true", design_limits: "true", duplication: "true",
+    };
+    config.architecture = { id: "feature-modules", project_type: "backend" };
+    // The sandbox declares a journal by default, since every other suite
+    // needs a configured project. Its absence is staged here, not assumed.
+    if (decisions == null) delete config.decisions_dir;
+    else config.decisions_dir = decisions;
+    writeFileSync(path, JSON.stringify(config, null, 2));
+    // `seedFramework` creates the journal, since every other suite needs a
+    // configured project. The absence is staged here, not assumed.
+    if (!create) rmSync(join(root, "docs", "decisions"), { recursive: true, force: true });
+    return root;
+  }
+
+  test("refuses a project that names no journal, though three prompts point at one", () => {
+    sandbox = withJournal(null, false);
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /decisions_dir/);
+    assert.match(
+      result.output,
+      /read it|points at|nowhere|no path/i,
+      "the refusal says which instruction it makes possible, or it reads as one more key",
+    );
+  });
+
+  test("refuses a journal named but never created", () => {
+    sandbox = withJournal("docs/decisions", false);
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /docs\/decisions/);
+  });
+
+  test("accepts an empty journal, because a new project has decided nothing yet", () => {
+    sandbox = withJournal("docs/decisions", true);
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.doesNotMatch(result.output, /decisions_dir/);
   });
 });

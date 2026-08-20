@@ -1,3 +1,8 @@
+import { mkdirSync } from "node:fs";
+import { fail } from "./lib.mjs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 /**
  * Stylesheet shared by the pipeline's review pages.
  *
@@ -172,3 +177,89 @@ export function shell(title, body) {
  */
 export const SURFACE_HINT =
   "to publish: if the harness can host an HTML page, publish it and hand the operator the link; otherwise hand them this path. The file opens on its own, with no network and no dependency.";
+
+/**
+ * Resolves where a rendered page is written.
+ *
+ * The renderers used to write wherever the operator happened to stand, and
+ * the README's own examples wrote to the project root. Over a project's life
+ * that leaves a pile of untracked HTML files next to the source, and nothing
+ * ever said where they belonged.
+ *
+ * A bare name now lands in `pages_dir`. A name carrying a directory is taken
+ * as given: asking for a path is asking for that path. A project that
+ * declares no `pages_dir` keeps the previous behaviour, because moving the
+ * pages of a repository that already runs the pipeline would be a change
+ * nobody asked for.
+ *
+ * The parent directory is created, and the caller prints the resolved path —
+ * a file that moves without saying so is a file the reader looks for in the
+ * wrong place.
+ *
+ * @param target - the path or name the caller was given
+ * @param config - the project configuration
+ * @returns the path to write, its parent created
+ */
+export function resolvePage(target, config) {
+  const named = target.includes("/") || target.includes("\\");
+  const resolved = named || typeof config?.pages_dir !== "string" ? target : join(config.pages_dir, target);
+  mkdirSync(dirname(resolved), { recursive: true });
+  return resolved;
+}
+
+/**
+ * Loads the configuration when there is one, and shrugs when there is not.
+ *
+ * `render-architecture` exists to be run before any configuration exists —
+ * it is what produces the decision the configuration then records. It must
+ * therefore ask where to write without depending on the answer.
+ *
+ * @returns the configuration, or null outside a configured project
+ */
+export function safeConfig(path = "pipeline.config.json") {
+  // `loadConfig` reports through `fail`, which exits the process: a caller
+  // cannot catch it. Reading the file directly is what makes "absent" an
+  // answer rather than a stop, and the first version of this helper wrapped
+  // `loadConfig` in a try/catch that could never fire.
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Languages the framework ships pages in.
+ */
+const PAGES_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "pages");
+
+/**
+ * Loads the text of the pages in the project's language.
+ *
+ * The pages are read by a person, and a person has a language. Everything
+ * else here is written in English because models follow it more reliably;
+ * these are the exception, for the same reason the README is.
+ *
+ * English is the fallback rather than a guess: a repository meant to be
+ * shared serves the widest reader when nobody has declared otherwise.
+ *
+ * A language the framework does not ship is refused rather than silently
+ * replaced. A page rendered in a language nobody asked for is a page whose
+ * reader assumes the framework is broken.
+ *
+ * @param config - the project configuration, or null
+ * @returns the dictionary for that language
+ */
+export function pageText(config) {
+  const code = typeof config?.language === "string" ? config.language : "en";
+  const path = join(PAGES_DIR, `${code}.json`);
+  if (!existsSync(path)) {
+    const shipped = readdirSync(PAGES_DIR)
+      .filter((name) => name.endsWith(".json"))
+      .map((name) => name.replace(".json", ""))
+      .join(", ");
+    fail(`language "${code}" is not one the framework ships. Available: ${shipped}.`);
+  }
+  return JSON.parse(readFileSync(path, "utf8"));
+}

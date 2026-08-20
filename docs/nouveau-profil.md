@@ -71,6 +71,18 @@ Also mandatory, outside `commands`: an `architecture` block, `{ id, project_type
 
 Mandatory paths, refused if absent: `profiles_dir`, `docs_dirs`, `briefs_dir`, `prompts_dir`, `skills_dir`, `rules_path`, `project_context`, `store_dir`.
 
+`language` decides which language the rendered pages are written in. `en` and `fr` ship; anything else is refused at configuration time rather than at the first page, hours later, where a typo looks like a broken script. Omit the key and the pages are English.
+
+Everything else here is written in English because models follow it more reliably. **The pages are the exception, and deliberately so**: they are the one artefact read by a person rather than by an agent, which is the same reason this repository's README is not in English either. The structure of the catalogue — ids, layers, allowed directions — stays in the code whatever the language, so a translation is added without touching a rule, and a rule changes without touching a translation. A test refuses a key present in one language and missing from the other, because a missing key renders as a blank space nobody notices.
+
+`decisions_dir` is required, and the directory must exist. `CLAUDE.md` sends every session to the decisions journal before touching a past decision, and Product is told to read it and never to edit it. Until 2026-08-19 those three instructions pointed at a document with no path, no key and no command behind it — the exact shape of rule this framework refuses everywhere else, sitting in its own prompts. The path now reaches the prompts, so the instruction designates something.
+
+An empty journal is accepted: a new project has decided nothing yet, and that is worth recording as such. What no command can check is whether a decision that was taken got written down — that judgement is the operator's, and pretending to enforce it would be worse than saying so.
+
+`pages_dir` is optional and worth setting on the first day. The renderers write the pages an operator reads — architecture, design system, tokens, arbitration queue — and a bare file name lands there rather than wherever the command was run. Without it they accumulate at the project root, next to the source, and nothing ever says where they belonged. Add the directory to `.gitignore` too: those pages are artefacts of a decision, not sources.
+
+A name carrying a directory is still taken as given. And `render-architecture` runs before any configuration exists, since it produces the decision the configuration then records — it therefore asks where to write without depending on the answer.
+
 You are free to place them where you want, and that is the point: none of it is fixed in the core. Grouping the machinery under a single directory — `pipeline/profiles`, `pipeline/briefs`, `pipeline/store`, `pipeline/rules.json` — avoids fighting the host project for names it wants for itself, `docs/` and `scripts/` first among them. Only `AGENTS.md`, `CLAUDE.md`, the prompts directory and `pipeline.config.json` stay at the root: the platform looks for them there.
 
 `rules_path` is **seeded** at the first render from `agent-pipeline/schemas/rules.json`, then completed with the profile's `file_policy`. You do not copy it yourself.
@@ -284,20 +296,6 @@ The framework ships one implementation, `agent-pipeline/scripts/duplication.mjs`
 It reads a `duplication` block: `roots` (required, because a scan of the wrong tree is green for the wrong reason), `min_lines` (default 6) and `skip`. Below about six lines you are not finding rewrites, you are finding shared conventions, and a gate that cries wolf gets ignored.
 
 **Expect it to be red on its first run**, and read what it found before touching the threshold. On this repository it found three real clones on day one: the whole e2e bootstrap copied across three suites — while the project map advertised nine reusable test harnesses — and the same fixture literal asserted in a unit spec and an e2e spec. Loosening the threshold would have hidden all three. A threshold loosened once loosens again.
-
-## The `actions_version` gate, and why the framework owes you this one
-
-```
-node agent-pipeline/scripts/actions-version.mjs [workflow-dir]
-```
-
-The CI template pins `actions/checkout`. That pin is the framework's, not the project's, so the drift it produces is the framework's to police. Nothing did, and the version went stale until a runner announced the deprecation — seen by a human, on a run, before any gate saw it. That is the lesson this repository claims to have paid most for, applied to itself.
-
-The gate reads the workflow files, takes every `owner/repo@vN`, asks the forge which major it has published, and refuses what has been superseded. It knows no stack: a Go project declares its actions the same way.
-
-**It fails closed.** An unreachable API is a refusal that says so, never a pass. A gate going green without having checked is worse than a missing one, because checking stops there and the repository claims a protection nobody exercises. It reads `GITHUB_TOKEN` or `GH_TOKEN` when present, which is what keeps a shared runner clear of the anonymous rate limit.
-
-It is not required of a profile: a project with no forge workflow has no actions to check, and the gate says so instead of passing quietly. Declare it as soon as `ci.provider` names one.
 
 ## The `design_limits` gate, required of every profile
 

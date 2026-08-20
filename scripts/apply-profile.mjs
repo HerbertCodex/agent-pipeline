@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadConfig, loadRules, fail } from "./lib.mjs";
 import { ARCHITECTURES, PROJECT_TYPES } from "./architectures.mjs";
 
@@ -122,7 +123,8 @@ function renderClaude(config) {
   const text = readFileSync(CLAUDE_TEMPLATE, "utf8")
     .replaceAll("{{project_summary}}", projectBlock(source, "summary", contextPath))
     .replaceAll("{{project_commands}}", projectBlock(source, "commands", contextPath))
-    .replaceAll("{{project_context}}", projectBlock(source, "context", contextPath));
+    .replaceAll("{{project_context}}", projectBlock(source, "context", contextPath))
+    .replaceAll("{{decisions_dir}}", config.decisions_dir);
 
   const unresolved = text.match(/\{\{[a-z._]+\}\}/);
   if (unresolved) fail(`${CLAUDE_TEMPLATE}: unresolved variable ${unresolved[0]}`);
@@ -140,7 +142,9 @@ function renderPrompts(config) {
   if (!existsSync(PROMPTS_SRC)) fail(`not found: ${PROMPTS_SRC}`);
   const rendered = new Map();
   for (const file of readdirSync(PROMPTS_SRC).filter((f) => f.endsWith(".md")).sort()) {
-    const text = readFileSync(join(PROMPTS_SRC, file), "utf8").replaceAll("{{briefs_dir}}", config.briefs_dir);
+    const text = readFileSync(join(PROMPTS_SRC, file), "utf8")
+      .replaceAll("{{briefs_dir}}", config.briefs_dir)
+      .replaceAll("{{decisions_dir}}", config.decisions_dir);
     const unresolved = text.match(/\{\{[a-z._]+\}\}/);
     if (unresolved) fail(`${PROMPTS_SRC}/${file}: unresolved variable ${unresolved[0]}`);
     rendered.set(file, text);
@@ -410,6 +414,70 @@ function checkCalibration(config) {
 }
 
 /**
+ * Refuses a project that mentions the decisions journal without placing it.
+ *
+ * `CLAUDE.md` sends any session to it before touching a past decision, and
+ * Product is told to read it and never to edit it. Three instructions
+ * pointing at a document that had no path, no key and no command: the one
+ * shape of rule this framework exists to refuse, sitting in its own prompts.
+ *
+ * The directory is required to exist, empty or not. A journal with no entry
+ * is honest on a new project; a journal nobody can find is an instruction
+ * nobody can follow.
+ *
+ * What this does not do is check that a decision was actually written down
+ * when one was taken. Nothing here can: the judgement of what counts as a
+ * decision worth recording is the operator's, and pretending otherwise would
+ * be worse than saying so.
+ *
+ * @param config - host project configuration
+ */
+function checkDecisionsJournal(config) {
+  const journal = config.decisions_dir;
+  if (typeof journal !== "string" || journal.length === 0) {
+    fail(
+      "decisions_dir missing: CLAUDE.md sends every session to the decisions journal before touching a " +
+        "past decision, and Product is told to read it and never edit it. Those three instructions point " +
+        "at a document with no path, so they point at nothing. Name the directory.",
+    );
+  }
+  if (!existsSync(journal)) {
+    fail(
+      `not found: ${journal}\n` +
+        "The journal is named but does not exist, so the instruction to read it cannot be followed. " +
+        "Create it, empty: a new project has decided nothing yet, and that is worth recording as such.",
+    );
+  }
+}
+
+/**
+ * Refuses a page language the framework does not ship.
+ *
+ * The pages are the one thing here written for a person rather than a model,
+ * and a person has a language. Declaring one the framework cannot render
+ * would fail at the first page, hours after the configuration was written,
+ * and look like a broken script rather than a typo.
+ *
+ * @param config - host project configuration
+ */
+function checkLanguage(config) {
+  if (config.language === undefined) return;
+  // Resolved from this script, never from the host project: it is the
+  // framework that ships the languages, and a project that has not copied
+  // them yet would look like a project asking for an unknown one.
+  const pages = join(dirname(fileURLToPath(import.meta.url)), "..", "pages");
+  const shipped = readdirSync(pages)
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => name.replace(".json", ""));
+  if (typeof config.language !== "string" || !shipped.includes(config.language)) {
+    fail(
+      `language "${config.language}" is not one the framework ships. Available: ${shipped.join(", ")}. ` +
+        "Omit the key to render the pages in English.",
+    );
+  }
+}
+
+/**
  * Refuses a configuration that does not declare how the code is laid out.
  *
  * `render-architecture` explains the options and the operator decides, but a
@@ -491,6 +559,8 @@ function main() {
     );
   }
   checkArchitecture(config);
+  checkLanguage(config);
+  checkDecisionsJournal(config);
   checkCalibration(config);
   checkDesignSystem(config);
   for (const role of Object.keys(config.file_policy)) {

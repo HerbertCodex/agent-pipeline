@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fail, sha256 } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig } from "./page.mjs";
 
 /**
  * Digest of what the page shows the operator.
@@ -203,9 +203,10 @@ ${renderTitles(handoff.decomposition_titles)}
   const page =
     `<meta name="proposal-review-digest" content="${reviewDigest(handoff)}">\n` +
     shell(`Scope ${specId}`, body);
-  writeFileSync(target, page);
+  const written = resolvePage(target, safeConfig());
+  writeFileSync(written, page);
   console.log(
-    `written: ${target} (round ${handoff.round}, ${features.length} features, ${rules} rules, ${open.length} open question(s))`,
+    `written: ${written} (round ${handoff.round}, ${features.length} features, ${rules} rules, ${open.length} open question(s))`,
   );
   console.log(SURFACE_HINT);
 }

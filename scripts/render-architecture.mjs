@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { fail } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
-import { PROJECT_TYPES, DECISION_AXIS, ARCHITECTURES, FULLSTACK_BOUNDARY } from "./architectures.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig } from "./page.mjs";
+import { PROJECT_TYPES, ARCHITECTURES, FULLSTACK_BOUNDARY, catalogue } from "./architectures.mjs";
 import { readFileSync, existsSync } from "node:fs";
 import { BRIEF_QUESTIONS, judge, summarise } from "./discovery.mjs";
 
@@ -155,12 +155,15 @@ function main() {
   if (!target || !type) {
     fail(`usage : render-architecture.mjs <sortie.html> <${Object.keys(PROJECT_TYPES).join("|")}> [analyse.json]`);
   }
-  const project = PROJECT_TYPES[type];
+  // The prose comes from the declared language's dictionary; the structure
+  // stays the catalogue's. The two meet here and nowhere else.
+  const spoken = catalogue(safeConfig());
+  const project = spoken.projectTypes[type];
   if (project == null) {
     fail(`unknown project type: ${type} (expected ${Object.keys(PROJECT_TYPES).join(", ")})`);
   }
 
-  const retained = ARCHITECTURES.filter((entry) => entry.applies.includes(type));
+  const retained = spoken.architectures.filter((entry) => entry.applies.includes(type));
   const example = project.example;
 
   let analysis = null;
@@ -172,7 +175,7 @@ function main() {
     }
   }
 
-  const axis = DECISION_AXIS.map(
+  const axis = spoken.decisionAxis.map(
     (item, index) => `<div class="open">
 <h3><span class="qid">Q${index + 1}</span>${esc(item.question)}</h3>
 <p class="short">${esc(item.short)}</p>
@@ -225,8 +228,10 @@ ${boundary}
 <section><div class="sec-head"><h2>What comes next</h2></div>
 <p class="note">Your choice becomes one line in the configuration: the folders, and who is allowed to call whom. The profile translates it into an automatically checked rule.<br><br><strong>Worth knowing before you choose:</strong> changing architecture later means moving files across the whole project. The cheapest moment to decide is now, before the first line of code.</p></section>`;
 
-  writeFileSync(target, shell(`Architecture — ${project.label}`, body));
-  console.log(`written: ${target} (${type}, ${retained.length} options out of ${ARCHITECTURES.length}, ${analysis == null ? "questionnaire" : "advice grounded in the analysis"})`);
+  const written = resolvePage(target, safeConfig());
+  writeFileSync(written, shell(`Architecture — ${project.label}`, body));
+  console.log(
+    `written: ${written} (${type}, ${retained.length} options out of ${ARCHITECTURES.length}, ${analysis == null ? "questionnaire" : "advice grounded in the analysis"})`);
   console.log(SURFACE_HINT);
 }
 

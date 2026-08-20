@@ -1,3 +1,5 @@
+import { pageText } from "./page.mjs";
+
 /**
  * Project types recognised at configuration time.
  *
@@ -298,3 +300,37 @@ export const FULLSTACK_BOUNDARY = [
     wrong_when: "When a single team holds both sides: you duplicate without gaining the independence that would justify it.",
   },
 ];
+
+/**
+ * Merges the catalogue's structure with the text of the operator's language.
+ *
+ * The structure — ids, layers, allowed directions, which project types an
+ * option applies to — is the same whatever language the reader uses, and it
+ * is what the gates enforce. Only the prose moves.
+ *
+ * Keeping them apart is what lets a translation be added without touching a
+ * single rule, and what lets a rule change without touching a translation.
+ *
+ * @param config - the project configuration, or null
+ * @returns the catalogue, its prose in the declared language
+ */
+export function catalogue(config) {
+  const text = pageText(config);
+  return {
+    projectTypes: Object.fromEntries(
+      Object.entries(PROJECT_TYPES).map(([id, entry]) => [id, { ...entry, ...(text.project_types?.[id] ?? {}) }]),
+    ),
+    decisionAxis: DECISION_AXIS.map((axis, index) => {
+      const translated = text.decision_axis?.[index];
+      if (translated == null) return axis;
+      return {
+        ...axis,
+        question: translated.question,
+        short: translated.short,
+        why: translated.why,
+        answers: (translated.answers ?? []).map((answer) => [answer.label, answer.then]),
+      };
+    }),
+    architectures: ARCHITECTURES.map((entry) => ({ ...entry, ...(text.architectures?.[entry.id] ?? {}) })),
+  };
+}

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig, loadRules, readJsonl, pathAllowed, fail } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage } from "./page.mjs";
 
 /**
  * Says whether a role can take on all of an issue's reservations.
@@ -178,9 +178,10 @@ ${section("No agent can take these", "Scope entirely outside the file policy of 
     total > 0 ? "The points above do not block them, unless their reservations intersect." : ""
   }</p></section>`;
 
-  writeFileSync(target, shell("File d'arbitrage", body));
+  const written = resolvePage(target, config);
+  writeFileSync(written, shell("File d'arbitrage", body));
   console.log(
-    `written: ${target} (${pending.length} spec question(s), ${blocked.length} blocked, ${orphaned.length} with no agent, ${dispatchable.length} dispatchable)`,
+    `written: ${written} (${pending.length} spec question(s), ${blocked.length} blocked, ${orphaned.length} with no agent, ${dispatchable.length} dispatchable)`,
   );
   console.log(SURFACE_HINT);
 }

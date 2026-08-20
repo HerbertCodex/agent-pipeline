@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fail } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig } from "./page.mjs";
 
 /**
  * Project types that have screens, and therefore a design system.
@@ -158,8 +158,10 @@ ${libraryChoice()}
 <p class="note">Three values in <code>pipeline.config.json</code>, under <code>design_system</code>: <code>tokens</code> (the path of the single source of truth), <code>primitives</code> (<code>own</code>, or the name of the library retained) and <code>decided_at</code>.<br><br>Without them, <code>apply-profile</code> refuses to run on a project with screens. The reason is the same as for the architecture: a choice that lives only in a page binds nobody, the agent taking the first issue will settle it alone, and every one after inherits it without anyone having approved it.</p></section>
 `;
 
-  writeFileSync(target, shell(`Design system ${type}`, body));
-  console.log(`written: ${target} (${type}, ${LAYERS.length} layers)`);
+  const written = resolvePage(target, safeConfig());
+  writeFileSync(written, shell(`Design system ${type}`, body));
+  console.log(
+    `written: ${written} (${type}, ${LAYERS.length} layers)`);
   console.log(SURFACE_HINT);
 }
 

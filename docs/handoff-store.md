@@ -58,6 +58,14 @@ The exit is explicit rather than inferred. A validator cannot tell a visual issu
 
 **What this does and does not buy.** It makes the screens of one project agree with each other and with the tokens: nothing is invented mid-issue. It does not make them distinctive. A mockup an agent produced from nothing is still the average of what it has seen, and coding faithfully from a generic mockup gives an interface that is consistently generic. Distinctiveness comes from the brief and from references the operator supplies, and no gate replaces either.
 
+## A cross-spec decision outlives its spec, or it was never taken
+
+`architecture_decision_proposal` carries `decision { title, because, consequences }` and `journal_entry { path }`. The entry must sit inside `decisions_dir` and its text must carry the reason: a decision filed elsewhere is one the next Product will not read, and a decision without its why is one the next reader either obeys blindly or ignores.
+
+**The failure this closes was observed on a real run.** An orchestrator recorded that the interface layer lives in `src/lib/ui/`, outside the adapters, so as not to wear down the mandatory human review until nobody reads it any more. The reasoning was sound and the decision reached only that spec's store record. The Product of the next spec would never have seen it, and would have decided again, differently.
+
+**And the mode was prescribed to Product while the validator did not know it.** Unknown modes passed through unseen, so none of their rules ever applied — which is how an instruction can live in a prompt for months with nothing behind it. An unknown mode is now refused by name, so that gap cannot open silently again.
+
 ## A dependency is argued, and the argument is rendered
 
 No agent installs anything. `dependency_assessment` is how one stops and makes its case: `need` in product terms, `hand_rolled_cost` — how much code the package replaces and on which surface, so that refusing is an informed choice rather than a reflex — `candidates` each carrying `license`, `maintenance.last_release`, `security.advisories_open` and `security.runtime_privileges`, a `recommendation`, and `alternatives_rejected`, never empty because writing it by hand was always one of them.

@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { loadConfig, fail } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage } from "./page.mjs";
 import { tokensIn } from "./mockup-check.mjs";
 
 /**
@@ -220,9 +220,10 @@ ${scale(lengths)}
 ${typefaces(fonts)}
 `;
 
-  writeFileSync(target, shell("Design tokens", body));
+  const written = resolvePage(target, config);
+  writeFileSync(written, shell("Design tokens", body));
   console.log(
-    `written: ${target} (${colours.length} colour(s), ${lengths.length} length(s), ${fonts.length} typeface(s))`,
+    `written: ${written} (${colours.length} colour(s), ${lengths.length} length(s), ${fonts.length} typeface(s))`,
   );
   console.log(SURFACE_HINT);
 }

@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fail, sha256 } from "./lib.mjs";
-import { esc, pad, shell, SURFACE_HINT } from "./page.mjs";
+import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig } from "./page.mjs";
 
 /**
  * Digest of what the page submits to the operator.
@@ -125,8 +125,10 @@ ${rejected(handoff.alternatives_rejected)}
 `;
 
   const page = `<meta name="dependency-review-digest" content="${dependencyDigest(handoff)}">\n` + shell(`Dependency ${issue}`, body);
-  writeFileSync(target, page);
-  console.log(`written: ${target} (${candidates.length} candidate(s), ${(handoff.alternatives_rejected ?? []).length} rejected)`);
+  const written = resolvePage(target, safeConfig());
+  writeFileSync(written, page);
+  console.log(
+    `written: ${written} (${candidates.length} candidate(s), ${(handoff.alternatives_rejected ?? []).length} rejected)`);
   console.log(SURFACE_HINT);
 }
 
