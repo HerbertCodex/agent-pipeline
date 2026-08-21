@@ -538,7 +538,10 @@
       "wrong_note": "<strong>Ne prenez pas l'option la plus lourde par prudence.</strong> C'est l'erreur la plus courante : vous payez tout de suite une assurance que vous n'activerez peut-être jamais, et le coût se prélève sur chaque fichier que vous écrivez, pendant des années.<br><br>\n<strong>Ce qui tranche, c'est une asymétrie.</strong> Commencer simple garde les options ouvertes : vous durcissez un dossier le jour où il le mérite, sans toucher aux autres. Commencer compliqué les ferme : personne n'enlève des couches, on les subit. Un mauvais choix simple se corrige morceau par morceau ; un mauvais choix lourd, on vit avec.<br><br>\n<strong>Ici, changer d'avis se mesure.</strong> Votre architecture est déclarée dans la configuration et vérifiée par une commande. Le jour où vous changez la déclaration, la commande vous imprime <em>la liste exacte</em> des fichiers qui n'obéissent plus à la nouvelle règle. Une migration devient une liste de tâches, pas une exploration &mdash; et c'est la différence avec un projet où l'architecture ne vit que dans les têtes.",
       "next_head": "Ce qui vient ensuite",
       "next_note": "Votre choix devient une ligne dans la configuration : les dossiers, et qui a le droit d'appeler qui. Le profil la traduit en règle vérifiée automatiquement.<br><br><strong>Bon à savoir avant de choisir :</strong> changer d'architecture plus tard, c'est déplacer des fichiers dans tout le projet. Le moment le moins cher pour décider, c'est maintenant, avant la première ligne de code.",
-      "doc_title": "Architecture — {label}"
+      "doc_title": "Architecture — {label}",
+      "remaining_head": "Ce que votre description ne dit pas encore",
+      "remaining_blurb": "Celles-ci seulement. Le reste est déjà dans ce que vous avez écrit, et une option qui dépend de l'une d'elles reste à déterminer plutôt que d'être jugée sur un silence.",
+      "remaining_none": "Votre description répond à toutes les questions dont dépend la décision. Rien de ce qui suit n'est jugé sur une absence."
     }
   },
   "brief_questions": {
@@ -586,7 +589,8 @@
   "verdicts": {
     "recommande": "Recommandée",
     "possible": "Possible",
-    "excessif": "Excessive ici"
+    "excessif": "Excessive ici",
+    "undecided": "À déterminer"
   },
   "judgement": {
     "teams_parallel": "Plusieurs équipes en parallèle : un dossier chacune, personne ne se marche dessus.",
@@ -604,7 +608,8 @@
     "sliced": "Empêche les imports circulaires dans une base où tout tend à importer tout.",
     "mvvm": "La logique d'écran est testable sans lancer l'interface.",
     "mvi_churn": "Les écrans changent souvent : un état reproductible se rentabilise.",
-    "mvi_stable": "Sans état d'écran compliqué, la machinerie coûte plus qu'elle ne protège."
+    "mvi_stable": "Sans état d'écran compliqué, la machinerie coûte plus qu'elle ne protège.",
+    "undecided": "Indécidable tant que {question} est sans réponse : l'option en dépend, et le silence n'est pas un non."
   },
   "summary": {
     "no_rule": "aucune règle métier",
@@ -615,7 +620,9 @@
     "one_person": "une seule personne",
     "teams": "plusieurs équipes",
     "few_people": "quelques personnes en parallèle",
-    "sentence": "{domain}, {ports}, {workers}."
+    "sentence": "{domain}, {ports}, {workers}.",
+    "rules_unknown": "règles métier pas encore décrites",
+    "ports_unknown": "intégrations pas encore décrites"
   },
   "fullstack_boundary": {
     "generated": {

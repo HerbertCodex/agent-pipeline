@@ -3,7 +3,7 @@ import { fail } from "./lib.mjs";
 import { esc, pad, shell, SURFACE_HINT, resolvePage, safeConfig, pageText } from "./page.mjs";
 import { PROJECT_TYPES, ARCHITECTURES, FULLSTACK_BOUNDARY, catalogue } from "./architectures.mjs";
 import { readFileSync, existsSync } from "node:fs";
-import { briefQuestions, judge, summarise } from "./discovery.mjs";
+import { briefQuestions, judge, summarise, unanswered } from "./discovery.mjs";
 
 /**
  * Renders the dependency direction as a chain of arrowed boxes.
@@ -144,10 +144,29 @@ function recommendation(retained, analysis, t, text) {
     .join("");
   const rules = analysis.business_rules ?? [];
   const validations = analysis.validations ?? [];
+  // What the description did not cover, and only that. Asking the eight
+  // questions again to someone who has just described their product is how a
+  // conversation turns into a form.
+  const open = new Set(unanswered(analysis));
+  const remaining = briefQuestions(text)
+    .filter((item) => open.has(item.id))
+    .map(
+      (item) => `<div class="open">
+<h3><span class="qid">${esc(item.id)}</span>${esc(item.question)}</h3>
+<p class="short">${esc(item.hint)}</p>
+<p class="reveals">${esc(t.brief_reveals)} — ${esc(item.reveals)}</p>
+</div>`,
+    )
+    .join("");
   return `<section><div class="sec-head"><h2>${esc(t.says_head)}</h2>
 <p>${esc(summarise(analysis, text))}</p></div>
 ${rules.length > 0 ? `<p class="lbl">${esc(t.rules_found)}</p><ol class="rules">${rules.map((r, i) => `<li><span class="rid">R${i + 1}</span><p>${esc(r.rule)}${r.why_it_matters ? ` — <em>${esc(r.why_it_matters)}</em>` : ""}</p></li>`).join("")}</ol>` : `<p class="empty">${esc(t.no_rule_found)}</p>`}
 ${validations.length > 0 ? `<p class="lbl">${esc(t.validations_label)}</p><ul class="files">${validations.map((v) => `<li>${esc(v)}</li>`).join("")}</ul>` : ""}
+${remaining.length > 0
+    ? `<div class="sec-head" style="margin-top:1rem"><h2>${esc(t.remaining_head)}</h2>
+<p>${esc(t.remaining_blurb)}</p></div>
+<div class="features">${remaining}</div>`
+    : `<p class="note">${esc(t.remaining_none)}</p>`}
 <div class="sec-head" style="margin-top:1rem"><h2>${esc(t.advice_head)}</h2>
 <p>${esc(t.advice_blurb)}</p></div>
 <div class="features">${rows}</div></section>`;
@@ -160,6 +179,15 @@ ${validations.length > 0 ? `<p class="lbl">${esc(t.validations_label)}</p><ul cl
  * then enforceable. The project type filters the catalogue because it changes
  * the answer, and an unfiltered catalogue turns a decision into a literature
  * review.
+ *
+ * The entry is a DESCRIPTION, not a form. The operator says what the product
+ * is, in their own words; an analysis is drawn from that; and the page asks
+ * only what the description left open. Handing eight questions to someone
+ * before they have said anything turns a conversation into paperwork, and
+ * their answers into the shape of the questions.
+ *
+ * Without an analysis the eight questions are asked in full — that is the
+ * degraded mode, not the intended one.
  *
  * Usage: node render-architecture.mjs <output.html> <backend|frontend|mobile|fullstack>
  */

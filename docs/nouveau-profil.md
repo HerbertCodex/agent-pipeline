@@ -81,6 +81,12 @@ A finding now carries `lands`: `issue` (a defect in delivered code, and it must 
 
 `sync-briefs` therefore refuses to compile a brief naming a gate neither declared in `commands` nor shipped as a core script. The way out is not to delete the teaching but to condition it: wrap the passage in `<!-- gate:NAME -->` … `<!-- /gate -->` and it is dropped for projects without that gate, kept for the others.
 
+**The architecture page starts from a description, never from a form.** Give the agent what the product is, in your own words — what it does, for whom, what it refuses. It draws an analysis from that, and the page then asks only what your description left open, judging each option on what you said.
+
+The distinction that makes this work is between an answer and a silence. An analysis with `integrations: []` says « we integrate with nothing »; an analysis with no `integrations` field says nobody asked. The framework once read the second as the first, reported « no integration to replace » about a project it had never questioned, and declared hexagonal excessive on that ground. An option whose verdict turns on an unanswered question is now left **to determine**, naming the question, rather than judged on an absence.
+
+Running the page with no analysis at all asks the eight questions in full. That is the degraded mode, not the intended one.
+
 `project_map` needs three values, not one: `out` (where the map lives), `regenerate` (the command that WRITES it) and `commands.project_map` (the one that verifies it). Declaring only the verification is the state every project started in, and it leaves the map with no writer but the agents themselves — which is what serialised whole waves. `apply-profile` refuses a `project_map.out` with no `regenerate` beside it, and refuses a `file_policy.orchestrator` forbidding the path the Orchestrator is the only role allowed to write.
 
 `closure_gates` names the gates run once on the pull request rather than on every push — what is too slow to replay per commit. The map's gate is deferred whether or not it appears there: it is stale on the branch by construction, and that is not the operator's call to make.

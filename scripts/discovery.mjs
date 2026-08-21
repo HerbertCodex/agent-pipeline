@@ -15,7 +15,68 @@ const BRIEF_IDS = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"];
 /**
  * Verdicts an architecture can receive when faced with an analysed project.
  */
-const RANK = { recommande: 0, possible: 1, excessif: 2 };
+const RANK = { recommande: 0, undecided: 1, possible: 2, excessif: 3 };
+
+/**
+ * The analysis field each option's verdict actually turns on.
+ *
+ * An option absent from this table depends on no answer: silence does not
+ * suspend it. An option present in it cannot be judged while its field is
+ * unknown — and unknown is not the same as empty.
+ */
+const DEPENDS_ON = {
+  layered: ["concurrent_workers"],
+  hexagonal: ["integrations"],
+  clean: ["business_rules"],
+  onion: ["business_rules"],
+  "feature-sliced": ["concurrent_workers"],
+  mvi: ["expected_churn"],
+};
+
+/**
+ * The question of the brief that would answer each analysis field.
+ */
+const ASKS = {
+  business_rules: "B3",
+  integrations: "B5",
+  concurrent_workers: "B6",
+  expected_churn: "B7",
+};
+
+/**
+ * Says whether the analysis answers a field at all.
+ *
+ * The distinction this draws is the whole point: an empty list is a finding —
+ * « we integrate with nothing » — while an absent field is a question nobody
+ * asked. Reading the second as the first is how the framework once reported
+ * « no integration to replace » about a project it had never questioned, and
+ * declared hexagonal excessive on that ground.
+ *
+ * @param analysis - the project analysis
+ * @param key - the field to look for
+ * @returns true when the analysis carries an answer
+ */
+function answered(analysis, key) {
+  return analysis?.[key] !== undefined && analysis?.[key] !== null;
+}
+
+/**
+ * The questions a description has not yet answered.
+ *
+ * The eight questions of the brief are not a form to fill before anything is
+ * known. The operator describes the product in their own words, an analysis
+ * is drawn from it, and what remains open is what the description did not
+ * cover — never the whole list again.
+ *
+ * @param analysis - the project analysis drawn from the description
+ * @returns the ids of the questions still worth asking
+ */
+export function unanswered(analysis) {
+  return Object.entries(ASKS)
+    .filter(([field]) => !answered(analysis, field))
+    .map(([, id]) => id)
+    .sort();
+}
 
 /**
  * Returns the questions of the brief, worded in the operator's language.
@@ -42,6 +103,21 @@ export function briefQuestions(text) {
 export function judge(entry, analysis, text) {
   const say = (key, count) =>
     count === undefined ? text.judgement[key] : text.judgement[key].split("{count}").join(String(count));
+
+  // An option is not judged on a question nobody answered. Silence used to
+  // read as a negative answer, and the page then recommended against an
+  // architecture on the strength of what was never said.
+  const missing = (DEPENDS_ON[entry.id] ?? []).filter((field) => !answered(analysis, field));
+  if (missing.length > 0) {
+    return {
+      verdict: "undecided",
+      label: text.verdicts.undecided,
+      rank: RANK.undecided,
+      reasons: missing.map((field) =>
+        text.judgement.undecided.split("{question}").join(ASKS[field]).split("{field}").join(field),
+      ),
+    };
+  }
   const rules = (analysis.business_rules ?? []).length;
   const swappable = (analysis.integrations ?? []).filter((item) => item.replaceable === true).length;
   const parallel = analysis.concurrent_workers === "few" || analysis.concurrent_workers === "teams";
@@ -121,8 +197,18 @@ export function summarise(analysis, text) {
     count === undefined ? text.summary[key] : text.summary[key].split("{count}").join(String(count));
   const rules = (analysis.business_rules ?? []).length;
   const swappable = (analysis.integrations ?? []).filter((item) => item.replaceable === true).length;
-  const domain = rules === 0 ? say("no_rule") : rules < 8 ? say("few_rules", rules) : say("dense_rules", rules);
-  const ports = swappable === 0 ? say("no_port") : say("some_ports", swappable);
+  const domain = !answered(analysis, "business_rules")
+    ? say("rules_unknown")
+    : rules === 0
+      ? say("no_rule")
+      : rules < 8
+        ? say("few_rules", rules)
+        : say("dense_rules", rules);
+  const ports = !answered(analysis, "integrations")
+    ? say("ports_unknown")
+    : swappable === 0
+      ? say("no_port")
+      : say("some_ports", swappable);
   const workers =
     analysis.concurrent_workers === "one"
       ? say("one_person")

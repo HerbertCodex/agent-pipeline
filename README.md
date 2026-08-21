@@ -271,12 +271,12 @@ C’est précisément pour cette raison que le framework possède également sa 
 
 ## Le chemin complet, en un coup d'œil
 
-Quatre moments. Vous décidez, l'agent exécute, et chaque décision devient une ligne qu'une commande relit ensuite.
+Cinq étapes, quatre moments — celles du milieu sont une seule conversation. Vous décidez, l'agent exécute, et chaque décision devient une ligne qu'une commande relit ensuite.
 
 ```text
 1. cloner                    → 2 commandes, puis lancer sa suite de tests
-2. décrire le produit  ─┐
-3. choisir un rangement ─┴─ une seule conversation avec l'agent, une décision à vous
+2. décrire le produit  ─┐    → vos mots, pas un questionnaire
+3. choisir un rangement ─┴─ une seule conversation, une décision à vous
    ├─ projet à écrans ?      → + une page design system
    └─ besoin d'une lib ?     → le pipeline argumente, vous installez
 4. faire configurer          → un agent écrit la config, les invariants, les pièges
@@ -333,23 +333,33 @@ Le nombre de tests n'est volontairement pas écrit ici. Il a changé trois fois 
 
 **Ces deux étapes sont une seule conversation avec votre agent.** Vous ne tapez pas les commandes vous-même : la seconde a besoin de ce que la première produit.
 
+**Vous commencez par décrire votre produit, pas par répondre à un questionnaire.** Vos mots d'abord — la page vous demandera ensuite ce que votre description n'a pas couvert, et rien d'autre.
+
 Donnez-lui ceci :
 
 ```text
 Ce dépôt contient un framework d'agents dans agent-pipeline/, fraîchement
 cloné. Avant toute configuration, aide-moi à décider comment ranger le code.
 
-1. Pose-moi les huit questions de agent-pipeline/scripts/discovery.mjs, une
-   par une, en langue ordinaire. Ne passe pas à la suivante avant ma réponse.
+1. Lis ma description ci-dessous. Ne me pose aucune question pour l'instant.
 
-2. Écris mes réponses dans analyse.json : business_rules, integrations,
-   concurrent_workers, expected_churn, validations.
+2. Écris dans analyse.json ce que ma description ÉTABLIT, et rien de plus :
+   business_rules, integrations, concurrent_workers, expected_churn,
+   validations. Un sujet dont je n'ai pas parlé, tu OMETS le champ — tu ne
+   l'écris pas vide. Vide veut dire « il n'y en a pas » ; absent veut dire
+   « il n'a pas été demandé », et la page ne les traite pas pareil.
 
 3. Lance render-architecture.mjs avec cette analyse, pour mon type de projet.
-   Le script écrit un fichier HTML : publie-le si ton harnais sait héberger
-   une page, sinon donne-moi son chemin. Ne recopie pas son contenu ici.
+   La page me posera ce qui manque. Publie-la si ton harnais sait héberger
+   une page HTML, sinon donne-moi son chemin. Ne recopie pas son contenu ici.
+
+4. Quand j'aurai répondu, complète analyse.json et relance la commande.
 
 Je tranche, tu ne tranches pas.
+
+---
+Mon produit :
+<ce qu'il fait, pour qui, et ce qu'il refuse de faire>
 ```
 
 > 📄 **La page est un fichier, pas un message.** 28 Ko de HTML mis en forme, sans aucune ressource externe : il s'ouvre dans un navigateur, hors ligne. Collé dans une conversation il serait illisible — et c'est exactement ce qu'il existe pour éviter.
@@ -363,9 +373,31 @@ Je tranche, tu ne tranches pas.
 >
 > Le framework ne suppose ni qu'un navigateur existe, ni qu'un lien peut vous être rendu. Ces capacités appartiennent à l'outil qui exécute les agents — un framework qui les supposerait ne tournerait que sur celui pour lequel il a été écrit.
 
-### Pourquoi passer par l'agent plutôt que taper la commande
+### Ce que la page fait de votre description
 
-La commande accepte une analyse en troisième argument, et **c'est elle qui change tout** :
+Elle ne repose pas les questions auxquelles vous venez de répondre. Décrivez un produit qui refuse des dépenses au-delà d'un plafond, sans parler d'intégrations ni de qui travaille dessus, et vous obtenez :
+
+```text
+Ce que votre description ne dit pas encore
+  B5  Le produit parle-t-il à des systèmes extérieurs ?
+  B6  Combien de personnes ou d'agents y travailleront en même temps ?
+  B7  Dans vos projets précédents, qu'est-ce qui changeait le plus souvent ?
+
+Notre conseil, et pourquoi
+  Recommandée      Un dossier par fonctionnalité
+  À déterminer     Hexagonale (ports et adaptateurs)
+  Excessive ici    Clean Architecture
+```
+
+Trois questions, pas huit. Et surtout : **l'hexagonale n'est pas écartée, elle est en attente.** Son verdict dépend de B5, à laquelle vous n'avez pas répondu — donc la page ne conclut rien.
+
+C'est un défaut réel, corrigé : le framework lisait autrefois un champ absent comme un « non ». Une analyse muette sur les intégrations lui faisait afficher *« aucune intégration à remplacer »* et déclarer l'hexagonale excessive, **au sujet d'un projet que personne n'avait interrogé**. Une absence n'est pas une réponse.
+
+Clean, elle, est bien écartée — parce que votre description répond à la question dont elle dépend : deux règles métier, ce n'est pas un métier dense à isoler.
+
+### Ce que ça donne sans description
+
+La commande accepte l'analyse en troisième argument, et **c'est elle qui change tout** :
 
 ```console
 $ render-architecture.mjs archi.html backend
@@ -375,9 +407,9 @@ $ render-architecture.mjs archi.html backend analyse.json
 written: archi.html (backend, 5 options out of 8, advice grounded in the analysis)
 ```
 
-Sans analyse, la page **pose les questions** et vous laisse conclure seul. Avec, elle **argumente** : elle cite vos règles métier, dit pourquoi Clean serait excessif chez vous, pourquoi des ports seraient une assurance jamais utilisée.
+Sans analyse, la page pose les huit questions et vous laisse conclure seul. **C'est le mode dégradé, pas l'entrée prévue** : il existe pour le cas où vous n'avez pas encore d'agent sous la main.
 
-Les huit questions se répondent en langue ordinaire, et deux comptent plus que les autres :
+Deux des huit questions comptent plus que les autres, et il vaut la peine que votre description les couvre :
 
 > **Y a-t-il des situations où le système doit REFUSER quelque chose ?**
 > Pas « ce champ est obligatoire ». Un vrai refus : *« ce livre est déjà sorti »*, *« ce compte n'a pas assez »*.

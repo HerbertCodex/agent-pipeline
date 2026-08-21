@@ -538,7 +538,10 @@
       "wrong_note": "<strong>Do not pick the heaviest option out of caution.</strong> That is the most common mistake: you pay immediately for insurance you may never claim, and the cost is taken out of every file you write, for years.<br><br>\n<strong>What decides is an asymmetry.</strong> Starting simple keeps the options open: you harden one folder the day it earns it, without touching the others. Starting complicated closes them: nobody removes layers, they endure them. A bad simple choice is corrected piece by piece; a bad heavy one, you live with.<br><br>\n<strong>Here, changing your mind is measured.</strong> Your architecture is declared in the configuration and checked by a gate. The day you change the declaration, the gate prints you <em>the exact list</em> of files that no longer obey the new rule. A migration becomes a task list, not an exploration &mdash; and that is the difference with a project where the architecture lives only in people's heads.",
       "next_head": "What comes next",
       "next_note": "Your choice becomes one line in the configuration: the folders, and who is allowed to call whom. The profile translates it into an automatically checked rule.<br><br><strong>Worth knowing before you choose:</strong> changing architecture later means moving files across the whole project. The cheapest moment to decide is now, before the first line of code.",
-      "doc_title": "Architecture — {label}"
+      "doc_title": "Architecture — {label}",
+      "remaining_head": "What your description does not yet say",
+      "remaining_blurb": "Only these. The rest is already in what you wrote, and an option that turns on one of them is left undecided until it is answered rather than judged on silence.",
+      "remaining_none": "Your description answers every question the decision turns on. Nothing below is judged on an absence."
     }
   },
   "brief_questions": {
@@ -586,7 +589,8 @@
   "verdicts": {
     "recommande": "Recommended",
     "possible": "Possible",
-    "excessif": "Excessive here"
+    "excessif": "Excessive here",
+    "undecided": "To determine"
   },
   "judgement": {
     "teams_parallel": "Several teams in parallel: one folder each, nobody collides.",
@@ -604,7 +608,8 @@
     "sliced": "Prevents circular imports in a codebase where everything tends to import everything.",
     "mvvm": "Screen logic is testable without launching the interface.",
     "mvi_churn": "Screens change often: reproducible state pays for itself.",
-    "mvi_stable": "With no complicated screen state, the machinery costs more than it protects."
+    "mvi_stable": "With no complicated screen state, the machinery costs more than it protects.",
+    "undecided": "Undecidable while {question} is unanswered: the option turns on it, and silence is not a no."
   },
   "summary": {
     "no_rule": "no business rule",
@@ -615,7 +620,9 @@
     "one_person": "a single person",
     "teams": "several teams",
     "few_people": "a few people in parallel",
-    "sentence": "{domain}, {ports}, {workers}."
+    "sentence": "{domain}, {ports}, {workers}.",
+    "rules_unknown": "business rules not yet described",
+    "ports_unknown": "integrations not yet described"
   },
   "fullstack_boundary": {
     "generated": {
