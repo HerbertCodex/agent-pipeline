@@ -19,6 +19,18 @@ export function loadConfig(path = "pipeline.config.json") {
   } catch (error) {
     fail(`${path}: invalid JSON (${error.message})`);
   }
+  // A configuration carrying the architecture decision and nothing else is
+  // not broken: it is exactly what the architecture step produces, and the
+  // configuration step has not run yet. Answering `missing key "profile"`
+  // there reads as a mistake the operator made, and it was observed doing
+  // so on a real bootstrap.
+  if (config.profile == null && config.architecture != null) {
+    fail(
+      `${path} carries the architecture decision and nothing else: this project is not configured yet. ` +
+        "That is the next step, not a fault — an agent reads agent-pipeline/docs/nouveau-profil.md and " +
+        "writes the rest. The README calls it step 4.",
+    );
+  }
   for (const key of ["profile", "profiles_dir", "commands", "docs_dirs", "briefs_dir", "prompts_dir", "skills_dir", "rules_path", "project_context", "file_policy", "store_dir", "ci"]) {
     if (config[key] == null) fail(`${path}: missing key "${key}"`);
   }

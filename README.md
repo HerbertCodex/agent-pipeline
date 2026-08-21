@@ -349,18 +349,32 @@ cloné. Avant toute configuration, aide-moi à décider comment ranger le code.
    l'écris pas vide. Vide veut dire « il n'y en a pas » ; absent veut dire
    « il n'a pas été demandé », et la page ne les traite pas pareil.
 
-3. Lance render-architecture.mjs avec cette analyse, pour mon type de projet.
-   La page me posera ce qui manque. Publie-la si ton harnais sait héberger
+3. Lance exactement :
+   node agent-pipeline/scripts/render-architecture.mjs archi.html <type> analyse.json
+   Le <type> est en bas de ce message. Si je ne l'ai pas mis, lance la
+   commande sans lui : elle te répondra par les quatre types et ce qu'ils
+   veulent dire, et tu me demanderas lequel. Ne lis pas le code du framework
+   pour ça — les commandes se décrivent elles-mêmes.
+
+4. La page me posera ce qui manque. Publie-la si ton harnais sait héberger
    une page HTML, sinon donne-moi son chemin. Ne recopie pas son contenu ici.
 
-4. Quand j'aurai répondu, complète analyse.json et relance la commande.
+5. Quand j'aurai répondu, complète analyse.json et relance la commande.
 
 Je tranche, tu ne tranches pas.
 
 ---
 Mon produit :
 <ce qu'il fait, pour qui, et ce qu'il refuse de faire>
+
+Type : <backend | frontend | mobile | fullstack>
 ```
+
+> 🧭 **Le type n'est pas la stack.** Ce n'est ni « SvelteKit » ni « NestJS » : c'est ce que le dépôt contient. Et ce qui tranche entre `frontend` et `fullstack`, ce sont **les données** — une interface web lit des données qu'elle ne possède pas. Si votre projet porte sa propre base, c'est `fullstack`.
+>
+> Ça compte parce que le type **retire des architectures du catalogue**. Déclarer `frontend` un projet qui possède sa base écarte l'hexagonale — celle qui existe justement pour une base qu'on compte remplacer. La page vous le dira désormais, mais autant ne pas se tromper.
+>
+> Dans le doute, lancez la commande sans le type : elle liste les quatre avec leur description.
 
 > 📄 **La page est un fichier, pas un message.** 28 Ko de HTML mis en forme, sans aucune ressource externe : il s'ouvre dans un navigateur, hors ligne. Collé dans une conversation il serait illisible — et c'est exactement ce qu'il existe pour éviter.
 >

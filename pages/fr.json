@@ -541,7 +541,13 @@
       "doc_title": "Architecture — {label}",
       "remaining_head": "Ce que votre description ne dit pas encore",
       "remaining_blurb": "Celles-ci seulement. Le reste est déjà dans ce que vous avez écrit, et une option qui dépend de l'une d'elles reste à déterminer plutôt que d'être jugée sur un silence.",
-      "remaining_none": "Votre description répond à toutes les questions dont dépend la décision. Rien de ce qui suit n'est jugé sur une absence."
+      "remaining_none": "Votre description répond à toutes les questions dont dépend la décision. Rien de ce qui suit n'est jugé sur une absence.",
+      "removed_head": "Écartées par votre type de projet, pas par votre analyse",
+      "removed_blurb": "Elles ne sont pas proposées plus haut parce que vous avez déclaré un projet {type}. Votre analyse en pense quelque chose malgré tout, et le taire cacherait que c'est la déclaration de type qui les a retirées.",
+      "removed_note": "Si l'une d'elles correspond à ce que vous avez décrit, c'est le type qu'il faut reconsidérer, pas l'option.",
+      "type_help": "Le type filtre le catalogue : c'est donc une décision.",
+      "type_decides": "Ce qui tranche entre une interface web et un dépôt full-stack, ce sont les données : une interface web lit des données qu'elle ne possède pas. Si ce projet porte sa propre base, c'est fullstack.",
+      "type_unknown": "type de projet inconnu : {type}"
     }
   },
   "brief_questions": {

@@ -541,7 +541,13 @@
       "doc_title": "Architecture — {label}",
       "remaining_head": "What your description does not yet say",
       "remaining_blurb": "Only these. The rest is already in what you wrote, and an option that turns on one of them is left undecided until it is answered rather than judged on silence.",
-      "remaining_none": "Your description answers every question the decision turns on. Nothing below is judged on an absence."
+      "remaining_none": "Your description answers every question the decision turns on. Nothing below is judged on an absence.",
+      "removed_head": "Removed by your project type, not by your analysis",
+      "removed_blurb": "These are not offered above because you declared a {type} project. Your analysis has an opinion about them all the same, and hiding it would hide that the type declaration is what removed them.",
+      "removed_note": "If one of these fits what you described, the type is what to reconsider — not the option.",
+      "type_help": "The type filters the catalogue, so it is a decision:",
+      "type_decides": "What decides between a web interface and a full-stack repository is the data: a web interface reads data it does not own. If this project holds its own database, it is fullstack.",
+      "type_unknown": "unknown project type: {type}"
     }
   },
   "brief_questions": {

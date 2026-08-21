@@ -173,6 +173,31 @@ ${remaining.length > 0
 }
 
 /**
+ * Lists the project types with what each one is.
+ *
+ * The type is a decision, and it was answered with four bare words. It
+ * silently removes architectures from the catalogue — `frontend` and
+ * `fullstack` are one word apart and do not offer the same options — and the
+ * distinction was got wrong on a real bootstrap, where a project declared
+ * itself a web interface while owning the database it expected to replace.
+ *
+ * The descriptions existed all along. They were shown only AFTER the choice,
+ * as the page's opening line, which is the wrong order for a decision aid.
+ *
+ * @param spoken - the catalogue in the operator's language
+ * @param t - the page's translated strings
+ * @returns the four types, one per line, with what each one is
+ */
+function typeHelp(spoken, t) {
+  const width = Math.max(...PROJECT_TYPES.map((id) => id.length));
+  const lines = PROJECT_TYPES.map((id) => {
+    const project = spoken.projectTypes[id];
+    return `  ${id.padEnd(width)}  ${project.label} — ${project.blurb}`;
+  });
+  return `\n${t.type_help}\n${lines.join("\n")}\n\n${t.type_decides}`;
+}
+
+/**
  * Renders the page that explains the architectures and asks for a choice.
  *
  * The framework imposes no architecture: it makes the choice explainable,
@@ -193,21 +218,26 @@ ${remaining.length > 0
  */
 function main() {
   const [target, type, analysisPath] = process.argv.slice(2);
-  if (!target || !type) {
-    fail(`usage : render-architecture.mjs <sortie.html> <${PROJECT_TYPES.join("|")}> [analyse.json]`);
-  }
   // The prose comes from the declared language's dictionary; the structure
   // stays the catalogue's. The two meet here and nowhere else.
   const config = safeConfig();
   const text = pageText(config);
   const t = text.pages.architecture;
   const spoken = catalogue(config);
+
+  if (!target || !type) {
+    fail(
+      `usage : render-architecture.mjs <sortie.html> <${PROJECT_TYPES.join("|")}> [analyse.json]\n` +
+        typeHelp(spoken, t),
+    );
+  }
   const project = spoken.projectTypes[type];
   if (project == null) {
-    fail(`unknown project type: ${type} (expected ${PROJECT_TYPES.join(", ")})`);
+    fail(`${t.type_unknown.split("{type}").join(type)}\n${typeHelp(spoken, t)}`);
   }
 
   const retained = spoken.architectures.filter((entry) => entry.applies.includes(type));
+  const removed = spoken.architectures.filter((entry) => !entry.applies.includes(type));
   const example = project.example;
 
   let analysis = null;
@@ -229,6 +259,38 @@ function main() {
       .join("")}</ul>
 </div>`,
   ).join("");
+
+  // A contradiction between the two declarations the operator made: the
+  // analysis RECOMMENDS an option, and the project type removed it without a
+  // word. Observed on a real bootstrap — a project declared `frontend` while
+  // its analysis carried a database it expected to replace, so hexagonal, the
+  // option that exists for exactly that, disappeared silently.
+  //
+  // Only `recommande` is surfaced. `possible` is not a contradiction, and
+  // listing it would offer MVVM to a back-end service — the catalogue review
+  // this page exists to replace.
+  const filtered =
+    analysis == null
+      ? ""
+      : (() => {
+          const worth = removed
+            .map((entry) => ({ entry, ...judge(entry, analysis, text) }))
+            .filter((item) => item.verdict === "recommande")
+            .sort((a, b) => a.rank - b.rank);
+          if (worth.length === 0) return "";
+          const cards = worth
+            .map(
+              (item) => `<div class="open muted">
+<h3><span class="chip">${esc(item.label)}</span>${esc(item.entry.name)}</h3>
+<ul class="alts">${item.reasons.map((reason) => `<li><span>${esc(reason)}</span></li>`).join("")}</ul>
+</div>`,
+            )
+            .join("");
+          return `<section><div class="sec-head"><h2>${esc(t.removed_head)}</h2>
+<p>${esc(t.removed_blurb.split("{type}").join(type))}</p></div>
+<div class="features">${cards}</div>
+<p class="note">${esc(t.removed_note)}</p></section>`;
+        })();
 
   const boundary =
     type !== "fullstack"
@@ -260,6 +322,8 @@ ${table(retained, example, t)}</section>
 <section><div class="sec-head"><h2>${esc(t.detail_head)}</h2>
 <p>${esc(t.detail_blurb.split("{kept}").join(String(retained.length)).split("{total}").join(String(ARCHITECTURES.length)))}</p></div>
 <div class="features">${retained.map((entry, index) => card(entry, index, example, t)).join("")}</div></section>
+
+${filtered}
 
 ${boundary}
 
