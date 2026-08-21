@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, loadRules, pathAllowed, deferredGates, fail } from "./lib.mjs";
 import { ARCHITECTURES, PROJECT_TYPES } from "./architectures.mjs";
-import { stripUndeclaredGates, orphanGates } from "./gates.mjs";
+import { stripUndeclaredGates, orphanGates, perIssueGates, closureGates } from "./gates.mjs";
 
 const CI_TEMPLATE = "agent-pipeline/templates/ci.template.yml";
 const AGENTS_TEMPLATE = "agent-pipeline/templates/AGENTS.template.md";
@@ -146,7 +146,12 @@ function renderPrompts(config) {
     const text = stripUndeclaredGates(
       readFileSync(join(PROMPTS_SRC, file), "utf8")
         .replaceAll("{{briefs_dir}}", config.briefs_dir)
-        .replaceAll("{{decisions_dir}}", config.decisions_dir),
+        .replaceAll("{{decisions_dir}}", config.decisions_dir)
+        // Rendered from this project's own table rather than recited: a
+        // prompt listing gate names by hand tells a project to run what it
+        // does not have, and to replay what it deferred.
+        .replaceAll("{{gates.per_issue}}", perIssueGates(config).map((key) => `\`${key}\``).join(", "))
+        .replaceAll("{{gates.closure}}", closureGates(config).map((key) => `\`${key}\``).join(", ") || "aucune"),
       config,
     );
     const unresolved = text.match(/\{\{[a-z._]+\}\}/);
@@ -621,6 +626,25 @@ function main() {
         "These are measurable approximations of what single responsibility and KISS protect; " +
         "with no gate they apply to nothing, and the code is only as good as the model.",
     );
+  }
+  // A finding routed to the framework needs somewhere outside this project
+  // to land, or it is lost at closure — which is how a product backlog ends
+  // up carrying the pipeline's own defects.
+  if (typeof config.findings_path !== "string") {
+    fail(
+      'findings_path missing: name the file where findings about the pipeline land, outside the ' +
+        'product\'s backlog. `"findings_path": "pipeline/findings.md"`.',
+    );
+  }
+  if (config.risk != null) {
+    for (const lane of ["high", "low"]) {
+      const patterns = config.risk[lane];
+      if (patterns != null && !Array.isArray(patterns)) fail(`risk.${lane} must be a list of path patterns`);
+    }
+    for (const key of Object.keys(config.risk)) {
+      if (["high", "low"].includes(key)) continue;
+      fail(`risk.${key} is not a lane: only "high" and "low" are declared, everything else is normal.`);
+    }
   }
   checkArchitecture(config);
   checkLanguage(config);

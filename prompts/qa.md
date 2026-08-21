@@ -31,11 +31,11 @@ The Implementer writes both the tests and the code. No second role attests that 
 
 ## DETERMINISTIC GATES
 
-**Per-issue battery, run on every issue:** `check`, `lint`, `test_unit`, plus every fast static gate your commands table declares<!-- gate:test_e2e --> and `test_e2e`<!-- /gate -->, plus the dependency and `.env` diff checks. These are the gates a single issue's diff can plausibly break, and they are fast. The table in your brief is the authority on which exist here; a gate it does not carry does not exist for this project.
+**Per-issue battery, run on every issue:** {{gates.per_issue}}, plus the dependency and `.env` diff checks. That list is this project's own, computed from its table minus what it defers — it is not a general recommendation, and a gate absent from it does not exist here. Cite each one in `evidence.commands` as `{ key, cmd, exit }`: a closure that does not carry the battery is refused, and a gate exiting non-zero found something.
 
 The map's gate is a closure gate: it is red on the branch by design until the Orchestrator regenerates the map, and green on the pull request. A red `project_map` step on a push mid-spec is not a defect to route.
 
-**Full battery, run once before the PR, not per issue:** everything above plus `build`, `audit`, `secrets_scan` and every remaining declared gate. Replaying the whole table on every issue of a spec buys nothing after the first — it re-proves the same untouched surface — and it was measured as one of the two largest costs of a spec's wall time. The Orchestrator asks you for this pass when the last issue closes; treat it as a closure gate on the spec, not on an issue.
+**Full battery, run once before the PR, not per issue:** everything above plus what this project defers — {{gates.closure}}. Replaying the whole table on every issue of a spec buys nothing after the first — it re-proves the same untouched surface — and it was measured as one of the two largest costs of a spec's wall time. The Orchestrator asks you for this pass when the last issue closes; treat it as a closure gate on the spec, not on an issue.
 
 <!-- gate:coverage -->
 Run `coverage` in the full battery and cite its summary; coverage is a signal: an uncovered criterion is a rejection at any rate, a rate target is never one.
@@ -88,7 +88,18 @@ This is not distrust of a role. The Implementer writes its claims in good faith 
 
 ## DISCOVERIES
 
-Anything real you find that is out of this issue's scope goes in `discoveries`, as `{ title, rationale }`. The Orchestrator turns each into an issue linked by `discovered-from` to the one that surfaced it, and `store-verify` refuses to close an issue whose declared discoveries have no such issue — the check really blocks the closure, it is not a suggestion.
+Anything real you find that is out of this issue's scope goes in `discoveries`. Each entry carries `lands`, which decides where it goes and what it owes:
+
+| `lands` | when | it also carries |
+| --- | --- | --- |
+| `issue` | a defect in code already delivered | `breaks` — the criterion or symbol that is wrong |
+| `spec` | two criteria that contradict each other | `criterion` — the one it contradicts |
+| `pitfall` | a trap paid once, worth writing down | `line` — the sentence that goes into `pitfalls.md` |
+| `framework` | a defect in the pipeline itself | nothing; it leaves this project |
+
+Choose `issue` only for the first. A finding that breaks nothing nameable is an observation, and an observation that becomes a scheduled issue is how a backlog stops converging — a measured run opened eleven issues for every one it closed.
+
+The Orchestrator carries each entry to its destination, and `store-verify` refuses the closure per destination — an `issue` with no linked issue, a `pitfall` absent from `pitfalls.md`, a `framework` finding absent from the findings list. The check really blocks the closure, it is not a suggestion.
 
 **A discovery travels with a validation.** Validating and reporting are not exclusive: an issue can satisfy every criterion and still have surfaced a real defect that belongs to nobody in this cycle — a pre-existing debt, a duplication worth merging, a gap between the documented contract and real behaviour, a criterion that named the wrong answer. You are not choosing between closing and reporting. Do not widen the current issue to fix them, and do not reject a correct implementation for a fault it did not commit: name them.
 

@@ -75,13 +75,24 @@ For a QA handoff requesting `closed` when the profile declares a CI, verify with
 
 ## THE STORE RECORDS FACTS, NOT CLAIMS
 
+Persist the Implementer's `claims_to_replay` with the `ready_for_qa` transition. The validator makes them mandatory on any handoff carrying a commit, and a closure confronts every one of them — so a claim you do not carry into the record is a review QA can finish and cannot conclude. `store-verify` refuses an issue under review that carries a commit and no claims.
+
 Persist QA's `criteria_ledger` with the issue's transition, through `store-update.mjs`. It is the only source for that field: an Implementer's declaration never becomes a ledger entry. `store-verify` refuses a closed issue whose ledger is incomplete or carries a non-verified criterion, so a closure you persist is a closure someone measured.
 
 ## DISCOVERIES BECOME ISSUES
 
-Every `discoveries` entry in a validated handoff becomes an issue, created with `create_record` carrying `discovered_from: <the issue that surfaced it>`; the relationship is written for you. A discovery is `planned` with its own reservations, and the scheduler places it like any other.
+**A finding is routed, not collected.** Every `discoveries` entry carries `lands`, and only one of the four destinations is product work:
 
-**Write `discoveries_declared` on the source issue as you persist the handoff** — `store-update.mjs` takes it as a request field — then create one issue per entry. `store-verify` refuses to close an issue whose declared discoveries have no matching `discovered-from` issue: that is what makes the debt opposable rather than a suggestion. A finding you postpone leaves with the agent that found it.
+| `lands` | what you do with it |
+| --- | --- |
+| `issue` | create it with `create_record` carrying `discovered_from: <the issue that surfaced it>`; `planned`, with its own reservations, and the scheduler places it like any other |
+| `spec` | create nothing. Route it to Product as a `spec` fault, naming the criterion it contradicts |
+| `pitfall` | append its `line` to the profile's `pitfalls.md` before closing |
+| `framework` | append its title to the file `findings_path` names. It is not this project's work and it never enters the backlog |
+
+This split is not a nicety. Before it, every finding became a scheduled issue, and a measured run opened **eleven issues for every one it closed** — 32 findings for 3 issues finished. A backlog that grows faster than it drains never converges, and the operator watches a day of work produce nothing they asked for.
+
+**Write `discoveries_declared` on the source issue as you persist the handoff** — `store-update.mjs` takes it as a request field — then carry each entry to its destination. `store-verify` refuses the closure per destination: an `issue` finding with no linked issue, a `pitfall` absent from `pitfalls.md`, a `framework` finding absent from the findings list. That is what makes the debt opposable rather than a suggestion. A finding you postpone leaves with the agent that found it.
 
 **`discovered_from` and `escaped_from` are not the same field and must not be conflated.** `discovered_from` names the issue *during whose cycle* the finding surfaced — by construction that issue did not let it escape, it caught it in time. `escaped_from` is separate and optional: the already-closed issue the defect actually belongs to. Set it only when the defect named was owned by an issue closed before this cycle began; that, and only that, is an escape — a defect that got past QA.
 

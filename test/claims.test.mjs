@@ -36,7 +36,7 @@ const QA_CLOSURE = {
   outcome: "closed",
   mode: "issue_handoff",
   requested_transition: { from: "qa_in_progress", to: "closed" },
-  evidence: { commands: [], files: [], commit_sha: null, notes: [] },
+  evidence: { commands: [{ key: "check", cmd: "true", exit: 0 }], files: [], commit_sha: null, notes: [] },
   criteria_ledger: [
     { status: "verified", evidence: "mesure" },
     { status: "verified", evidence: "mesure" },

@@ -71,6 +71,12 @@ Also mandatory, outside `commands`: an `architecture` block, `{ id, project_type
 
 Mandatory paths, refused if absent: `profiles_dir`, `docs_dirs`, `briefs_dir`, `prompts_dir`, `skills_dir`, `rules_path`, `project_context`, `store_dir`.
 
+`findings_path` names the file where findings about the pipeline land — outside the product's backlog, because they are not work this project schedules.
+
+The mechanism they leave behind is worth knowing before you read a store. A role that notices something real outside its issue declares it in `discoveries`, and the framework refuses to let the issue close until the finding reached somewhere. That part was right. What was wrong was having a single somewhere: every finding became a `planned` issue in the product's backlog. Measured on a real port — **32 findings for 3 issues closed, eleven new issues for every one finished**. A backlog growing faster than it drains never converges, and the operator watches a day of work produce nothing they asked for.
+
+A finding now carries `lands`: `issue` (a defect in delivered code, and it must name what `breaks`), `spec` (criteria that contradict, naming the `criterion`), `pitfall` (a trap, carrying the `line` written into `pitfalls.md`) or `framework` (not this project's work). `store-verify` checks each destination for what it owes, so the debt stays opposable while only one route creates work.
+
 **A document may not prescribe a gate you do not have.** The briefs are compiled from these documents, and these documents describe gates a given project may never declare. Measured on a real port: nine rules across the four briefs named commands nothing answered for — in the very pages that teach the rules. A reader cannot tell such a rule from one that binds them, so they invent the gate, skip it in silence, or stop trusting the document; the third is the expensive one.
 
 `sync-briefs` therefore refuses to compile a brief naming a gate neither declared in `commands` nor shipped as a core script. The way out is not to delete the teaching but to condition it: wrap the passage in `<!-- gate:NAME -->` … `<!-- /gate -->` and it is dropped for projects without that gate, kept for the others.

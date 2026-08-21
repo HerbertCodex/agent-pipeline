@@ -22,6 +22,22 @@ A rule disabled in the configuration is a **gate change**, therefore human revie
 <!-- /gate -->
 <!-- /brief -->
 
+<!-- brief:qa,orchestrator,product -->
+## What an issue costs is proportionate to what it touches
+
+Measured on a real run: an issue adding CSS variables to a stylesheet paid **eight criteria, six replayed claims and 3 514 characters of evidence** — the same as the issue that wired four interactive components. That is not rigour, it is an absence of proportion, and it is what makes a pipeline unusable where work has to ship.
+
+Two things now scale with the issue rather than with nothing.
+
+**The per-issue battery is computed, not recited.** It is every declared gate minus what the project defers in `closure_gates`, minus the map's own gates, which are stale on the branch by construction. QA cites each one in `evidence.commands` as `{ key, cmd, exit }`, and a closure that does not carry the battery is refused. The rest is replayed once, before the pull request.
+
+CI is deliberately not on that diet: a machine re-running `audit` on every push costs nothing and reports early, while an agent replaying it per issue costs the run. Only the map gates are deferred there.
+
+**The risk lane follows the files.** `risk.high` and `risk.low` name path patterns; everything else is normal. A low-lane closure owes the gates and the ledger, and no replayed claims — proving a stylesheet twice proves nothing. A high lane owes everything.
+
+The lane is **computed, never declared**. A lane an agent chooses is a lane every agent chooses, and the cheap one would empty itself of meaning within a day. It follows the files actually touched, `verify-scope` confronts those with the real diff, and the highest lane wins: an issue mixing a stylesheet and an authentication path is an authentication issue.
+<!-- /brief -->
+
 <!-- brief:implementer,qa -->
 ## Reuse before writing: the reuse note
 

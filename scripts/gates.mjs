@@ -1,3 +1,5 @@
+import { deferredGates, matchAny } from "./lib.mjs";
+
 /**
  * The gate names the framework's own documents teach.
  *
@@ -88,4 +90,64 @@ export function orphanGates(text, config) {
     named.add(match[1]);
   }
   return [...named].filter((name) => !answered(name, config));
+}
+
+/**
+ * The gates QA replays on every issue.
+ *
+ * Everything declared, minus what the closure defers. The split existed in
+ * prose long before anything computed it: the prompt listed gate names by
+ * hand, so a project declaring other ones was told to run gates it did not
+ * have, and a project deferring gates was told to replay them anyway.
+ *
+ * Replaying the whole table on every issue of a spec buys nothing after the
+ * first — it re-proves the same untouched surface — and it was measured as
+ * one of the two largest costs of a spec's wall time.
+ *
+ * @param config - the project configuration
+ * @returns the keys of `commands` a single issue must replay
+ */
+export function perIssueGates(config) {
+  const closure = new Set(Array.isArray(config?.closure_gates) ? config.closure_gates : []);
+  const mapGates = deferredGates(config);
+  return Object.keys(config?.commands ?? {}).filter((key) => !closure.has(key) && !mapGates.has(key));
+}
+
+/**
+ * The risk lane of what an issue touches.
+ *
+ * The lane is COMPUTED, never declared. A lane an agent chooses is a lane
+ * every agent chooses, and the cheap one would empty itself of meaning within
+ * a day. It follows the files, and `verify-scope` confronts those with the
+ * real git diff — so reserving a stylesheet while editing the authentication
+ * path buys nothing.
+ *
+ * The highest lane wins: an issue mixing a stylesheet and an authentication
+ * path is an authentication issue.
+ *
+ * @param paths - the files the issue touches
+ * @param risk - the configuration's `risk` block, or nothing
+ * @returns "high", "normal" or "low"
+ */
+export function laneOf(paths, risk) {
+  if (risk == null) return "normal";
+  const files = Array.isArray(paths) ? paths : [];
+  if (files.some((file) => matchAny(file, risk.high ?? []))) return "high";
+  if (files.length > 0 && files.every((file) => matchAny(file, risk.low ?? []))) return "low";
+  return "normal";
+}
+
+/**
+ * The gates proved once per spec rather than on every issue.
+ *
+ * The complement of `perIssueGates` over the declared table: what the
+ * operator defers plus the map's own gates, which are stale on the branch by
+ * construction.
+ *
+ * @param config - the project configuration
+ * @returns the keys of `commands` replayed at closure only
+ */
+export function closureGates(config) {
+  const perIssue = new Set(perIssueGates(config));
+  return Object.keys(config?.commands ?? {}).filter((key) => !perIssue.has(key));
 }

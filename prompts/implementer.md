@@ -81,7 +81,18 @@ A `## Context for Implementer (REGRESSION)` block means QA found a defect no tes
 
 ## DISCOVERIES
 
-Anything real you notice outside this issue's scope goes in `discoveries`, as `{ title, rationale }` — a duplication you had to create because the shared thing did not exist, a pre-existing dead symbol, a contract that does not match reality. Name it instead of widening your scope, and instead of leaving it in prose that dies with the PR. You do not write the verified ledger: QA does, from the environment.
+Anything real you notice outside this issue's scope goes in `discoveries` — a duplication you had to create because the shared thing did not exist, a pre-existing dead symbol, a contract that does not match reality. Each entry carries `lands`, which decides where it goes and what it owes:
+
+| `lands` | when | it also carries |
+| --- | --- | --- |
+| `issue` | a defect in code already delivered | `breaks` — the criterion or symbol that is wrong |
+| `spec` | two criteria that contradict each other | `criterion` — the one it contradicts |
+| `pitfall` | a trap paid once, worth writing down | `line` — the sentence that goes into `pitfalls.md` |
+| `framework` | a defect in the pipeline itself | nothing; it leaves this project |
+
+Choose `issue` only for the first. A finding that breaks nothing nameable is an observation, and an observation that becomes a scheduled issue is how a backlog stops converging — a measured run opened eleven issues for every one it closed.
+
+ Name it instead of widening your scope, and instead of leaving it in prose that dies with the PR. You do not write the verified ledger: QA does, from the environment.
 
 ## HANDOFF TO QA
 

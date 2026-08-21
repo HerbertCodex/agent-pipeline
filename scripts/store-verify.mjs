@@ -3,36 +3,120 @@ import { join } from "node:path";
 import { loadConfig, loadRules, readJsonl, fail } from "./lib.mjs";
 
 /**
- * Checks that declared discoveries really produced an issue.
+ * Checks that each declared finding reached the destination it named.
  *
- * A finding declared in a handoff but never created falls back into PR prose,
- * where it dies. The `discoveries_declared` field, written by the
- * orchestrator when persisting the handoff, makes that debt enforceable: the
- * issue cannot close until every discovery has its issue linked by
- * `discovered-from`. Without this check the mechanism would be an instruction
- * no command can refuse, and so an instruction that never applies.
+ * A finding declared in a handoff but never carried anywhere falls back into
+ * PR prose, where it dies. Making that debt enforceable was right. Giving it
+ * a single exit was not: every finding became an issue in the product's
+ * backlog, and a real run turned 32 observations into 32 scheduled issues
+ * for 3 issues finished — eleven new for every one closed.
+ *
+ * So the debt is still opposable, but per destination. An `issue` owes its
+ * linked issue, as before. A `pitfall` owes its line in the profile's
+ * pitfalls document. A `framework` finding owes its line in the operator's
+ * findings list, outside this project. A `spec` finding owes nothing here:
+ * it routes to Product as a fault, and the fault machinery already refuses
+ * to be ignored.
+ *
+ * A record written before the destinations existed carries no `lands`. It is
+ * read as `issue`, which is exactly what it meant then: describing history
+ * rather than rewriting it.
  *
  * @param record - Issue read from the store.
  * @param all - Every issue record, to find the links.
  * @param rules - Loaded rules, carrying the relation type.
+ * @param config - Project configuration, for the profile and findings paths.
  * @param path - File path, for the error message.
  * @returns The number of invariants violated.
  */
-function verifyDiscoveries(record, all, rules, path) {
+function verifyDiscoveries(record, all, rules, config, path) {
   const declared = record.discoveries_declared ?? [];
   if (declared.length === 0) return 0;
   if (record.pipeline_state?.phase !== "closed") return 0;
 
-  const type = rules.discovery_relationship;
-  const linked = all.filter((other) =>
-    (other.relationships ?? []).some(
-      (relation) => relation.type === type && relation.to === record.id,
-    ),
-  );
-  if (linked.length >= declared.length) return 0;
+  let violations = 0;
+  const wanted = declared.filter((item) => (item?.lands ?? "issue") === "issue");
+  if (wanted.length > 0) {
+    const type = rules.discovery_relationship;
+    const linked = all.filter((other) =>
+      (other.relationships ?? []).some(
+        (relation) => relation.type === type && relation.to === record.id,
+      ),
+    );
+    if (linked.length < wanted.length) {
+      console.error(
+        `${path}: issue ${record.id} closed with ${wanted.length} discovery(ies) landing as issues and ${linked.length} created issue(s)`,
+      );
+      violations += 1;
+    }
+  }
+
+  const pitfalls = join(config.profiles_dir, config.profile, "pitfalls.md");
+  const written = existsSync(pitfalls) ? readFileSync(pitfalls, "utf8") : "";
+  for (const item of declared.filter((entry) => entry?.lands === "pitfall")) {
+    if (typeof item.line === "string" && written.includes(item.line)) continue;
+    console.error(
+      `${path}: issue ${record.id} declares a pitfall absent from ${pitfalls}: "${item.title}". ` +
+        "A pitfall declared but never written is a pitfall nobody will read.",
+    );
+    violations += 1;
+  }
+
+  const framework = declared.filter((entry) => entry?.lands === "framework");
+  if (framework.length > 0) {
+    const list = config.findings_path;
+    if (typeof list !== "string") {
+      console.error(
+        `${path}: issue ${record.id} sends a finding to the framework, and findings_path names no file. ` +
+          "A finding with nowhere to land is a finding lost at closure.",
+      );
+      violations += 1;
+    } else {
+      const body = existsSync(list) ? readFileSync(list, "utf8") : "";
+      for (const item of framework) {
+        if (body.includes(item.title)) continue;
+        console.error(`${path}: issue ${record.id} declares a framework finding absent from ${list}: "${item.title}"`);
+        violations += 1;
+      }
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Checks that an issue under review carries the claims QA must confront.
+ *
+ * The validator makes `claims_to_replay` mandatory on any handoff carrying a
+ * commit, and it makes confronting every claim mandatory to close. Between
+ * the two, nothing required the orchestrator to carry them into the record —
+ * and nothing said so when they were dropped.
+ *
+ * Measured: QA finished a complete and favourable review, then could not ask
+ * for closure because the record held no claim to confront. Nothing was wrong
+ * with the issue; it sat blocked on the gap between two rules that each
+ * assumed the other.
+ *
+ * Only an issue still under review is held to it. A closed issue concluded —
+ * whatever it took — and the deadlock this refuses happens during the review,
+ * never after it. Extending the rule to closed records would condemn every
+ * issue finished before the claims mechanism existed, which is rewriting
+ * history rather than describing it.
+ *
+ * @param record - Issue read from the store.
+ * @param path - File path, for the error message.
+ * @returns The number of invariants violated.
+ */
+function verifyClaimsCarried(record, path) {
+  const state = record.pipeline_state ?? {};
+  if (state.last_commit_sha == null) return 0;
+  if (state.phase !== "qa_in_progress") return 0;
+  if ((record.claims_to_replay ?? []).length > 0) return 0;
 
   console.error(
-    `${path}: issue ${record.id} closed with ${declared.length} declared discovery(ies) and ${linked.length} created issue(s)`,
+    `${path}: issue ${record.id} is in ${state.phase} with a commit and no claims_to_replay. ` +
+      "The handoff that took it there had to declare them, so they were dropped in transit — and QA " +
+      "cannot conclude a review whose closure confronts claims the record does not hold.",
   );
   return 1;
 }
@@ -216,11 +300,13 @@ function main() {
           problems += 1;
         }
         problems += verifyLedger(entry.record, rules, path);
+        problems += verifyClaimsCarried(entry.record, path);
         problems += verifyPrevention(entry.record, config, path);
         problems += verifyDiscoveries(
           entry.record,
           entries.map((e) => e.record),
           rules,
+          config,
           path,
         );
       }

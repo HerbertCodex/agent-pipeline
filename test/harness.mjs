@@ -83,6 +83,7 @@ export function createSandbox({ issues = [], specs = [] } = {}) {
       rules_path: "pipeline/rules.json",
       project_context: "pipeline/project-context.md",
       store_dir: "pipeline/store",
+      findings_path: "pipeline/findings.md",
       decisions_dir: "docs/decisions",
       ci: { provider: "none" },
       file_policy: policy,

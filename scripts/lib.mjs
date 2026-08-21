@@ -169,24 +169,27 @@ export function generatedPaths(config) {
 /**
  * Gates run once before the pull request rather than on every push.
  *
- * The map's gates are always among them, declared or not: the map is stale
- * on the branch from the first export added until the orchestrator
- * regenerates it, so running their checks on every push turns the branch red
- * by design, and a job red by design is a job people stop reading. Both are
- * named here because both READ the map — deferring the freshness check while
- * leaving the coverage check on every push defers nothing, since the second
- * fails on the same staleness as the first. `closure_gates` carries the rest
- * — what the operator judges too slow to replay per commit.
+ * Only the map's gates, and they are not a preference: the map is stale on
+ * the branch from the first export added until the orchestrator regenerates
+ * it, so running their checks on every push turns the branch red by design,
+ * and a job red by design is a job people stop reading. Both are named
+ * because both READ the map — deferring the freshness check while leaving the
+ * coverage check on every push defers nothing, since the second fails on the
+ * same staleness as the first.
+ *
+ * `closure_gates` is deliberately NOT here. It defers what QA replays by
+ * hand, and CI time is not QA time: a machine re-running `audit` on every
+ * push costs nothing and reports early, while an agent replaying it per issue
+ * costs the run. Conflating the two would have removed a security gate from
+ * every push to save an agent a command.
  *
  * @param config - the project configuration
- * @returns the keys of `commands` deferred to the pull request
+ * @returns the keys of `commands` CI defers to the pull request
  */
 export function deferredGates(config) {
-  const declared = Array.isArray(config?.closure_gates) ? config.closure_gates : [];
-  const implicit = ["project_map", "map_coverage"].filter(
-    (key) => typeof config?.commands?.[key] === "string",
+  return new Set(
+    ["project_map", "map_coverage"].filter((key) => typeof config?.commands?.[key] === "string"),
   );
-  return new Set([...declared, ...implicit]);
 }
 
 /**

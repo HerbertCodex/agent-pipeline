@@ -3,6 +3,94 @@ import { loadConfig, loadRules, pathAllowed, sha256, generatedPaths, fail } from
 import { reviewDigest } from "./render-proposal.mjs";
 import { dependencyDigest } from "./render-dependency.mjs";
 import { tokensIn, offenders } from "./mockup-check.mjs";
+import { perIssueGates, laneOf } from "./gates.mjs";
+
+/**
+ * Where a finding can land, and what each destination costs.
+ *
+ * The mechanism had one destination — an issue in the product's backlog —
+ * and closure was refused until one existed. Measured on a real run: 32
+ * observations became 32 scheduled issues for 3 closed ones, so the backlog
+ * grew by eleven for every issue finished. Making the debt opposable was
+ * right; giving it a single exit is what made it diverge.
+ */
+const DISCOVERY_ROUTES = ["issue", "spec", "pitfall", "framework"];
+
+/**
+ * Refuses a criterion that designates something no one can point to.
+ *
+ * The failure this exists to prevent was measured: a criterion read « renders
+ * its input with the fixed-pitch family and the right alignment FROM THE
+ * TOKENS », naming two tokens in prose that the stylesheet did not carry.
+ * Nothing checked it. The implementer found it eleven hours later, stopped
+ * before writing a line, and the operator waited forty-one minutes to answer
+ * a question a command could have asked at plan time.
+ *
+ * Two shapes are checkable exactly, and only those are checked. A token: if
+ * a criterion speaks of tokens it must name them as `--name`, and each name
+ * must exist in the declared stylesheet. A path: every file path a criterion
+ * cites must exist on disk, or be reserved by the issue — which is how an
+ * issue says it is about to create it.
+ *
+ * What is deliberately NOT checked: symbols. A criterion legitimately names
+ * a component the issue creates, and refusing that would make the gate
+ * impossible to satisfy on the first issue of any spec.
+ *
+ * @param handoff - the plan being validated
+ * @param config - the project configuration
+ * @param errors - accumulator of refusals
+ * @returns nothing; pushes onto errors
+ */
+function checkCriteria(handoff, config, errors) {
+  const sheetPath = config?.design_system?.tokens;
+  let declaredTokens = null;
+  if (typeof sheetPath === "string" && existsSync(sheetPath)) {
+    declaredTokens = new Set(
+      [...readFileSync(sheetPath, "utf8").matchAll(/(--[a-zA-Z][\w-]*)\s*:/g)].map((found) => found[1]),
+    );
+  }
+
+  for (const item of handoff.issues ?? []) {
+    const id = item?.id ?? "issue";
+    const reserved = new Set(item?.file_reservations ?? []);
+    for (const [index, criterion] of (item?.acceptance_criteria ?? []).entries()) {
+      if (typeof criterion !== "string") continue;
+      const named = [...criterion.matchAll(/(--[a-zA-Z][\w-]*)/g)].map((found) => found[1]);
+
+      // The word is looked for in the PROSE, never inside a code span: a
+      // criterion citing `src/tokens.css` was read as one speaking of tokens
+      // and refused for naming none.
+      const prose = criterion.replace(/`[^`]*`/g, " ");
+
+      if (declaredTokens != null) {
+        if (named.length === 0 && /\bjetons?\b|\btokens?\b/i.test(prose)) {
+          errors.push(
+            `${id} criterion ${index + 1} speaks of tokens and names none. Write them as \`--name\`, or the ` +
+              "implementer discovers hours later that the ones you meant do not exist.",
+          );
+        }
+        for (const token of named) {
+          if (declaredTokens.has(token)) continue;
+          errors.push(
+            `${id} criterion ${index + 1} names ${token}, absent from ${sheetPath}. ` +
+              "Declare it first, or name one that exists: a criterion nobody can satisfy stops the issue, " +
+              "not the plan.",
+          );
+        }
+      }
+
+      for (const match of criterion.matchAll(/`([\w./-]+\.[a-z]{1,5})`/g)) {
+        const cited = match[1];
+        if (!cited.includes("/")) continue;
+        if (existsSync(cited) || reserved.has(cited)) continue;
+        errors.push(
+          `${id} criterion ${index + 1} cites ${cited}, which exists nowhere and which the issue does not ` +
+            "reserve. Reserve it if the issue creates it, or name the path that exists.",
+        );
+      }
+    }
+  }
+}
 
 /**
  * Confronts a document with the page the operator is supposed to have read.
@@ -425,8 +513,38 @@ function main() {
     }
 
     if (agent === "qa" && transition?.to === "closed") {
+      const config = loadConfig();
+      // What a closure owes follows what the issue touched. A stylesheet and
+      // an authentication path were paying the same price: on a measured run,
+      // adding CSS variables cost the same six replayed claims and the same
+      // ledger as wiring four interactive components. That is not rigour, it
+      // is an absence of proportion.
+      const lane = laneOf(handoff.reviewed_files ?? [], config.risk);
+
+      // The battery is computed from the project's own table, minus what the
+      // closure defers. A gate cited with a non-zero exit did not run: it
+      // found something.
+      const cited = new Map(
+        (handoff.evidence?.commands ?? [])
+          .filter((item) => typeof item?.key === "string")
+          .map((item) => [item.key, item.exit]),
+      );
+      for (const key of perIssueGates(config)) {
+        if (cited.get(key) === 0) continue;
+        errors.push(
+          cited.has(key)
+            ? `evidence.commands: ${key} exits ${cited.get(key)}, so it found something. A closure cites a green battery.`
+            : `evidence.commands does not carry ${key}, which this project runs on every issue. ` +
+                "Cite it with its exit code, or say why the issue's diff cannot reach it.",
+        );
+      }
+
       const verdicts = handoff.claims_verdict;
-      if (!Array.isArray(verdicts) || verdicts.length === 0) {
+      if (lane === "low") {
+        // Nothing more is owed. The gates ran, the criteria are in the
+        // ledger, and replaying six claims about a stylesheet proves the
+        // stylesheet twice.
+      } else if (!Array.isArray(verdicts) || verdicts.length === 0) {
         errors.push(
           "claims_verdict empty: a closure confronts every implementer claim, it does not believe it",
         );
@@ -461,6 +579,11 @@ function main() {
     }
   }
 
+  // A finding used to have one destination: an issue in the product's
+  // backlog, and closure was refused until one existed. Measured on a real
+  // run, that turned 32 observations into 32 scheduled issues for 3 closed
+  // ones — a backlog that cannot converge. A finding is now routed, and only
+  // one of the four routes is product work.
   if (handoff.discoveries != null) {
     if (!Array.isArray(handoff.discoveries)) {
       errors.push("discoveries must be a list");
@@ -470,6 +593,35 @@ function main() {
         if (!item?.rationale) {
           errors.push(
             `discoveries[${index}].rationale missing: a finding with no rationale is not actionable`,
+          );
+        }
+        const lands = item?.lands;
+        if (lands == null) {
+          errors.push(
+            `discoveries[${index}].lands missing: say where the finding goes — "issue" (a defect in ` +
+              'delivered code), "spec" (criteria that contradict each other), "pitfall" (a trap to write ' +
+              'down), "framework" (not this project\'s work). Without it every observation becomes ' +
+              "scheduled product work.",
+          );
+        } else if (!DISCOVERY_ROUTES.includes(lands)) {
+          errors.push(
+            `discoveries[${index}].lands "${lands}" is not a destination: ${DISCOVERY_ROUTES.join(", ")}.`,
+          );
+        } else if (lands === "issue" && !item.breaks) {
+          errors.push(
+            `discoveries[${index}].breaks missing: an issue names what is defective — a criterion or a ` +
+              "symbol. A finding that breaks nothing nameable is an observation, and observations go to " +
+              '"pitfall".',
+          );
+        } else if (lands === "spec" && !item.criterion) {
+          errors.push(
+            `discoveries[${index}].criterion missing: say which criterion the finding contradicts, or ` +
+              "Product cannot amend anything.",
+          );
+        } else if (lands === "pitfall" && !item.line) {
+          errors.push(
+            `discoveries[${index}].line missing: write the sentence that goes into pitfalls.md. A pitfall ` +
+              "summarised at closure is a pitfall reworded by whoever writes it down.",
           );
         }
       }
@@ -641,6 +793,8 @@ function main() {
       );
     }
   }
+
+  if (handoff.mode === "spec_plan") checkCriteria(handoff, loadConfig(), errors);
 
   const policy = rules.file_policy?.[agent];
   const nonAuthoring = (rules.non_authoring_agents ?? []).includes(agent);
