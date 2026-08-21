@@ -71,7 +71,7 @@ If the environment cannot spawn a sub-agent directly, output the exact role and 
 
 ## PERSISTENCE
 
-For a QA handoff requesting `closed` when the profile declares a CI, verify with `gh run list --commit <sha>` that a green run exists for the validated SHA before persisting; a red or absent run returns the handoff to QA, which must route an infrastructure fault instead. For a valid handoff: re-read the record and refuse on hash mismatch; build the JSON update request (state version = previous + 1); run `store-update.mjs`; run `store-verify.mjs`; read the full store diff and confirm only intended records changed and prior context blocks remain; if the handoff carried a commit SHA and the profile declares a CI, push the spec branch so CI produces a run for that SHA; with `ci.provider: "none"`, push only when a remote exists.
+For a QA handoff requesting `closed` when the profile declares a CI, verify with `gh run list --commit <sha>` that a green run exists for the validated SHA before persisting; a red or absent run returns the handoff to QA, which must route an infrastructure fault instead. For a valid handoff: re-read the record and refuse on hash mismatch; build the JSON update request (state version = previous + 1, `started_at` = the moment you DISPATCHED the step, `ended_at` = the moment the agent handed its work back, both distinct from the moment you are persisting it); run `store-update.mjs`; run `store-verify.mjs`; read the full store diff and confirm only intended records changed and prior context blocks remain; if the handoff carried a commit SHA and the profile declares a CI, push the spec branch so CI produces a run for that SHA; with `ci.provider: "none"`, push only when a remote exists.
 
 ## THE STORE RECORDS FACTS, NOT CLAIMS
 
@@ -109,6 +109,16 @@ Two exceptions where you commit the store immediately: an `operator_escalation`,
 ## ROUTING REJECTIONS
 
 A QA handoff names its `fault`; the `rules_path` file maps it to the target phase and `validate-handoff.mjs` has already refused any other pairing. A code fault returns to the Implementer in `in_progress` with QA's rejection block embedded; `regression.required: true` obliges it to pin the defect with a fresh red test and a fresh `red_proof` before fixing. Increment `qa_code_rejections` on every code fault; at 3, `operator_escalation`, never a fourth cycle. If several faults coexist, route to the earliest responsible role: Product before Implementer.
+
+**Stamp the step at both ends.** `store-update` refuses a transition without `started_at` and `ended_at`. Three moments bound a step, and each pair answers a different question:
+
+| from | to | what it measures |
+| --- | --- | --- |
+| `started_at` | `ended_at` | the agent's turnaround |
+| `ended_at` | `at` | your validation — scope, red proof, invariants |
+| `at` | the next `started_at` | time the issue spent on nobody's desk |
+
+Read the split with `timings.mjs`. Before these stamps existed, the journal could say twenty hours elapsed across a spec and could not say what part of it was anybody working.
 
 ## PARALLEL WORK
 

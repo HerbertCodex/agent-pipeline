@@ -22,6 +22,20 @@ A rule disabled in the configuration is a **gate change**, therefore human revie
 <!-- /gate -->
 <!-- /brief -->
 
+<!-- brief:orchestrator -->
+## Where the time went, and how the journal knows
+
+A step is stamped three times. `started_at` is when the orchestrator dispatched it, `ended_at` when the agent handed its work back, `at` when the orchestrator finished validating and persisted. So the step itself splits in two — the agent's turnaround, then the validation that confronts the scope with the diff, replays the red proof and reads the invariants. What lies between one `at` and the next `started_at` is time the issue spent on nobody's desk.
+
+Both stamps belong to the orchestrator, the one role that writes the store. Nothing trusts an agent's account of its own duration, which it has no clock to give.
+
+`store-update` refuses a transition missing either stamp, and refuses a hand-back the step does not contain. A step measured without its hand-back keeps its total and says its split is unknown: reporting the whole of it as the agent's would charge the agent for the orchestrator's own work. `timings.mjs` reads the split, per phase and per spec.
+
+Before the stamp existed, the journal could say twenty hours elapsed across a spec and could not say what part of it was work. That is what made every judgement about the pipeline's speed a guess — including the wrong one, that review dominated. It does not: on that spec, implementation held **12 h 17** of the wall clock and review **6 h 32**.
+
+An amendment carries no step: the phase does not move, so no dispatch time is owed, and inventing one would skew exactly the measurement this exists to make.
+<!-- /brief -->
+
 <!-- brief:qa,orchestrator,product -->
 ## What an issue costs is proportionate to what it touches
 

@@ -105,9 +105,37 @@ function main() {
     if (mirrored != null) record.status = mirrored;
 
     if (!amendment) {
+      // `at` says when the step was persisted; `started_at` says when it was
+      // dispatched. Without the second, the journal cannot tell an agent
+      // working from nobody at the keyboard — a real run left fourteen hours
+      // between two closures with no block and no way to read them.
+      const startedAt = request.started_at;
+      if (typeof startedAt !== "string" || Number.isNaN(Date.parse(startedAt))) {
+        fail(
+          "started_at missing: stamp when you dispatched the step, not only when you persisted it. " +
+            "Without it the journal cannot separate a step running from a step waiting. Nothing written.",
+        );
+      }
+      if (Date.parse(startedAt) > Date.parse(at)) {
+        fail(`started_at ${startedAt} is later than the transition at ${at}. Nothing written.`);
+      }
+      // `at` is when you persisted, and that conflates the agent handing its
+      // work back with your own validation of it — scope confronted with the
+      // diff, red proof replayed, invariants read. `ended_at` is the moment
+      // the agent returned, and it is what tells the two apart.
+      const endedAt = request.ended_at;
+      if (typeof endedAt !== "string" || Number.isNaN(Date.parse(endedAt))) {
+        fail(
+          "ended_at missing: stamp when the agent handed its work back. Without it the step's total is " +
+            "known and its split between the agent and your validation is not. Nothing written.",
+        );
+      }
+      if (Date.parse(endedAt) < Date.parse(startedAt) || Date.parse(endedAt) > Date.parse(at)) {
+        fail(`ended_at ${endedAt} falls outside the step ${startedAt} .. ${at}. Nothing written.`);
+      }
       record.transitions = [
         ...(record.transitions ?? []),
-        { from, to, at, version: request.pipeline_state.version },
+        { from, to, started_at: startedAt, ended_at: endedAt, at, version: request.pipeline_state.version },
       ];
     }
     if (to === "closed" && record.closed_at == null) record.closed_at = at;

@@ -26,6 +26,8 @@ describe("store-update: optimistic lock", () => {
     const before = readRecord(root, "issues", id);
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
       expected_record_hash: "0".repeat(64),
       pipeline_state: state({ phase: "in_progress", owner: "implementer", version: 2 }),
     });
@@ -39,6 +41,8 @@ describe("store-update: optimistic lock", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
       expected_record_hash: hash,
       pipeline_state: state({ phase: "in_progress", owner: "implementer", version: 3 }),
     });
@@ -53,6 +57,8 @@ describe("store-update: transitions confronted with rules.json", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
       expected_record_hash: hash,
       pipeline_state: state({ phase: "in_progress", owner: "implementer", version: 2 }),
     });
@@ -64,6 +70,8 @@ describe("store-update: transitions confronted with rules.json", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
       expected_record_hash: hash,
       pipeline_state: state({ phase: "ready_for_qa", owner: "orchestrator", version: 2 }),
     });
@@ -91,6 +99,8 @@ describe("store-update: transitions confronted with rules.json", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {
       target: { kind: "issue", id },
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
       expected_record_hash: hash,
       pipeline_state: state({ phase: "in_progress", owner: "implementer", version: 2 }),
     });
@@ -177,6 +187,8 @@ describe("store-update: write isolation", () => {
     const before = readRecord(sandbox, "issues", "i-t2");
     const request = writeJson(sandbox, "r.json", {
       target: { kind: "issue", id: "i-t1" },
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
       expected_record_hash: recordHash(sandbox, "issues", "i-t1"),
       pipeline_state: state({ phase: "in_progress", owner: "implementer", version: 2 }),
     });
