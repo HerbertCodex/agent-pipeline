@@ -106,6 +106,16 @@ describe("agnosticism: CI separates the core from the stack", () => {
     assert.deepEqual(offenders, [], "les etapes du core ne passent jamais par la stack du projet");
   });
 
+  test("the one action the template pins is pinned to a current major", () => {
+    // `checkout` is the single action the framework itself names — everything
+    // else comes from the project's `ci.runtime_setup`. It sat on `v4` long
+    // enough for GitHub to warn that the runner it targets is deprecated, and
+    // nothing said so because a version nobody asserts is a version nobody
+    // reads. Bumping it is deliberate: this line is what makes it deliberate.
+    assert.match(template, /actions\/checkout@v7\b/, "the pinned major is behind what this test declares");
+    assert.doesNotMatch(template, /actions\/checkout@v[1-6]\b/);
+  });
+
   test("the stack steps stay a placeholder, never a written command", () => {
     assert.match(template, /\{\{steps\}\}/, "les portes du projet viennent de commands, pas du template");
     assert.match(template, /\{\{install\}\}/, "l'installation appartient a l'ecosysteme du projet");

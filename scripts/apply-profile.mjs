@@ -646,6 +646,25 @@ function main() {
       fail(`risk.${key} is not a lane: only "high" and "low" are declared, everything else is normal.`);
     }
   }
+  // A directory declared and empty exists on one machine and nowhere else:
+  // git does not version empty directories. Observed on a real port, where
+  // `docs/stack` was declared, empty, and present locally — `sync-briefs
+  // --check` died on the runner with a path its author could see. A file
+  // that is not a document does not save it either: the directory was
+  // declared to be read, and a `.gitkeep` carries nothing to read.
+  for (const dir of config.docs_dirs ?? []) {
+    const documents = existsSync(dir) ? readdirSync(dir).filter((name) => name.endsWith(".md")) : null;
+    if (documents == null) {
+      fail(`docs_dirs names ${dir}, which does not exist. A directory declared and absent is read by nobody.`);
+    }
+    if (documents.length === 0) {
+      fail(
+        `docs_dirs names ${dir}, which carries no document. Git does not version an empty directory, so it ` +
+          "exists on your machine and nowhere else — the failure lands on the runner, on a path you can see. " +
+          "Put the documents there, or stop declaring it.",
+      );
+    }
+  }
   checkArchitecture(config);
   checkLanguage(config);
   checkDecisionsJournal(config);

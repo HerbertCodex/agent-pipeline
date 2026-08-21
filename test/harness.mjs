@@ -54,6 +54,13 @@ export function createSandbox({ issues = [], specs = [] } = {}) {
   const root = mkdtempSync(join(tmpdir(), "pipeline-core-"));
   mkdirSync(join(root, "pipeline", "store"), { recursive: true });
   mkdirSync(join(root, "docs", "decisions"), { recursive: true });
+  // The configuration below declares this directory, and a declared
+  // directory that carries no document is now refused — for the reason a
+  // real port discovered: git does not version an empty one, so it exists on
+  // one machine and nowhere else. The sandbox therefore carries a document,
+  // untagged so it reaches no brief and changes no count.
+  mkdirSync(join(root, "agent-pipeline", "docs"), { recursive: true });
+  writeFileSync(join(root, "agent-pipeline", "docs", "placeholder.md"), "# Placeholder\n\nNo tagged section.\n");
 
   const policy = {
     implementer: { allow: ["src/**", "test/**"], deny: ["package.json"] },

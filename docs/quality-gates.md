@@ -73,7 +73,14 @@ The note is judged against the project map. That is why the map exists, and why 
 
 Hence the rule, enforced in four places rather than written in one: `next-issues` and `check-reservations` ignore generated paths when computing overlap, `validate-handoff` refuses a plan that reserves one, `verify-scope` refuses one in any diff but the Orchestrator's, and the Orchestrator runs `regenerate.mjs` once an issue closes — from a tree where nobody is mid-write, which is the whole reason the job is not the Implementer's.
 
-**Its gate is a closure gate.** The map is stale on the branch from the first export added until the Orchestrator catches it up, so checking it on every push would mean a branch red by design — and a job red by design is a job people stop reading. The rendered workflow runs closure gates on `pull_request` only, and the `pre-push` hook leaves them alone. `closure_gates` in the configuration defers others the same way; the map is deferred whether or not it is listed, because that one is not a preference.
+**Its gate is deferred, and it is the only kind that is.** The map is stale on the branch from the first export added until the Orchestrator catches it up, so checking it on every push would mean a branch red by design — and a job red by design is a job people stop reading. The rendered workflow runs the map's gates on `pull_request` only, and the `pre-push` hook leaves them alone. It is not a preference: `project_map` is deferred whether or not anything lists it.
+<!-- gate:map_coverage -->
+`map_coverage` is deferred with it, because it reads the same map: deferring the freshness check while leaving the coverage check on every push defers nothing.
+<!-- /gate -->
+
+**`closure_gates` does not touch CI, deliberately.** It defers what QA replays by hand, and CI time is not QA time: a machine re-running `audit` on every push costs nothing and reports early, while an agent replaying it per issue costs the run. Deferring both from the same key would have removed a security gate from every push to save an agent one command.
+
+So a gate you list there still runs on every push, and stops being replayed per issue. If your CI is slower than you expected, that key is not where to look — this document claimed otherwise until a real port's QA read the code and found the two had been decoupled without the sentence being rewritten.
 
 The trap is not a red gate, it is a green one: **a `--check` that compares an empty map to an empty map exits 0**. Count the files under your roots against the entries rendered, once, before trusting it.
 <!-- /brief -->
