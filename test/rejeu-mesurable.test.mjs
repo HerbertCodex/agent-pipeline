@@ -12,7 +12,7 @@ afterEach(() => {
 
 const GATES = {
   check: "true", lint: "true", build: "true", test_unit: "true", audit: "true",
-  secrets_scan: "true", project_map: "true", design_limits: "true", duplication: "true",
+  secrets_scan: "true", project_map: "true", design_limits: "true", duplication: "true", smoke: "true",
 };
 
 /**
@@ -47,9 +47,10 @@ function handover(overrides = {}) {
     outcome: "ready_for_qa",
     requested_transition: { from: "in_progress", to: "ready_for_qa" },
     context: { heading: "## Context for QA", body: "corps" },
+    untested_surface: "rien : le changement est entierement prouve",
     claims_to_replay: [{ claim: "les portes sortent en 0", how_to_replay: "node --test" }],
     evidence: {
-      commands: ["check", "lint", "test_unit", "secrets_scan", "project_map", "design_limits", "duplication"].map(
+      commands: ["check", "lint", "test_unit", "secrets_scan", "project_map", "design_limits", "duplication", "smoke"].map(
         (key) => ({ key, cmd: "true", exit: 0 }),
       ),
       files: ["src/x.ts"],

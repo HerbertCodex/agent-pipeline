@@ -117,7 +117,7 @@ describe("the framework's own documents pass on a bare project", () => {
     // briefs of a real project, in the pages that teach the rules.
     const config = {
       commands: Object.fromEntries(
-        ["check", "lint", "build", "test_unit", "audit", "secrets_scan", "project_map", "design_limits", "duplication"]
+        ["check", "lint", "build", "test_unit", "audit", "secrets_scan", "project_map", "design_limits", "duplication", "smoke"]
           .map((key) => [key, "true"]),
       ),
       file_policy: {},
@@ -148,7 +148,7 @@ describe("a prompt is held to the same rule as a brief", () => {
     const path = join(sandbox, "pipeline.config.json");
     const config = JSON.parse(readFileSync(path, "utf8"));
     config.commands = Object.fromEntries(
-      ["check", "lint", "build", "test_unit", "audit", "secrets_scan", "project_map", "design_limits", "duplication"]
+      ["check", "lint", "build", "test_unit", "audit", "secrets_scan", "project_map", "design_limits", "duplication", "smoke"]
         .map((key) => [key, "true"]),
     );
     config.architecture = { id: "feature-modules", project_type: "backend" };
@@ -172,7 +172,7 @@ describe("a prompt is held to the same rule as a brief", () => {
     const path = join(sandbox, "pipeline.config.json");
     const config = JSON.parse(readFileSync(path, "utf8"));
     config.commands = Object.fromEntries(
-      ["check", "lint", "build", "test_unit", "audit", "secrets_scan", "project_map", "design_limits", "duplication"]
+      ["check", "lint", "build", "test_unit", "audit", "secrets_scan", "project_map", "design_limits", "duplication", "smoke"]
         .map((key) => [key, "true"]),
     );
     config.architecture = { id: "feature-modules", project_type: "backend" };

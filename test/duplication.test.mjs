@@ -151,6 +151,7 @@ describe("apply-profile: the framework requires a gate against duplication", () 
       secrets_scan: "true",
       project_map: "true",
       design_limits: "true",
+    smoke: "true",
     };
     config.architecture = { id: "feature-modules", project_type: "backend" };
     writeFileSync(path, JSON.stringify(config));
@@ -178,6 +179,7 @@ describe("apply-profile: the framework requires a gate against duplication", () 
       project_map: "true",
       design_limits: "true",
       duplication: "pmd cpd --minimum-tokens 100",
+    smoke: "true",
     };
     config.architecture = { id: "feature-modules", project_type: "backend" };
     writeFileSync(path, JSON.stringify(config));

@@ -128,7 +128,7 @@ describe("the framework requires a gate on design limits", () => {
     try {
       const path = join(root, "pipeline.config.json");
       const config = JSON.parse(readFileSync(path, "utf8"));
-      config.commands = { check: "true", lint: "true", build: "true", test_unit: "true", audit: "true", secrets_scan: "true", project_map: "true" };
+      config.commands = { check: "true", lint: "true", build: "true", test_unit: "true", audit: "true", secrets_scan: "true", project_map: "true", smoke: "true" };
       writeFileSync(path, JSON.stringify(config));
       const result = run(root, "apply-profile.mjs", ["--check"]);
       assert.notEqual(result.status, 0);
@@ -144,7 +144,7 @@ describe("the framework requires a gate on design limits", () => {
     try {
       const path = join(root, "pipeline.config.json");
       const config = JSON.parse(readFileSync(path, "utf8"));
-      config.commands = { check: "true", lint: "true", build: "true", test_unit: "true", audit: "true", secrets_scan: "true", project_map: "true", design_limits: "gocyclo -over 8 ." };
+      config.commands = { check: "true", lint: "true", build: "true", test_unit: "true", audit: "true", secrets_scan: "true", project_map: "true", design_limits: "gocyclo -over 8 .", smoke: "true" };
       writeFileSync(path, JSON.stringify(config));
       const result = run(root, "apply-profile.mjs", ["--check"]);
       assert.doesNotMatch(result.output, /design_limits/, "le core ne juge pas l'outil, seulement la presence de la cle");
@@ -167,6 +167,7 @@ describe("the framework requires the code layout to be declared", () => {
     config.commands = {
       check: "true", lint: "true", build: "true", test_unit: "true",
       audit: "true", secrets_scan: "true", project_map: "true", design_limits: "true",
+    smoke: "true",
     };
     if (architecture == null) delete config.architecture;
     else config.architecture = architecture;

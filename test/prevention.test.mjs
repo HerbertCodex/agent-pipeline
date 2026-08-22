@@ -2,7 +2,7 @@ import { test, describe, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { createSandbox, destroySandbox, writeStore, run, issue, state, seedFramework } from "./harness.mjs";
+import { createSandbox, destroySandbox, writeStore, writeJson, readRecord, recordHash, run, issue, state, seedFramework } from "./harness.mjs";
 
 let sandbox = null;
 afterEach(() => {
@@ -118,6 +118,7 @@ describe("apply-profile: a profile carries the traps it has already paid for", (
       project_map: "true",
       design_limits: "true",
       duplication: "true",
+    smoke: "true",
     };
     config.architecture = { id: "feature-modules", project_type: "backend" };
     config.decisions_dir = "docs/decisions";
@@ -151,7 +152,7 @@ describe("apply-profile: the decisions journal has a place, not only a mention",
     const config = JSON.parse(readFileSync(path, "utf8"));
     config.commands = {
       check: "true", lint: "true", build: "true", test_unit: "true", audit: "true",
-      secrets_scan: "true", project_map: "true", design_limits: "true", duplication: "true",
+      secrets_scan: "true", project_map: "true", design_limits: "true", duplication: "true", smoke: "true",
     };
     config.architecture = { id: "feature-modules", project_type: "backend" };
     // The sandbox declares a journal by default, since every other suite
@@ -188,5 +189,60 @@ describe("apply-profile: the decisions journal has a place, not only a mention",
     sandbox = withJournal("docs/decisions", true);
     const result = run(sandbox, "apply-profile.mjs", ["--check"]);
     assert.doesNotMatch(result.output, /decisions_dir/);
+  });
+});
+
+describe("what store-verify demands, store-update can write", () => {
+  test("an escape and its prevention are written through the one writer", () => {
+    // Reported from a real spec: `store-verify` refuses to close an escaped
+    // issue with no prevention, and no request field could set either. The
+    // agent hand-edited a line of the store — the one thing the framework
+    // forbids — and said so. Its two other ways out were both lies: drop
+    // `escaped_from`, or name a gate that does not exist.
+    const root = createSandbox();
+    writeStore(root, "issues", [
+      issue({ id: "i-old", pipeline_state: state({ phase: "closed", owner: "none" }) }),
+      issue({ id: "i-fix" }),
+    ]);
+    const request = writeJson(root, "r.json", {
+      target: { kind: "issue", id: "i-fix" },
+      expected_record_hash: recordHash(root, "issues", "i-fix"),
+      escaped_from: "i-old",
+      prevention: { pitfall: "une phrase repetee est correcte pour un compilateur" },
+    });
+    const result = run(root, "store-update.mjs", [request]);
+    assert.equal(result.status, 0, result.output);
+    const stored = readRecord(root, "issues", "i-fix");
+    assert.equal(stored.escaped_from, "i-old");
+    assert.equal(stored.prevention.pitfall, "une phrase repetee est correcte pour un compilateur");
+    destroySandbox(root);
+  });
+
+  test("an escape naming an issue the store does not carry is refused", () => {
+    const root = createSandbox();
+    writeStore(root, "issues", [issue({ id: "i-fix" })]);
+    const request = writeJson(root, "r.json", {
+      target: { kind: "issue", id: "i-fix" },
+      expected_record_hash: recordHash(root, "issues", "i-fix"),
+      escaped_from: "i-fantome",
+    });
+    const result = run(root, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /i-fantome/);
+    destroySandbox(root);
+  });
+
+  test("a prevention naming neither a gate nor a pitfall is refused", () => {
+    const root = createSandbox();
+    writeStore(root, "issues", [issue({ id: "i-fix" })]);
+    const request = writeJson(root, "r.json", {
+      target: { kind: "issue", id: "i-fix" },
+      expected_record_hash: recordHash(root, "issues", "i-fix"),
+      prevention: { note: "on fera attention" },
+    });
+    const result = run(root, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /gate|pitfall/);
+    destroySandbox(root);
   });
 });

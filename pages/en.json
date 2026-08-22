@@ -576,7 +576,9 @@
       "cost_validation": "Orchestrator validating",
       "cost_waiting": "On nobody's desk",
       "cost_unknown": "{count} step(s) carry no stamp: they were written before the journal recorded them, and are counted nowhere rather than as zero.",
-      "doc_title": "Spec {spec}"
+      "doc_title": "Spec {spec}",
+      "unproved_head": "What no test reaches",
+      "unproved_blurb": "Declared by each handoff, gathered here. Two issues of one spec once closed with the same hole and nobody could see it was the same one — a hole named twice is a hole worth a spec of its own."
     }
   },
   "brief_questions": {

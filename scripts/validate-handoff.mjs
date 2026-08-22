@@ -93,6 +93,17 @@ function checkCriteria(handoff, config, errors) {
 }
 
 /**
+ * Says whether a role authors nothing, and therefore claims nothing.
+ *
+ * @param rules - the loaded rules
+ * @param agent - the role that produced the handoff
+ * @returns true when the role writes no commit
+ */
+function nonAuthoringAgent(rules, agent) {
+  return (rules.non_authoring_agents ?? []).includes(agent);
+}
+
+/**
  * Says whether a shell command hands back a status that measures anything.
  *
  * A replay is a measurement, and a measurement whose exit code belongs to a
@@ -229,6 +240,26 @@ function checkDependencyAssessment(handoff, errors) {
 }
 
 /**
+ * Shapes a file takes when it is a screen.
+ *
+ * Read by extension rather than by the architecture's layers: a screen is a
+ * screen in `src/pages`, `src/ui` or anywhere else, and half the catalogue's
+ * layouts declare no screen layer at all. The list is language-shaped, like
+ * everything else here that has to recognise a file without parsing it.
+ */
+const SCREEN_SHAPES = /\.(svelte|vue|tsx|jsx)$/;
+
+/**
+ * The screens a set of paths carries.
+ *
+ * @param paths - files touched or reserved
+ * @returns those that are screens
+ */
+function screensAmong(paths) {
+  return (paths ?? []).filter((path) => typeof path === "string" && SCREEN_SHAPES.test(path));
+}
+
+/**
  * Confronts a built screen with the mockup it was built against.
  *
  * The design-system page states the order: tokens, primitives, then a mockup
@@ -271,10 +302,34 @@ function checkMockup(handoff, errors) {
     if (mockup.not_applicable.trim().length === 0) {
       errors.push("mockup.not_applicable is empty: an exemption nobody had to justify is an exemption always taken");
     }
+    // The exemption is a claim about the diff, and the diff can be read. On a
+    // real run no mockup was ever produced and the screens were built anyway:
+    // the requirement lands on the implementer, at the last possible moment,
+    // where the only affordable answer is the escape.
+    const shipped = screensAmong(handoff.evidence?.files);
+    if (shipped.length > 0) {
+      errors.push(
+        `mockup.not_applicable claims this issue touches no screen, and its diff carries ${shipped.join(", ")}. ` +
+          "Name the mockup these were built against.",
+      );
+    }
     return;
   }
   if (!existsSync(mockup.path)) {
     errors.push(`mockup.path not found: ${mockup.path}`);
+    return;
+  }
+  // A mockup the diff carries is not a mockup, it is the code. Reported by a
+  // real agent about its own run: it pointed the field at the component it had
+  // just written, `mockup-check` passed because the component does use the
+  // tokens, and the check verified the code against itself. The order the
+  // design-system page teaches — mockup, then screens — makes that impossible
+  // when it is followed, and nothing checked that it had been.
+  if ((handoff.evidence?.files ?? []).includes(mockup.path)) {
+    errors.push(
+      `mockup.path ${mockup.path} is a file this diff carries: a mockup written alongside the screen checks ` +
+        "the code against itself. The mockup comes first, assembled from the primitives that already exist.",
+    );
     return;
   }
   const tokensPath = config.design_system?.tokens;
@@ -565,6 +620,21 @@ function main() {
         "evidence.red_proof.cmd hands its exit code to something other than the test run: a red proof whose " +
           "status comes from a restore proves the restore.",
       );
+    }
+
+    // Two issues of one real spec closed with the same hole: no automated
+    // test reached the route actions. The field existed in the handoffs and
+    // the framework read it nowhere, so nothing accumulated it and nothing
+    // said the hole was the same one twice. Saying there is none is an
+    // answer, and it has to be said.
+    if (handoff.evidence?.commit_sha != null && !nonAuthoringAgent(rules, agent)) {
+      const surface = handoff.untested_surface;
+      if (typeof surface !== "string" || surface.trim().length === 0) {
+        errors.push(
+          "untested_surface missing: name what this change leaves unproved, or say there is nothing. " +
+            "A hole nobody wrote down is a hole nobody counts, and the same one closed two issues in a row.",
+        );
+      }
     }
 
     if (agent === "implementer" && transition?.to === "ready_for_qa") {
@@ -870,7 +940,30 @@ function main() {
     }
   }
 
-  if (handoff.mode === "spec_plan") checkCriteria(handoff, loadConfig(), errors);
+  if (handoff.mode === "spec_plan") {
+    const planned = loadConfig();
+    checkCriteria(handoff, planned, errors);
+    // Asking the implementer is asking too late. Product is the one who can
+    // still have a mockup drawn, and the operator is the one who should see it
+    // before the screens exist — which is the order the design-system page
+    // teaches and nothing enforced.
+    if (["frontend", "mobile", "fullstack"].includes(planned.architecture?.project_type)) {
+      const screens = (handoff.issues ?? []).flatMap((item) =>
+        screensAmong(item?.file_reservations).map((path) => ({ id: item.id ?? "issue", path })),
+      );
+      const mockup = handoff.mockup;
+      if (screens.length > 0 && mockup?.path == null && typeof mockup?.not_applicable !== "string") {
+        for (const screen of screens) {
+          errors.push(
+            `${screen.id} reserves ${screen.path}, a screen, and the plan names no mockup. Draw it before the ` +
+              "screens exist, or the only answer left to the implementer is the exemption.",
+          );
+        }
+      } else if (typeof mockup?.path === "string" && !existsSync(mockup.path)) {
+        errors.push(`mockup.path not found: ${mockup.path}`);
+      }
+    }
+  }
 
   const policy = rules.file_policy?.[agent];
   const nonAuthoring = (rules.non_authoring_agents ?? []).includes(agent);

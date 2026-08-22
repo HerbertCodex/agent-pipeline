@@ -708,6 +708,16 @@ function main() {
   // yet, and "this profile is not calibrated" is the answer worth printing
   // first. Any missing key it names is downstream of that one sentence.
   checkCalibration(config);
+  // Thirteen gates green while every form answered 403: the origin was never
+  // configured, no criterion foresaw it, and it was found by starting the
+  // server. Nothing in a static battery starts anything.
+  if (typeof config.commands.smoke !== "string") {
+    fail(
+      "commands.smoke missing: name the command that STARTS the built application and exercises one real " +
+        "path end to end — a request that goes through, a form that posts, a command that runs. Not another " +
+        "unit test: the failure this catches is every gate green while the product refuses everything.",
+    );
+  }
   checkGeneratedTargets(config);
   checkDesignSystem(config);
   for (const role of Object.keys(config.file_policy)) {

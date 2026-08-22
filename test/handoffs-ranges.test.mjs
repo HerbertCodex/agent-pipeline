@@ -84,7 +84,7 @@ describe("handoffs have a home, and it is not the diff", () => {
     const config = JSON.parse(readFileSync(path, "utf8"));
     config.handoffs_dir = "pipeline/handoffs";
     config.commands = Object.fromEntries(
-      ["check", "lint", "build", "test_unit", "audit", "secrets_scan", "project_map", "design_limits", "duplication"]
+      ["check", "lint", "build", "test_unit", "audit", "secrets_scan", "project_map", "design_limits", "duplication", "smoke"]
         .map((key) => [key, "true"]),
     );
     config.architecture = { id: "feature-modules", project_type: "backend" };

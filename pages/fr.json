@@ -576,7 +576,9 @@
       "cost_validation": "Orchestrateur en validation",
       "cost_waiting": "Sur le bureau de personne",
       "cost_unknown": "{count} étape(s) sans estampille : écrites avant que le journal ne les enregistre, elles ne comptent nulle part plutôt que pour zéro.",
-      "doc_title": "Spec {spec}"
+      "doc_title": "Spec {spec}",
+      "unproved_head": "Ce qu'aucun test n'atteint",
+      "unproved_blurb": "Déclaré par chaque remise, rassemblé ici. Deux issues d'une même spec se sont fermées sur le même trou sans que personne puisse voir que c'était le même — un trou nommé deux fois mérite une spec à lui."
     }
   },
   "brief_questions": {

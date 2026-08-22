@@ -29,7 +29,7 @@ function withMap(overrides = {}) {
   config.project_map = { out: "docs/project-map.md", roots: ["src"], regenerate: "true" };
   config.commands = {
     check: "true", lint: "true", build: "true", test_unit: "true", audit: "true",
-    secrets_scan: "true", design_limits: "true", duplication: "true", project_map: "true",
+    secrets_scan: "true", design_limits: "true", duplication: "true", smoke: "true", project_map: "true",
   };
   config.closure_gates = ["project_map"];
   config.architecture = { id: "feature-modules", project_type: "backend" };

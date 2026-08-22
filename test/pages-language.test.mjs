@@ -92,7 +92,7 @@ describe("a project declares which language its pages are written in", () => {
     const config = JSON.parse(readFileSync(path, "utf8"));
     config.commands = {
       check: "true", lint: "true", build: "true", test_unit: "true", audit: "true",
-      secrets_scan: "true", project_map: "true", design_limits: "true", duplication: "true",
+      secrets_scan: "true", project_map: "true", design_limits: "true", duplication: "true", smoke: "true",
     };
     config.architecture = { id: "feature-modules", project_type: "backend" };
     if (language != null) config.language = language;

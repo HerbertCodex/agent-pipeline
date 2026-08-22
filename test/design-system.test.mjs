@@ -31,6 +31,7 @@ function withProject(projectType, design = null) {
     project_map: "true",
     design_limits: "true",
     duplication: "true",
+    smoke: "true",
   };
   const layout = { backend: "feature-modules", frontend: "feature-sliced", mobile: "mvvm", fullstack: "feature-modules" };
   config.architecture = { id: layout[projectType] ?? "feature-modules", project_type: projectType };

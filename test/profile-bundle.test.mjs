@@ -29,6 +29,7 @@ function withProfile(overrides = {}) {
     secrets_scan: "true",
     project_map: "true",
     design_limits: "eslint --config eslint.design.config.mjs .",
+    smoke: "true",
   };
   config.project_map = { out: "docs/map.md", roots: ["src"], skip: ["dist"] };
   config.doc_policy = { roots: ["src"] };

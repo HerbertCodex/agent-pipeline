@@ -154,6 +154,7 @@ describe("validate-handoff: a screen is coded against a mockup, not from memory"
       notes: [],
       red_proof: { cmd: "jest", exit: 1, observed_before_implementation: true, test_commit_sha: "abc1234" },
     },
+    untested_surface: "rien : le changement est entierement prouve",
     claims_to_replay: [{ claim: "scope verified", how_to_replay: "verify-scope handoff.json abc1234" }],
   };
 
@@ -182,8 +183,14 @@ describe("validate-handoff: a screen is coded against a mockup, not from memory"
   });
 
   test("accepts a non-visual issue that says so", () => {
+    // The diff has to agree with the exemption. This fixture used to ship a
+    // `.tsx` while claiming to touch no screen, and passed — which is the
+    // contradiction the rule now refuses.
     sandbox = withMockup(`<style>.hero { color: var(--ink); }</style>`);
-    const result = submit({ mockup: { not_applicable: "data layer only, no screen touched" } });
+    const result = submit({
+      mockup: { not_applicable: "data layer only, no screen touched" },
+      evidence: { ...BASE.evidence, files: ["src/data/repository.ts"] },
+    });
     assert.equal(result.status, 0, result.output);
   });
 

@@ -12,6 +12,7 @@ const CLAIM = { claim: "verify-scope : 8 fichiers, exit 0", how_to_replay: "veri
 
 const IMPL = {
   schema_version: 1,
+  untested_surface: "rien : le changement est entierement prouve",
   produced_at: "2026-08-21T09:00:00.000Z",
   agent: "implementer",
   scope: { spec_id: "s-t1", issue_id: "i-t1" },
@@ -183,6 +184,7 @@ describe("store-update: the verdict is counted against the claims", () => {
     const second = writeJson(root, "r2.json", {
       target: { kind: "issue", id },
       expected_record_hash: recordHash(root, "issues", id),
+      untested_surface: "rien : le changement est entierement prouve",
       claims_to_replay: [{ claim: "affirmation neuve", how_to_replay: "la rejouer" }],
     });
     assert.equal(run(root, "store-update.mjs", [second]).status, 0);

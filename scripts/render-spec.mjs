@@ -59,6 +59,13 @@ function main() {
     .map((route) => ({ route, items: found.filter((item) => (item.lands ?? "issue") === route) }))
     .filter((group) => group.items.length > 0);
 
+  // What no test reaches, gathered rather than left one handoff at a time.
+  // Two issues of one spec closed with the same hole, and nobody could see it
+  // was the same one.
+  const unproved = closed
+    .filter((record) => typeof record.untested_surface === "string" && record.untested_surface.trim().length > 0)
+    .map((record) => ({ id: record.id, surface: record.untested_surface }));
+
   const cards = closed
     .map(
       (record, index) => `<article class="feature">
@@ -117,6 +124,16 @@ ${
     ? `<section><div class="sec-head"><h2>${esc(t.found_head)}</h2>
 <p>${esc(t.found_blurb)}</p></div>
 <div class="features">${findings}</div></section>`
+    : ""
+}
+
+${
+  unproved.length > 0
+    ? `<section><div class="sec-head"><h2>${esc(t.unproved_head)}</h2>
+<p>${esc(t.unproved_blurb)}</p></div>
+<ol class="excl">${unproved
+        .map((entry) => `<li><span class="rid">${esc(entry.id)}</span><p>${esc(entry.surface)}</p></li>`)
+        .join("")}</ol></section>`
     : ""
 }
 

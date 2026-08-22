@@ -13,7 +13,7 @@ afterEach(() => {
 
 const GATES = {
   check: "true", lint: "true", build: "true", test_unit: "true", audit: "true",
-  secrets_scan: "true", project_map: "true", design_limits: "true", duplication: "true",
+  secrets_scan: "true", project_map: "true", design_limits: "true", duplication: "true", smoke: "true",
   coverage: "true", mutation: "true",
 };
 

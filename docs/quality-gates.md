@@ -22,6 +22,34 @@ A rule disabled in the configuration is a **gate change**, therefore human revie
 <!-- /gate -->
 <!-- /brief -->
 
+<!-- brief:product,implementer,qa,orchestrator -->
+## The mockup comes before the screen, and the check says so
+
+The design-system page states the order: tokens, then primitives, then a finished mockup assembled from the primitives that exist, then screens. Two real runs went straight to the screens, and the check could not tell.
+
+The first declared `mockup.not_applicable` — « this issue touches no screen » — on a diff carrying `.svelte` files. The exemption is a claim about the diff, and the diff can be read: an issue shipping a screen no longer exempts itself.
+
+The second pointed `mockup.path` at the component it had just written. The check passed, because a component does reference the tokens — and it became **circular, the code verified against itself**. A mockup the diff carries is not a mockup; it is the code. Both are refused now.
+
+And the demand moved earlier. Asking the implementer is asking at the last possible moment, where the only affordable answer is the escape. A plan whose issues reserve screen files names its mockup, so the operator sees it before the screens exist — which is the whole point of the order.
+
+What no command can check: whether the design-system and token pages were ever read. `apply-profile` verifies the block is declared, not that anyone looked at the page that helps decide it. That limit is stated rather than papered over with a ritual.
+<!-- /brief -->
+
+<!-- brief:implementer,qa,product,orchestrator -->
+## One gate starts the application, because no static one does
+
+Thirteen gates green on a real spec while every form answered 403: an origin was never configured, no criterion foresaw it, and it was found by starting the server by hand. Nothing in a static battery starts anything.
+
+`smoke` is that gate. The framework does not know your tool — it requires the key, and what counts is a command that **starts the built artefact and exercises one real path end to end**: a request that goes through, a form that posts, a command that runs. Another unit test does not count: the failure this catches is every other gate passing while the product refuses everything.
+
+## What no test reaches is declared
+
+Every handoff carrying a commit names its `untested_surface`, and saying there is none is an answer that still has to be said. Two issues of one real spec closed with the same hole — no automated test reached the route actions — and nothing accumulated it, so nobody could see it was the same hole twice.
+
+The store keeps it and the closure report gathers it. A hole named twice is a hole worth a spec of its own.
+<!-- /brief -->
+
 <!-- brief:implementer,qa,orchestrator -->
 ## A replay is a measurement, so its exit code must belong to it
 

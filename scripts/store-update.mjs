@@ -156,6 +156,44 @@ function main() {
       record.criteria_ledger = null;
     }
   }
+  // `store-verify` refuses to close an escaped issue with no prevention, and
+  // no request field could set either. A real spec hit it: the agent had to
+  // hand-edit a line of the store — the one thing this framework forbids —
+  // because its two other ways out were lies, dropping `escaped_from` or
+  // naming a gate that does not exist. A gate demanding a field no writer can
+  // write is a gate satisfied by forgery.
+  if (request.escaped_from != null) {
+    if (kind !== "issue") fail("escaped_from only applies to an issue");
+    const escaped = request.escaped_from;
+    if (typeof escaped !== "string" || escaped.trim().length === 0) {
+      fail("escaped_from must name the closed issue the defect belongs to. Nothing written.");
+    }
+    if (!entries.some((candidate) => candidate.record.id === escaped)) {
+      fail(`escaped_from names ${escaped}, which the store does not carry. Nothing written.`);
+    }
+    record.escaped_from = escaped;
+  }
+  if (request.prevention != null) {
+    if (kind !== "issue") fail("prevention only applies to an issue");
+    const prevention = request.prevention;
+    const gate = typeof prevention.gate === "string" && prevention.gate.length > 0;
+    const pitfall = typeof prevention.pitfall === "string" && prevention.pitfall.length > 0;
+    if (!gate && !pitfall) {
+      fail(
+        "prevention names neither a gate nor a pitfall. A note saying it will not happen again is what " +
+          "this framework exists to replace. Nothing written.",
+      );
+    }
+    record.prevention = gate ? { gate: prevention.gate } : { pitfall: prevention.pitfall };
+  }
+  if (request.untested_surface != null) {
+    if (kind !== "issue") fail("untested_surface only applies to an issue");
+    const surface = request.untested_surface;
+    if (typeof surface !== "string" || surface.trim().length === 0) {
+      fail("untested_surface must be a non-empty string. Nothing written.");
+    }
+    record.untested_surface = surface;
+  }
   if (request.claims_to_replay != null) {
     if (kind !== "issue") fail("claims_to_replay only applies to an issue");
     const claims = request.claims_to_replay;
