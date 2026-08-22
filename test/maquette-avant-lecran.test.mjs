@@ -110,15 +110,14 @@ describe("an exemption is a claim about the diff, and the diff can be read", () 
   });
 });
 
-describe("the mockup is asked for when the spec is planned, not when the screen is written", () => {
-  /**
-   * Submits a plan whose issues reserve the given files.
-   *
-   * @param reservations - what the single issue reserves
-   * @param mockup - the mockup block the plan declares
-   * @returns validate-handoff's result
-   */
-  function plan(reservations, mockup) {
+/**
+ * Submits a plan whose issues reserve the given files.
+ *
+ * @param reservations - what the single issue reserves
+ * @param mockup - the mockup block the plan declares
+ * @returns validate-handoff's result
+ */
+function plan(reservations, mockup) {
     const approved = join(sandbox, "approved.md");
     const body = "# scope\n";
     writeFileSync(approved, body);
@@ -148,9 +147,10 @@ describe("the mockup is asked for when the spec is planned, not when the screen 
           },
         ],
       }),
-    ]);
-  }
+  ]);
+}
 
+describe("the mockup is asked for when the spec is planned, not when the screen is written", () => {
   test("a plan carrying a screen issue and no mockup is refused", () => {
     // Asking the implementer is asking too late: at that point the only cheap
     // answer is the escape. Product is the one who can still have a mockup
@@ -184,8 +184,25 @@ describe("the mockup is asked for when the spec is planned, not when the screen 
   });
 });
 
-describe("a mockup that is the code is not a mockup", () => {
-  test("pointing the field at a file the diff created is refused", () => {
+describe("the issue that draws the mockup carries it, and that is not circular", () => {
+  test("a mockup page the diff creates is accepted", () => {
+    // Read off a real run: the issue whose whole job was to draw the mockup
+    // carried it in its diff, alongside a route to display it. An earlier rule
+    // refused any mockup the diff carried, on the grounds that the code would
+    // be verified against itself — and it refused exactly the behaviour the
+    // framework asks for. What it was really catching is a SOURCE FILE used as
+    // a mockup, which the form check catches without the false positive.
+    sandbox = withScreens();
+    mkdirSync(join(sandbox, "src", "mockups"), { recursive: true });
+    writeFileSync(join(sandbox, "src", "mockups", "mois.html"), '<div style="color: var(--ink)">x</div>');
+    const body = handover(["src/mockups/mois.html", "src/routes/maquettes/+page.svelte"], {
+      path: "src/mockups/mois.html",
+    });
+    const result = run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", body)]);
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("a component used as a mockup is still refused, diff or no diff", () => {
     // Reported by a real agent about its own run: it declared the mockup
     // path pointing at the component it had just written. The check passed,
     // because the component does reference the tokens — and it became
@@ -197,7 +214,7 @@ describe("a mockup that is the code is not a mockup", () => {
     const result = run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", body)]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /ExpenseRow/);
-    assert.match(result.output, /circular|itself|elle-meme|its own/i);
+    assert.match(result.output, /html|page/i);
   });
 
   test("a mockup the diff does not carry is accepted", () => {
@@ -206,5 +223,39 @@ describe("a mockup that is the code is not a mockup", () => {
     const body = handover(["src/pages/x/+page.svelte"], { path: "maquette.html" });
     const result = run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", body)]);
     assert.equal(result.status, 0, result.output);
+  });
+});
+
+describe("a mockup is a page you open, not a component you compile", () => {
+  test("a source file is refused as a mockup, whatever it contains", () => {
+    // The framework never renders a mockup — a drawing has no source, and a
+    // script producing one would be inventing it. But it said nothing about
+    // the form, so a real run pointed the field at a `.svelte` component and
+    // the check read it happily. Every other decision reaches the operator as
+    // a page that opens on its own; the one artefact they most need to LOOK at
+    // had no such convention.
+    sandbox = withScreens();
+    writeFileSync(join(sandbox, "src", "Row.svelte"), '<div style="color: var(--ink)">x</div>');
+    const body = handover(["src/pages/x/+page.svelte"], { path: "src/Row.svelte" });
+    const result = run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", body)]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /Row\.svelte/);
+    assert.match(result.output, /html|page/i);
+  });
+
+  test("an HTML page is what the field is for", () => {
+    sandbox = withScreens();
+    writeFileSync(join(sandbox, "maquette.html"), '<div style="color: var(--ink)">x</div>');
+    const body = handover(["src/pages/x/+page.svelte"], { path: "maquette.html" });
+    const result = run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", body)]);
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("the plan is held to the same form", () => {
+    sandbox = withScreens();
+    writeFileSync(join(sandbox, "src", "Row.svelte"), "<div>x</div>");
+    const result = plan(["src/pages/x/+page.svelte"], { path: "src/Row.svelte" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /html|page/i);
   });
 });

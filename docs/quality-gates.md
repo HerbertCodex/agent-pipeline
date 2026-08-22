@@ -29,7 +29,11 @@ The design-system page states the order: tokens, then primitives, then a finishe
 
 The first declared `mockup.not_applicable` — « this issue touches no screen » — on a diff carrying `.svelte` files. The exemption is a claim about the diff, and the diff can be read: an issue shipping a screen no longer exempts itself.
 
-The second pointed `mockup.path` at the component it had just written. The check passed, because a component does reference the tokens — and it became **circular, the code verified against itself**. A mockup the diff carries is not a mockup; it is the code. Both are refused now.
+The second pointed `mockup.path` at the component it had just written. The check passed, because a component does reference the tokens — and it became **circular, the code verified against itself**.
+
+What refuses it is the form: a mockup is a self-contained HTML page, opened rather than compiled, and handed over like every other page. That is not a taste — the check reads token references out of the file, so a form carrying none cannot be checked at all.
+
+A second rule refused any mockup the diff carried, on the same grounds. Reading a real run killed it: **the issue whose whole job is to draw the mockup necessarily carries it**, alongside a route to display it, and the rule refused exactly the behaviour the framework asks for. What it was really catching was a source file used as a mockup, which the form check catches without the false positive.
 
 And the demand moved earlier. Asking the implementer is asking at the last possible moment, where the only affordable answer is the escape. A plan whose issues reserve screen files names its mockup, so the operator sees it before the screens exist — which is the whole point of the order.
 

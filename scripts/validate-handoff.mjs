@@ -260,6 +260,38 @@ function screensAmong(paths) {
 }
 
 /**
+ * Refuses a mockup that is not a page anybody can open.
+ *
+ * The framework never renders a mockup: a drawing has no source, and a script
+ * producing one would be inventing it. But it said nothing about the FORM, so
+ * a real run pointed the field at a `.svelte` component and the check read it
+ * happily. Every other decision reaches the operator as a page that opens on
+ * its own, with no network and no dependency — and the one artefact they most
+ * need to look at had no such convention.
+ *
+ * HTML is not a taste: the check reads token references out of the file, so a
+ * form carrying none — an image, a PDF — cannot be checked at all.
+ *
+ * This one rule replaced a second one that refused any mockup the diff
+ * carried, on the grounds that the code would be verified against itself.
+ * Reading a real run killed it: the issue whose whole job is to DRAW the
+ * mockup necessarily carries it, and the rule refused exactly the behaviour
+ * the framework asks for. What it was really catching was a source file used
+ * as a mockup, and the form check catches that without the false positive.
+ *
+ * @param path - the declared mockup path
+ * @returns the refusal, or null when the form is right
+ */
+function wrongMockupForm(path) {
+  if (/\.html?$/i.test(path)) return null;
+  return (
+    `mockup.path ${path} is not a page: a mockup is opened, not compiled. Every other decision reaches you ` +
+    "as a self-contained HTML page, and this is the one you most need to look at. A component is also the " +
+    "code, which is what makes the check circular."
+  );
+}
+
+/**
  * Confronts a built screen with the mockup it was built against.
  *
  * The design-system page states the order: tokens, primitives, then a mockup
@@ -315,21 +347,13 @@ function checkMockup(handoff, errors) {
     }
     return;
   }
-  if (!existsSync(mockup.path)) {
-    errors.push(`mockup.path not found: ${mockup.path}`);
+  const form = wrongMockupForm(mockup.path);
+  if (form != null) {
+    errors.push(form);
     return;
   }
-  // A mockup the diff carries is not a mockup, it is the code. Reported by a
-  // real agent about its own run: it pointed the field at the component it had
-  // just written, `mockup-check` passed because the component does use the
-  // tokens, and the check verified the code against itself. The order the
-  // design-system page teaches — mockup, then screens — makes that impossible
-  // when it is followed, and nothing checked that it had been.
-  if ((handoff.evidence?.files ?? []).includes(mockup.path)) {
-    errors.push(
-      `mockup.path ${mockup.path} is a file this diff carries: a mockup written alongside the screen checks ` +
-        "the code against itself. The mockup comes first, assembled from the primitives that already exist.",
-    );
+  if (!existsSync(mockup.path)) {
+    errors.push(`mockup.path not found: ${mockup.path}`);
     return;
   }
   const tokensPath = config.design_system?.tokens;
@@ -959,8 +983,10 @@ function main() {
               "screens exist, or the only answer left to the implementer is the exemption.",
           );
         }
-      } else if (typeof mockup?.path === "string" && !existsSync(mockup.path)) {
-        errors.push(`mockup.path not found: ${mockup.path}`);
+      } else if (typeof mockup?.path === "string") {
+        const planForm = wrongMockupForm(mockup.path);
+        if (planForm != null) errors.push(planForm);
+        else if (!existsSync(mockup.path)) errors.push(`mockup.path not found: ${mockup.path}`);
       }
     }
   }

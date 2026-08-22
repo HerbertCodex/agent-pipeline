@@ -60,6 +60,12 @@ Create cohesive issues ordered by dependency.
 
 **Size on cohesion, not on a criterion quota.** An issue is one thing that changes for one reason. 2 to 6 behavior criteria is the usual range, but the count is a symptom, never the rule: splitting a coherent unit to respect a quota multiplies the per-issue ceremony without buying a single guarantee. On the last measured spec, a 2-route CRUD of 338 lines was cut into 6 issues; 4 would have proven exactly the same thing for a third less overhead. Split when the parts have genuinely different reasons to change — a domain behavior and a resource policy, a nominal path and an abuse surface — not when a list gets long. If negative behavior does not fit, that is a reason to split; if it fits, keep it.
 
+**A spec that plans screens names its mockup.** `validate-handoff` refuses a plan whose issues reserve `.svelte`, `.tsx`, `.jsx` or `.vue` files with no `mockup { path }` — or `mockup { not_applicable }` with the reason. Asking the implementer is asking at the last possible moment, where the only affordable answer is the exemption.
+
+The mockup is a **self-contained HTML page**, like every other page the operator reads: it opens offline, with no network and no dependency, and it is handed over the same way — published if the harness can host it, otherwise by its path, never pasted into the conversation. Nothing renders it for you: a drawing has no source, and a script producing one would invent it. It is assembled from the primitives that already exist, and `mockup-check` confronts every value it states with the declared tokens.
+
+A component is not a mockup. Pointing the field at the file the issue is about makes the check circular — the code verified against itself — and it is refused.
+
 **Never reserve a generated path** — the project map first among them. It is rewritten from the whole source tree after an issue closes, so reserving it hands one issue a file every other issue also changes, and the wave you designed runs in series. `validate-handoff` refuses a plan that does. 
 
 **Design for parallelism, and say so.** Sequential chains are the worst case: they pay every handoff and overlap every reservation. Whenever the dependency graph allows it, give issues **disjoint `file_reservations`** so the Orchestrator can dispatch them at once — that is where the pipeline actually beats a human, and it is a property of your decomposition, not of the runtime. When a chain is genuinely unavoidable, say why in the decomposition rationale.

@@ -264,6 +264,8 @@ Two colours a reader cannot tell apart are **named, not refused**: a hover state
 
 The design-system page states the order that holds: tokens, then primitives, then a finished mockup built from the primitives that exist, then screens. It also states what a mockup is — *an assembly of things that exist, not an image to reproduce*. Nothing made that true until `mockup-check.mjs` existed.
 
+**The form is fixed even though the drawing is not.** A mockup is a self-contained HTML page, handed over like every other page: published if the harness can host it, otherwise by its path. That is not a taste — the check reads token references out of the file, so a form carrying none cannot be checked at all. A real run pointed the field at a `.svelte` component and the check read it happily; a component is also the code, which is what made the check circular.
+
 ```
 node agent-pipeline/scripts/mockup-check.mjs <mockup-file>
 ```
