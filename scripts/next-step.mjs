@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { loadConfig, loadRules, readJsonl, fail } from "./lib.mjs";
+import { unclaimed } from "./unclaimed.mjs";
 import { computeWave } from "./next-issues.mjs";
 
 const ESCALATION = "operator_escalation";
@@ -162,6 +163,18 @@ function main() {
 
   if (step == null) {
     console.log("no step to run: no open, actionable issue.");
+    // « Nothing to do » and « this pipeline has never seen this repository »
+    // read the same here, and they are opposite. Observed on a real project:
+    // a whole feature built directly, the store at zero lines, and this line
+    // printed as if all were well.
+    const missed = unclaimed(".", config, records);
+    if (missed.length > 0) {
+      console.log(
+        `\n${missed.length} commit(s) touched the source and no issue claims them: the store never saw ` +
+          "this work. Direct work is legitimate; direct work nobody was told about is what this reports. " +
+          "Run unclaimed.mjs for the list.",
+      );
+    }
     return;
   }
 

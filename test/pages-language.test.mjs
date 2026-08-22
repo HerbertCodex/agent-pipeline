@@ -184,14 +184,16 @@ describe("a page in French carries no sentence left in English", () => {
 
     const proposal = join(root, "prop.json");
     writeFileSync(proposal, JSON.stringify({
-      schema_version: 1, mode: "spec_proposal", agent: "product", round: 1,
+      schema_version: 1,
+      produced_at: "2026-08-21T09:00:00.000Z", mode: "spec_proposal", agent: "product", round: 1,
       scope: { spec_id: "s-1" }, scope_final: true,
       functional_scope: { intent: "publier un catalogue", features: [], out_of_scope: ["le paiement"] },
       decisions_for_operator: [],
     }));
     const assessment = join(root, "dep.json");
     writeFileSync(assessment, JSON.stringify({
-      schema_version: 1, mode: "dependency_assessment", agent: "product", scope: { issue_id: "i-1" },
+      schema_version: 1,
+      produced_at: "2026-08-21T09:00:00.000Z", mode: "dependency_assessment", agent: "product", scope: { issue_id: "i-1" },
       need: "valider des entrees", hand_rolled_cost: "trois jours",
       candidates: [{ name: "zod", version: "3", does: "valide", license: "MIT",
         weight: { transitive_dependencies: 0, install_size_kb: 200 },

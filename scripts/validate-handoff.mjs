@@ -93,6 +93,32 @@ function checkCriteria(handoff, config, errors) {
 }
 
 /**
+ * Says whether a shell command hands back a status that measures anything.
+ *
+ * A replay is a measurement, and a measurement whose exit code belongs to a
+ * later command measures that command. Observed twice on a real run, and
+ * reported by the agent itself: the replay ran the tests, then restored the
+ * file, and the shell returned the restore's status. Both verdicts read
+ * « replayed, exit 0 » for a claim asserting a failure — a sentence that
+ * contradicts itself.
+ *
+ * `;` and `||` both hand the status to something other than the measure.
+ * `&&` does not: the first command to fail ends the chain and its status is
+ * the one returned, so nothing is hidden.
+ *
+ * Separators inside quotes are not separators. `node -e "a(); b()"` is one
+ * command, and refusing it would make the rule impossible to satisfy in the
+ * languages that need it most.
+ *
+ * @param command - the shell command as written
+ * @returns true when the status returned cannot be attributed to the measure
+ */
+function masksItsExit(command) {
+  const bare = String(command).replace(/"[^"]*"|'[^']*'|`[^`]*`/g, "");
+  return /;|\|\|/.test(bare);
+}
+
+/**
  * Confronts a document with the page the operator is supposed to have read.
  *
  * The framework produced these pages with nothing requiring that they be
@@ -406,6 +432,18 @@ function main() {
   for (const field of ["schema_version", "mode", "agent", "scope", "basis", "outcome"]) {
     if (handoff[field] == null) errors.push(`missing field: ${field}`);
   }
+
+  // A handoff said nothing about when it was written. Several sat side by
+  // side with no way to order them, and no way to tell a fresh one from a
+  // file left over from an earlier attempt. This date is for legibility, not
+  // for measurement: the timings come from the orchestrator's own stamps,
+  // because nothing here trusts an agent's account of its own clock.
+  const produced = handoff.produced_at;
+  if (typeof produced !== "string" || Number.isNaN(Date.parse(produced))) {
+    errors.push("produced_at missing or unreadable: say when this handoff was written, as an ISO 8601 date");
+  } else if (Date.parse(produced) > Date.now() + 60_000) {
+    errors.push(`produced_at ${produced} is in the future: a handoff written later than now is a clock or a guess`);
+  }
   if (handoff.scope?.issue_id == null && handoff.mode === "issue_handoff") {
     errors.push("scope.issue_id missing");
   }
@@ -509,6 +547,44 @@ function main() {
             if (!item?.[field]) errors.push(`claims_to_replay[${index}].${field} missing`);
           }
         }
+      }
+    }
+
+    // A replay whose status belongs to a later command measures that command.
+    for (const [index, item] of (handoff.claims_to_replay ?? []).entries()) {
+      if (typeof item?.how_to_replay !== "string" || !masksItsExit(item.how_to_replay)) continue;
+      errors.push(
+        `claims_to_replay[${index}].how_to_replay hands its exit code to something other than the measure: ` +
+          "`;` and `||` return the LAST command's status, so a restore at the end reports the restore. " +
+          "Put the restore first, use `&&`, or replay in a detached worktree.",
+      );
+    }
+    const redCommand = handoff.evidence?.red_proof?.cmd;
+    if (typeof redCommand === "string" && masksItsExit(redCommand)) {
+      errors.push(
+        "evidence.red_proof.cmd hands its exit code to something other than the test run: a red proof whose " +
+          "status comes from a restore proves the restore.",
+      );
+    }
+
+    if (agent === "implementer" && transition?.to === "ready_for_qa") {
+      // Measured on a real run: the implementer cited two gates out of eight,
+      // QA replayed the rest, one refused, and the issue came back. A whole
+      // cycle for something the handover could have been refused for.
+      const config = loadConfig();
+      const cited = new Map(
+        (handoff.evidence?.commands ?? [])
+          .filter((item) => typeof item?.key === "string")
+          .map((item) => [item.key, item.exit]),
+      );
+      for (const key of perIssueGates(config)) {
+        if (cited.get(key) === 0) continue;
+        errors.push(
+          cited.has(key)
+            ? `evidence.commands: ${key} exits ${cited.get(key)}, so it found something. A handover cites a green battery.`
+            : `evidence.commands does not carry ${key}, which this project runs on every issue. ` +
+                "Run it before handing over, or QA discovers it and the issue comes back.",
+        );
       }
     }
 

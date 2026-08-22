@@ -22,6 +22,16 @@ A rule disabled in the configuration is a **gate change**, therefore human revie
 <!-- /gate -->
 <!-- /brief -->
 
+<!-- brief:implementer,qa,orchestrator -->
+## A replay is a measurement, so its exit code must belong to it
+
+`;` and `||` hand the shell's status to the LAST command. A replay written `run the tests ; restore the file` therefore reports the restore, and a verdict reading « replayed, exit 0 » for a claim asserting a failure contradicts itself. It happened twice on one run, and the agent caught it only on re-reading.
+
+`validate-handoff` refuses a `how_to_replay` or a `red_proof.cmd` carrying either separator, outside quotes. `&&` is accepted: the first command to fail ends the chain and its status is the one returned, so nothing is hidden. Put the restore first, or replay in a detached worktree — which is what a real QA did once it noticed.
+
+**And the implementer cites the battery, not a sample of it.** The same run had a handover citing two gates out of eight; QA replayed the rest, one refused a function over the length limit, and the issue came back. A whole cycle for something the handover could have been refused for. Both roles now cite every per-issue gate with its exit code.
+<!-- /brief -->
+
 <!-- brief:orchestrator -->
 ## Where the time went, and how the journal knows
 

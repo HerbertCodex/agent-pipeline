@@ -5,6 +5,10 @@
 
 Every sub-agent ends with a single JSON block between `AGENT_HANDOFF_START` and `AGENT_HANDOFF_END`. No operational text after the closing marker. **An agent never changes a status: it requests a transition.**
 
+It carries `produced_at`, an ISO 8601 date. That is for legibility, not for measurement: several handoffs sat side by side on a real run with no way to order them, and no way to tell a fresh one from a file left over from an earlier attempt. The durations come from the orchestrator's own stamps, because nothing here trusts an agent's account of its own clock.
+
+They are written under `handoffs_dir`, which git ignores, and `handoffs.mjs --prune` removes those whose issue has closed.
+
 ```json
 {
 	"schema_version": 1,

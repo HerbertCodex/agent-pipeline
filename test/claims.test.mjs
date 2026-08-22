@@ -12,6 +12,7 @@ const CLAIM = { claim: "verify-scope : 8 fichiers, exit 0", how_to_replay: "veri
 
 const IMPL = {
   schema_version: 1,
+  produced_at: "2026-08-21T09:00:00.000Z",
   agent: "implementer",
   scope: { spec_id: "s-t1", issue_id: "i-t1" },
   basis: { record_hash: "abc", pipeline_version: 1 },
@@ -20,7 +21,7 @@ const IMPL = {
   requested_transition: { from: "in_progress", to: "ready_for_qa" },
   context: { heading: "## Context for QA", body: "corps" },
   evidence: {
-    commands: [],
+    commands: [{ key: "check", cmd: "true", exit: 0 }],
     files: ["src/x.ts"],
     commit_sha: "abc1234",
     notes: [],
@@ -30,6 +31,7 @@ const IMPL = {
 
 const QA_CLOSURE = {
   schema_version: 1,
+  produced_at: "2026-08-21T09:00:00.000Z",
   agent: "qa",
   scope: { spec_id: "s-t1", issue_id: "i-t1" },
   basis: { record_hash: "abc", pipeline_version: 1 },
@@ -77,7 +79,7 @@ describe("validate-handoff: an implementer enumerates what it asserts", () => {
       ...IMPL,
       outcome: "blocked_product",
       requested_transition: { from: "in_progress", to: "blocked_product" },
-      evidence: { commands: [], files: [], commit_sha: null, notes: [] },
+      evidence: { commands: [{ key: "check", cmd: "true", exit: 0 }], files: [], commit_sha: null, notes: [] },
     });
     assert.equal(result.status, 0, result.output);
   });

@@ -2,6 +2,16 @@
 
 {{project_summary}}
 
+## The first question, before anything else
+
+{{mode}}
+
+A session does not launch sub-agents without an explicit request: that is a platform rule, above this file, so the pipeline never starts on its own. The consequence has been observed twice: a fresh session works straight through, does good work, and none of it reaches the pipeline. The second time, the store held zero lines while a whole feature sat in git.
+
+`next-step` now says so instead of answering « no step to run », and `unclaimed.mjs` lists the commits no issue claims. **If either reports something, this project has already been worked directly** — say so before adding to it.
+
+What direct loses is written below. Working directly is legitimate; doing it without the operator knowing is not.
+
 ## Read before acting
 
 | When | What |
@@ -21,18 +31,16 @@ The operator states a need in plain language. The pipeline handles it:
 
 The human operator keeps three things: installing a dependency, editing `pipeline.config.json`, and merging.
 
-## Before any feature request: ask
+## What direct loses
 
-**A session does not launch sub-agents without an explicit request.** That is a platform rule, above this file: the pipeline will therefore never start on its own. The direct consequence, already observed — a fresh session works straight through, does good work, and none of it reaches the pipeline.
-
-So **ask, before starting**: pipeline or direct? And name what direct loses, without softening it:
+Name it without softening it, when you ask:
 
 - **no trace in the store** — `next-step`, `metrics` and the status page do not know the work exists; it lives in git, not in the pipeline;
 - **no Product decomposition** — the session decides the contract alone then writes the tests that validate it, so its implementation is judged against itself;
 - **no independent QA** — the automatic gates stay green, but the conditional review the stack documents describe (hostile input, headers compared and not only bodies, idempotence replayed against the real application) happens for nobody;
 - **no `verify-scope`, no optimistic lock, no verification ledger.**
 
-Working directly is legitimate — for a tooling fix, a question, an exploration. What is not legitimate is doing it **without the operator knowing**.
+Working directly is legitimate — for a tooling fix, a question, an exploration. What is not legitimate is doing it **without the operator knowing**. A commit made that way carries a `direct:` line saying why, which is what keeps it out of the unclaimed list and puts the reason where a reviewer reads it.
 
 ## Commands
 

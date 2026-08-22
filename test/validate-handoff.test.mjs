@@ -13,6 +13,7 @@ afterEach(() => {
 
 const BASE = {
   schema_version: 1,
+  produced_at: "2026-08-21T09:00:00.000Z",
   agent: "product",
   scope: { spec_id: "s-t1" },
   basis: { record_hash: "abc" },
@@ -229,6 +230,7 @@ describe("validate-handoff: a plan derived from an approved proposal", () => {
 describe("validate-handoff: transitions and red proof", () => {
   const ISSUE_BASE = {
     schema_version: 1,
+    produced_at: "2026-08-21T09:00:00.000Z",
     agent: "implementer",
     scope: { spec_id: "s-t1", issue_id: "i-t1" },
     basis: { record_hash: "abc", pipeline_version: 1 },

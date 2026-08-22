@@ -24,6 +24,7 @@
   "rules_path": "pipeline/rules.json",
   "project_context": "pipeline/project-context.md",
   "store_dir": "pipeline/store",
+  "handoffs_dir": "pipeline/handoffs",
   "findings_path": "pipeline/findings.md",
   "pages_dir": "pipeline/pages",
   "ci": {

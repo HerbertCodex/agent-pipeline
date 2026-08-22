@@ -139,6 +139,7 @@ describe("mockup-check: a mockup assembles what exists, it does not invent a sca
 describe("validate-handoff: a screen is coded against a mockup, not from memory", () => {
   const BASE = {
     schema_version: 1,
+    produced_at: "2026-08-21T09:00:00.000Z",
     mode: "issue_handoff",
     agent: "implementer",
     scope: { spec_id: "s-0001", issue_id: "i-0003" },
@@ -147,7 +148,7 @@ describe("validate-handoff: a screen is coded against a mockup, not from memory"
     requested_transition: { from: "in_progress", to: "ready_for_qa" },
     context: { heading: "## Context for QA", body: "x" },
     evidence: {
-      commands: [],
+      commands: [{ key: "check", cmd: "true", exit: 0 }],
       files: ["src/ui/Card.tsx"],
       commit_sha: "def5678",
       notes: [],

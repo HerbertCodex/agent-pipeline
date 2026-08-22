@@ -22,6 +22,7 @@ const CANDIDATE = {
 
 const ASSESSMENT = {
   schema_version: 1,
+  produced_at: "2026-08-21T09:00:00.000Z",
   mode: "dependency_assessment",
   agent: "implementer",
   scope: { spec_id: "s-0001", issue_id: "i-0004" },
@@ -187,6 +188,7 @@ describe("validate-handoff: a dependency is not requested, it is argued", () => 
       [
         writeJson(sandbox, "plain.json", {
           schema_version: 1,
+          produced_at: "2026-08-21T09:00:00.000Z",
           mode: "issue_handoff",
           agent: "implementer",
           scope: { spec_id: "s-1", issue_id: "i-1" },

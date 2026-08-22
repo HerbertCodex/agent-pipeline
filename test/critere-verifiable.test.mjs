@@ -13,6 +13,7 @@ afterEach(() => {
 
 const PLAN = {
   schema_version: 1,
+  produced_at: "2026-08-21T09:00:00.000Z",
   mode: "spec_plan",
   agent: "product",
   scope: { spec_id: "s-0001" },

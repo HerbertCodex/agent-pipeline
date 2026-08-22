@@ -62,7 +62,7 @@ If the environment cannot spawn a sub-agent directly, output the exact role and 
 ## HANDOFF VALIDATION
 
 1. Extract exactly one block between `AGENT_HANDOFF_START` and `AGENT_HANDOFF_END`.
-2. Save it to a temporary JSON file outside the repository.
+2. Save it under `handoffs_dir`, named `<issue>-<role>.json`. That directory is git-ignored: a handoff inside the diff is a file `verify-scope` flags and a reviewer reads as work. « Somewhere outside the repository » was the old instruction, and a file with no home is a file nobody cleans up — one real run left `i-0002-implementer.json` sitting in the tree.
 3. Run `validate-handoff.mjs <handoff.json>`.
 4. For any handoff carrying a commit SHA, run `verify-scope.mjs <handoff.json> <base-ref>` with the phase's starting commit, once. Save the timestamped output for the next role's package, and **persist it with the transition** as an `append_context` block headed `## verify-scope <issue> <base>..<sha>`. An artefact that lives only in your conversation dies with you: it already happened, and the next QA had to reconstruct an Implementer handoff to replay a scope check that had been run correctly an hour earlier. Reconstruction is indistinguishable from fabrication until it is checked — persist the measurement instead of making someone redo it.
 5. For a `ready_for_qa` handoff, replay `evidence.red_proof.cmd` against the Implementer's `test:` commit and require a non-zero exit: **red must be observed, not declared**. The Implementer owns both its tests and its code, so this replay is the structural check that replaced the old role boundary — never skip it, and never accept the recorded exit code as proof of itself. A red proof that replays green rejects the handoff.
@@ -130,7 +130,13 @@ So the map is stale on the branch, by design, and you are what makes it true aga
 
 ## SPEC COMPLETION
 
+**Do not come back between two issues.** Once the operator has answered — or once `default_mode` answers for them — take the steps. `next-issues` gives the wave, `next-step` gives the one step, and the escalations that reach the operator are the ones the rules define: a spec question, a dependency to install, three code rejections. Reporting progress in between costs the operator the attention the pipeline exists to save.
+
 When all issues are closed: run `regenerate.mjs` one last time and commit it, so the closure gate judges a map that matches the final tree. Then dispatch QA once for the **full battery** described in its prompt — the commands skipped per issue, replayed on the final SHA. Then transition the spec to `ready_for_pr` with `store-update.mjs` and a `spec_state` request; dispatch Product with the branch, issue list, QA evidence and human-review surfaces; validate the `pr_result` handoff; persist the PR URL with a second `spec_state` request carrying `{ "phase": "pr_open", "pr_url": "..." }`; stop at the human review gate. The operator merges.
+
+Run `handoffs.mjs --prune` at the same time: QA reads the implementer's handoff while the issue runs, and nobody reads it afterwards — the store holds what survives. A handoff naming an issue the store does not carry is kept and reported, because it is the only trace of work the pipeline never saw.
+
+**Then render the report and hand it over.** `render-spec.mjs <out.html> <spec-id>` computes, from the store alone, what was built with the evidence QA observed, what surfaced along the way grouped by the destination each finding named, and what it cost split between agent, validation and waiting. You do not write it: an agent that wrote its own report would be judged on prose it chose. Publish it or hand the path, as with every other page — this is the moment the operator reads, and the only one they should have to.
 
 A spec handoff carries `mode: "spec_handoff"` and no `basis.pipeline_version` — a spec record has no `pipeline_state.version`, and inventing one is refused. Never fabricate a value to satisfy a validator: if a required field has no truthful value, the schema is wrong and you escalate.
 

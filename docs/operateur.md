@@ -2,6 +2,29 @@
 
 This document addresses **the human**. Everything else in `agent-pipeline/docs/` speaks to the agents; here we talk about what the machine cannot do for you, and what will not work if you do not do it.
 
+<!-- brief:orchestrator -->
+## Answer once, run through, report at the end
+
+Three things the operator asked for after a first real run, and each was missing for the same reason: the pipeline had no notion of a session that had already been told what to do.
+
+**The answer is a project fact.** `default_mode` in the configuration says `pipeline` or `direct`. Declared, `CLAUDE.md` renders with the answer instead of the question, and no later session asks again. Absent, the question stands — a project that never chose is a project nobody chose for.
+
+**Do not come back between two issues.** `next-issues` gives the wave, `next-step` gives the one step, and the escalations that reach the operator are the ones the rules define: a spec question, a dependency to install, three code rejections. Progress reported in between costs exactly the attention the pipeline exists to save.
+
+**Report when the spec closes, and only then.** `render-spec.mjs <out.html> <spec-id>` computes from the store what was built with the evidence QA observed, what surfaced along the way grouped by the destination each finding named, and what it cost split between agent, validation and waiting. No agent writes it: one that wrote its own report would be judged on prose it chose. It refuses a spec still running, because a report on unfinished work is wrong by the time it is read.
+<!-- /brief -->
+
+<!-- brief:orchestrator,product,implementer,qa -->
+## Work the store never saw
+
+`CLAUDE.md` tells a session to ask, before starting, whether the work goes through the pipeline or straight to the code. Nothing could refuse a session that never asked, and the consequence has been observed twice: a whole feature built directly, `issues.jsonl` at zero lines, and `next-step` answering « no step to run: no open, actionable issue » — which reads as *nothing to do* when the truth was *this pipeline has never seen this repository*.
+
+`unclaimed.mjs` lists the commits touching the declared source roots that no issue claims, and `next-step` says so instead of staying quiet. A commit is claimed when an issue records its sha, or when its subject names an issue the store carries — an issue produces two commits, the red tests then the implementation, and only the last one is recorded.
+
+Direct work stays legitimate: a tooling fix, a question, an exploration. What is refused is direct work the operator never heard about, so such a commit carries a `direct:` line saying why. That keeps it out of the list and puts the reason where a reviewer reads it.
+
+<!-- /brief -->
+
 ## What the pipeline is, in one sentence
 
 Four roles pass the work along — Product decomposes, Implementer pins the criteria as red tests then implements, QA verifies, the Orchestrator validates and persists — and durable state lives in a store on disk, not in an agent's memory.

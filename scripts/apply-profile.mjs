@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import { loadConfig, loadRules, pathAllowed, deferredGates, fail } from "./lib.mjs";
 import { ARCHITECTURES, PROJECT_TYPES } from "./architectures.mjs";
 import { stripUndeclaredGates, orphanGates, perIssueGates, closureGates } from "./gates.mjs";
@@ -122,6 +123,17 @@ function renderClaude(config) {
 
   const source = readFileSync(contextPath, "utf8");
   const text = readFileSync(CLAUDE_TEMPLATE, "utf8")
+    // The answer belongs to the project once given. A session that re-asks a
+    // question already settled trains the operator to answer without reading
+    // it, which is how the question stopped being asked at all.
+    .replaceAll(
+      "{{mode}}",
+      config.default_mode === "pipeline"
+        ? "**This project works through the pipeline.** The operator already answered, in `pipeline.config.json`: you do not ask again. Read the store, take the next step, and come back when the spec closes — not between two issues."
+        : config.default_mode === "direct"
+          ? "**This project works directly, by the operator's declaration** in `pipeline.config.json`. Commits still carry a `direct:` line saying why, so the choice stays legible to whoever reads the history."
+          : "**Pipeline or direct?** Ask the operator. Not after reading the code, not once a plan is drafted — first. Declaring `default_mode` in `pipeline.config.json` answers it once and for all.",
+    )
     .replaceAll("{{project_summary}}", projectBlock(source, "summary", contextPath))
     .replaceAll("{{project_commands}}", projectBlock(source, "commands", contextPath))
     .replaceAll("{{project_context}}", projectBlock(source, "context", contextPath))
@@ -662,6 +674,30 @@ function main() {
         `docs_dirs names ${dir}, which carries no document. Git does not version an empty directory, so it ` +
           "exists on your machine and nowhere else — the failure lands on the runner, on a path you can see. " +
           "Put the documents there, or stop declaring it.",
+      );
+    }
+  }
+  // The operator answers « pipeline or direct » once. Every later session
+  // asked again, because the answer lived in a conversation rather than in
+  // the project. A mode nobody implements is refused rather than assumed.
+  if (config.default_mode != null && !["pipeline", "direct"].includes(config.default_mode)) {
+    fail(`default_mode "${config.default_mode}" is neither "pipeline" nor "direct".`);
+  }
+  // A handoff inside the diff is a file the scope check flags and a reviewer
+  // reads by mistake. The prompt said « outside the repository », which gave
+  // it no home at all — and a file with no home is a file nobody cleans up.
+  if (typeof config.handoffs_dir === "string") {
+    let ignored = false;
+    try {
+      execFileSync("git", ["check-ignore", "-q", config.handoffs_dir], { stdio: "ignore" });
+      ignored = true;
+    } catch {
+      ignored = false;
+    }
+    if (!ignored) {
+      fail(
+        `handoffs_dir ${config.handoffs_dir} is not ignored by git. A handoff committed lands in the diff, ` +
+          "where verify-scope flags it and a reviewer reads it as work. Add it to .gitignore.",
       );
     }
   }

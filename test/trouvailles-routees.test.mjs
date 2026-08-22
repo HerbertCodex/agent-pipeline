@@ -12,6 +12,7 @@ afterEach(() => {
 
 const HANDOFF = {
   schema_version: 1,
+  produced_at: "2026-08-21T09:00:00.000Z",
   mode: "issue_handoff",
   agent: "qa",
   scope: { spec_id: "s-t1", issue_id: "i-t1" },

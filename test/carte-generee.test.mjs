@@ -87,6 +87,7 @@ describe("a generated file has one writer, and it is never an issue", () => {
     sandbox = withMap();
     const handoff = writeJson(sandbox, "h.json", {
       schema_version: 1,
+      produced_at: "2026-08-21T09:00:00.000Z",
       mode: "spec_plan",
       agent: "product",
       scope: { spec_id: "s-0001" },
@@ -118,6 +119,7 @@ describe("a generated file has one writer, and it is never an issue", () => {
     const sha = seedCommits(sandbox);
     const handoff = writeJson(sandbox, "h.json", {
       schema_version: 1,
+      produced_at: "2026-08-21T09:00:00.000Z",
       mode: "issue_handoff",
       agent: "implementer",
       evidence: { commit_sha: sha, files: ["src/a.ts", "docs/project-map.md"] },
@@ -133,6 +135,7 @@ describe("a generated file has one writer, and it is never an issue", () => {
     const sha = seedCommits(sandbox, false);
     const handoff = writeJson(sandbox, "h.json", {
       schema_version: 1,
+      produced_at: "2026-08-21T09:00:00.000Z",
       mode: "issue_handoff",
       agent: "orchestrator",
       evidence: { commit_sha: sha, files: [] },

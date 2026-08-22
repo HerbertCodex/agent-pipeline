@@ -548,6 +548,35 @@
       "type_help": "The type filters the catalogue, so it is a decision:",
       "type_decides": "What decides between a web interface and a full-stack repository is the data: a web interface reads data it does not own. If this project holds its own database, it is fullstack.",
       "type_unknown": "unknown project type: {type}"
+    },
+    "spec": {
+      "eyebrow": "Spec closed",
+      "lede": "What this spec built, what surfaced along the way, and what it cost. Computed from the store, not written by anyone.",
+      "verbatim": "Every line below comes from a record: the ledger QA observed in the environment, the findings each issue declared with the destination it named, the transitions with their stamps. <strong>No agent writes this page</strong>, so no agent can flatter it.",
+      "count_issues": "Issues closed",
+      "count_criteria": "Criteria proved",
+      "count_found": "Findings",
+      "count_rejections": "Code rejections",
+      "built_head": "What was built, and what proves it",
+      "built_blurb": "One entry per criterion, with the evidence observed in the environment — not the claim that it was.",
+      "found_head": "What surfaced along the way",
+      "found_blurb": "Nothing is lost and nothing is scheduled by surprise: each finding went where its destination said, and only one of the four creates work.",
+      "routes": {
+        "issue": "becomes an issue",
+        "spec": "corrects the spec",
+        "pitfall": "written into the pitfalls",
+        "framework": "leaves this project"
+      },
+      "route_count": "{count} finding(s)",
+      "cost_head": "What it cost",
+      "cost_blurb": "Read from the transition journal, never estimated. A step is bounded by three stamps, so the agent's turnaround and the validation are counted apart.",
+      "cost_what": "Where the time went",
+      "cost_time": "Duration",
+      "cost_agent": "Agents working",
+      "cost_validation": "Orchestrator validating",
+      "cost_waiting": "On nobody's desk",
+      "cost_unknown": "{count} step(s) carry no stamp: they were written before the journal recorded them, and are counted nowhere rather than as zero.",
+      "doc_title": "Spec {spec}"
     }
   },
   "brief_questions": {

@@ -548,6 +548,35 @@
       "type_help": "Le type filtre le catalogue : c'est donc une décision.",
       "type_decides": "Ce qui tranche entre une interface web et un dépôt full-stack, ce sont les données : une interface web lit des données qu'elle ne possède pas. Si ce projet porte sa propre base, c'est fullstack.",
       "type_unknown": "type de projet inconnu : {type}"
+    },
+    "spec": {
+      "eyebrow": "Spec close",
+      "lede": "Ce que cette spec a construit, ce qui a surgi en route, et ce qu'elle a coûté. Calculé depuis le magasin, rédigé par personne.",
+      "verbatim": "Chaque ligne ci-dessous vient d'un enregistrement : le registre que QA a observé dans l'environnement, les trouvailles que chaque issue a déclarées avec la destination qu'elle a nommée, les transitions avec leurs estampilles. <strong>Aucun agent n'écrit cette page</strong>, donc aucun agent ne peut l'enjoliver.",
+      "count_issues": "Issues fermées",
+      "count_criteria": "Critères prouvés",
+      "count_found": "Trouvailles",
+      "count_rejections": "Refus de code",
+      "built_head": "Ce qui a été construit, et ce qui le prouve",
+      "built_blurb": "Une entrée par critère, avec la preuve observée dans l'environnement — pas l'affirmation qu'elle existe.",
+      "found_head": "Ce qui a surgi en route",
+      "found_blurb": "Rien n'est perdu et rien n'est planifié par surprise : chaque trouvaille est allée où sa destination le disait, et une seule des quatre crée du travail.",
+      "routes": {
+        "issue": "devient une issue",
+        "spec": "corrige la spec",
+        "pitfall": "écrite dans les pièges",
+        "framework": "quitte ce projet"
+      },
+      "route_count": "{count} trouvaille(s)",
+      "cost_head": "Ce que ça a coûté",
+      "cost_blurb": "Lu dans le journal des transitions, jamais estimé. Une étape est bornée par trois estampilles, donc le tour de l'agent et la validation se comptent à part.",
+      "cost_what": "Où est passé le temps",
+      "cost_time": "Durée",
+      "cost_agent": "Agents au travail",
+      "cost_validation": "Orchestrateur en validation",
+      "cost_waiting": "Sur le bureau de personne",
+      "cost_unknown": "{count} étape(s) sans estampille : écrites avant que le journal ne les enregistre, elles ne comptent nulle part plutôt que pour zéro.",
+      "doc_title": "Spec {spec}"
     }
   },
   "brief_questions": {
