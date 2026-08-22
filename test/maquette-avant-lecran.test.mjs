@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { createHash } from "node:crypto";
-import { createSandbox, destroySandbox, writeJson, run } from "./harness.mjs";
+import { createSandbox, destroySandbox, writeStore, writeJson, run } from "./harness.mjs";
 
 let sandbox = null;
 afterEach(() => {
@@ -257,5 +257,96 @@ describe("a mockup is a page you open, not a component you compile", () => {
     const result = plan(["src/pages/x/+page.svelte"], { path: "src/Row.svelte" });
     assert.notEqual(result.status, 0);
     assert.match(result.output, /html|page/i);
+  });
+});
+
+describe("the mockup belongs to the spec, and an issue points at it", () => {
+  /**
+   * Records a spec carrying the given mockups.
+   *
+   * @param mockups - the paths the spec declared
+   */
+  function specDeclares(mockups) {
+    writeStore(sandbox, "specs", [
+      { id: "s-t1", title: "une spec", spec_state: { phase: "active" }, mockups },
+    ]);
+  }
+
+  test("an issue may not invent a mockup of its own", () => {
+    // The risk of asking each handoff: issues cut by component get one drawing
+    // each, and five drawings that never compose are not a design. The whole
+    // belongs to the spec — the operator sees it once, before the first screen
+    // exists, and the issues run against it.
+    sandbox = withScreens();
+    specDeclares(["src/mockups/mois.html"]);
+    mkdirSync(join(sandbox, "src", "mockups"), { recursive: true });
+    writeFileSync(join(sandbox, "src", "mockups", "mois.html"), '<div style="color: var(--ink)">x</div>');
+    writeFileSync(join(sandbox, "src", "mockups", "bouton.html"), '<div style="color: var(--ink)">y</div>');
+    const body = handover(["src/pages/x/+page.svelte"], { path: "src/mockups/bouton.html" });
+    const result = run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", body)]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /bouton\.html/);
+    assert.match(result.output, /s-t1|spec/);
+  });
+
+  test("two issues pointing at the same declared mockup both pass", () => {
+    // What a real run did on its own: one screen, five states, two issues
+    // referring to it. The rule makes that the only shape available.
+    sandbox = withScreens();
+    specDeclares(["src/mockups/mois.html"]);
+    mkdirSync(join(sandbox, "src", "mockups"), { recursive: true });
+    writeFileSync(join(sandbox, "src", "mockups", "mois.html"), '<div style="color: var(--ink)">x</div>');
+    for (const screen of ["src/pages/a/+page.svelte", "src/pages/b/+page.svelte"]) {
+      const body = handover([screen], { path: "src/mockups/mois.html" });
+      const result = run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", body)]);
+      assert.equal(result.status, 0, result.output);
+    }
+  });
+
+  test("a spec with several screens declares several", () => {
+    sandbox = withScreens();
+    specDeclares(["src/mockups/mois.html", "src/mockups/reglages.html"]);
+    mkdirSync(join(sandbox, "src", "mockups"), { recursive: true });
+    for (const name of ["mois.html", "reglages.html"]) {
+      writeFileSync(join(sandbox, "src", "mockups", name), '<div style="color: var(--ink)">x</div>');
+    }
+    const body = handover(["src/pages/x/+page.svelte"], { path: "src/mockups/reglages.html" });
+    const result = run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", body)]);
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("a spec that declared none is not held to a list it never made", () => {
+    // Specs planned before the rule carry nothing. Refusing them would rewrite
+    // history rather than describe it, which this repository refuses elsewhere.
+    sandbox = withScreens();
+    writeStore(sandbox, "specs", [{ id: "s-t1", title: "une spec", spec_state: { phase: "active" } }]);
+    writeFileSync(join(sandbox, "maquette.html"), '<div style="color: var(--ink)">x</div>');
+    const body = handover(["src/pages/x/+page.svelte"], { path: "maquette.html" });
+    const result = run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", body)]);
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("a plan may declare several mockups at once", () => {
+    sandbox = withScreens();
+    mkdirSync(join(sandbox, "src", "mockups"), { recursive: true });
+    for (const name of ["mois.html", "reglages.html"]) {
+      writeFileSync(join(sandbox, "src", "mockups", name), '<div style="color: var(--ink)">x</div>');
+    }
+    const result = plan(["src/pages/x/+page.svelte"], {
+      paths: ["src/mockups/mois.html", "src/mockups/reglages.html"],
+    });
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("a plan naming several, one of which is a component, is refused", () => {
+    sandbox = withScreens();
+    mkdirSync(join(sandbox, "src", "mockups"), { recursive: true });
+    writeFileSync(join(sandbox, "src", "mockups", "mois.html"), "<div>x</div>");
+    writeFileSync(join(sandbox, "src", "Row.svelte"), "<div>y</div>");
+    const result = plan(["src/pages/x/+page.svelte"], {
+      paths: ["src/mockups/mois.html", "src/Row.svelte"],
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /Row\.svelte/);
   });
 });

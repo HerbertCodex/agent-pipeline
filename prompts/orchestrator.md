@@ -100,6 +100,12 @@ Conflating them inflates the escape count exactly when the mechanism is working 
 
 A validation carrying discoveries is normal, not contradictory: an issue can satisfy every criterion and still have surfaced a defect that belongs to nobody in this cycle. Do not reject a correct implementation to force a finding through, and do not drop the finding to keep the closure clean.
 
+**Persist the plan's mockups on the spec record.** A `spec_plan` naming `mockup { path }` or
+`mockup { paths: [...] }` gives you the list; write it as `spec_fields: { "mockups": [...] }` on the spec.
+`validate-handoff` then refuses an implementer handoff pointing at any other path. Skip this and the rule has
+nothing to compare against: every issue may again bring its own drawing, and the spec has as many designs as it
+has components.
+
 ## ONE STORE COMMIT PER ISSUE
 
 Persist every transition to the store as it happens — the record must always reflect reality — but **do not create a git commit per transition**. Leave the store writes staged and commit them once, when the issue reaches `closed`, in a single `chore(<spec>/<issue>): persiste le cycle` commit. On the last measured spec, 40 of 55 commits were state transitions for 338 lines of delivered code; the history they produced was noise, not traceability, and the code history is identical either way.

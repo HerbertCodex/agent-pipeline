@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
-import { loadConfig, loadRules, pathAllowed, sha256, generatedPaths, fail } from "./lib.mjs";
+import { join } from "node:path";
+import { loadConfig, loadRules, readJsonl, pathAllowed, sha256, generatedPaths, fail } from "./lib.mjs";
 import { reviewDigest } from "./render-proposal.mjs";
 import { dependencyDigest } from "./render-dependency.mjs";
 import { tokensIn, offenders } from "./mockup-check.mjs";
@@ -292,6 +293,48 @@ function wrongMockupForm(path) {
 }
 
 /**
+ * The mockups a declaration names.
+ *
+ * A plan names one (`path`) or several (`paths`): a spec with two screens has
+ * two drawings, and a single field would push the second issue to bring its
+ * own — which is the shape the ownership rule below exists to prevent.
+ *
+ * @param mockup - the declared block, or a spec record's list
+ * @returns the paths named, in order
+ */
+function declaredMockups(mockup) {
+  if (mockup == null) return [];
+  const listed = Array.isArray(mockup) ? mockup : Array.isArray(mockup.paths) ? mockup.paths : [];
+  const single = !Array.isArray(mockup) && typeof mockup.path === "string" ? [mockup.path] : [];
+  return [...single, ...listed].filter((path) => typeof path === "string");
+}
+
+/**
+ * The mockups the spec record owns.
+ *
+ * Read from the store rather than from the handoff: the point is that the
+ * issue cannot be the one who decides. A spec planned before this rule
+ * declares none, and is not held to a list it never made — refusing those
+ * would rewrite the history of a running project instead of describing it.
+ *
+ * @param specId - the spec the handoff belongs to
+ * @param config - the loaded configuration
+ * @returns the paths the spec declared, or null when it declared none
+ */
+function specMockups(specId, config) {
+  if (typeof specId !== "string") return null;
+  let records;
+  try {
+    records = readJsonl(join(config.store_dir, "specs.jsonl"));
+  } catch {
+    return null;
+  }
+  const spec = records.map((entry) => entry.record).find((record) => record?.id === specId);
+  const declared = declaredMockups(spec?.mockups);
+  return declared.length > 0 ? declared : null;
+}
+
+/**
  * Confronts a built screen with the mockup it was built against.
  *
  * The design-system page states the order: tokens, primitives, then a mockup
@@ -354,6 +397,20 @@ function checkMockup(handoff, errors) {
   }
   if (!existsSync(mockup.path)) {
     errors.push(`mockup.path not found: ${mockup.path}`);
+    return;
+  }
+  // The whole belongs to the spec. Asking each handoff for a mockup invites
+  // one drawing per issue, and issues are cut by component: five drawings that
+  // never compose are not a design. A real run got this right on its own — two
+  // issues pointing at the same screen — but nothing made it the only shape
+  // available, so it held by the agent's discipline rather than by a rule.
+  const owned = specMockups(handoff.scope?.spec_id, config);
+  if (owned != null && !owned.includes(mockup.path)) {
+    errors.push(
+      `mockup.path ${mockup.path} is not one ${handoff.scope.spec_id} declared (${owned.join(", ")}). The spec ` +
+        "owns the mockup: an issue points at one the plan named, it does not draw its own. Screens cut by " +
+        "component each get their own drawing that way, and nothing composes them back into an interface.",
+    );
     return;
   }
   const tokensPath = config.design_system?.tokens;
@@ -975,18 +1032,19 @@ function main() {
       const screens = (handoff.issues ?? []).flatMap((item) =>
         screensAmong(item?.file_reservations).map((path) => ({ id: item.id ?? "issue", path })),
       );
-      const mockup = handoff.mockup;
-      if (screens.length > 0 && mockup?.path == null && typeof mockup?.not_applicable !== "string") {
+      const named = declaredMockups(handoff.mockup);
+      if (screens.length > 0 && named.length === 0 && typeof handoff.mockup?.not_applicable !== "string") {
         for (const screen of screens) {
           errors.push(
             `${screen.id} reserves ${screen.path}, a screen, and the plan names no mockup. Draw it before the ` +
               "screens exist, or the only answer left to the implementer is the exemption.",
           );
         }
-      } else if (typeof mockup?.path === "string") {
-        const planForm = wrongMockupForm(mockup.path);
+      }
+      for (const path of named) {
+        const planForm = wrongMockupForm(path);
         if (planForm != null) errors.push(planForm);
-        else if (!existsSync(mockup.path)) errors.push(`mockup.path not found: ${mockup.path}`);
+        else if (!existsSync(path)) errors.push(`mockup.path not found: ${path}`);
       }
     }
   }

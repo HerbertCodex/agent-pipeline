@@ -37,6 +37,8 @@ A second rule refused any mockup the diff carried, on the same grounds. Reading 
 
 And the demand moved earlier. Asking the implementer is asking at the last possible moment, where the only affordable answer is the escape. A plan whose issues reserve screen files names its mockup, so the operator sees it before the screens exist — which is the whole point of the order.
 
+**And the mockup belongs to the spec.** Asking every handoff for one invites a drawing per issue, and issues are cut by component: five drawings that never compose are not a design. The plan names the spec's mockups — one `path`, or `paths` for a spec with several screens — the orchestrator persists them on the spec record, and an implementer handoff may only point at a path that list carries. A real run already behaved this way on its own, two issues referring to the same screen; nothing made it the only shape available, so it held by the agent's discipline rather than by a rule. A spec planned before this declares nothing and is not held to a list it never made.
+
 What no command can check: whether the design-system and token pages were ever read. `apply-profile` verifies the block is declared, not that anyone looked at the page that helps decide it. That limit is stated rather than papered over with a ritual.
 <!-- /brief -->
 
