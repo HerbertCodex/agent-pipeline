@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { loadConfig, readJsonl, sha256, fail } from "./lib.mjs";
 
 const ADDRESSEE = /^#+\s*Context for ([A-Za-z][A-Za-z -]*?)\s*(\(|$)/;
@@ -35,7 +36,7 @@ function addresseeOf(heading) {
  * @param role - Addressee role, in lowercase.
  * @returns The live blocks addressed to that role.
  */
-function contextsFor(contexts, role) {
+export function contextsFor(contexts, role) {
   const latest = new Map();
   for (const block of contexts ?? []) {
     if (addresseeOf(block.heading) !== role) continue;
@@ -88,4 +89,4 @@ function main() {
   console.log(JSON.stringify(output, null, "\t"));
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) main();

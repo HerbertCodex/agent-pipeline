@@ -64,20 +64,19 @@ function actionFor(record, rules) {
 }
 
 /**
- * Checks that a step persisted exactly one transition.
+ * Checks that a run stayed inside its configured transition budget.
  *
- * This is the single-step gate. Without it, the instruction "one invocation,
- * one transition" is only a sentence in a prompt: an orchestrator chaining
- * ten transitions in the same conversation makes nobody fail, and the
- * unbounded context the decomposition was meant to remove comes back intact.
- * `pipeline_state.version` increments by one on every write, so any gap other
- * than one is a step that overflowed.
+ * A one-transition process maximises cold starts; an unlimited process grows
+ * context until it becomes unreliable. The project therefore chooses a small
+ * explicit budget, four by default: enough for one nominal issue cycle and
+ * never enough for an entire expanding spec.
  *
  * @param records - The store's issue records.
  * @param id - The issue the step was about.
- * @param before - The version read before the step.
+ * @param before - The version read before the run.
+ * @param maximum - Maximum transitions allowed in one run.
  */
-function assertAdvanced(records, id, before) {
+function assertAdvanced(records, id, before, maximum) {
   const record = records.find((r) => r.id === id);
   if (record == null) fail(`unknown issue: ${id}`);
 
@@ -85,17 +84,14 @@ function assertAdvanced(records, id, before) {
   if (typeof after !== "number") fail(`${id} has no pipeline_state.version`);
 
   const delta = after - before;
-  if (delta === 1) {
-    console.log(`single step honoured : ${id} version ${before} -> ${after}.`);
+  if (delta >= 1 && delta <= maximum) {
+    console.log(`bounded run honoured: ${id} advanced ${delta}/${maximum} transition(s), version ${before} -> ${after}.`);
     return;
   }
   if (delta === 0) {
     fail(`${id} did not advance: still version ${after}. The step persisted nothing.`);
   }
-  fail(
-    `${id} advanced by ${delta} transitions (version ${before} -> ${after}). ` +
-      `A step persists exactly one: the orchestrator chained them in the same conversation.`,
-  );
+  fail(`${id} advanced by ${delta} transitions (version ${before} -> ${after}), above the run limit ${maximum}.`);
 }
 
 /**
@@ -122,7 +118,9 @@ function main() {
     if (!id || !Number.isInteger(before)) {
       fail("usage : next-step.mjs --assert-advanced <issue-id> <version-avant>");
     }
-    assertAdvanced(records, id, before);
+    const maximum = Number(config.workflow?.max_transitions_per_run ?? 4);
+    if (!Number.isInteger(maximum) || maximum < 1) fail("workflow.max_transitions_per_run must be a positive integer");
+    assertAdvanced(records, id, before, maximum);
     return;
   }
 
@@ -133,7 +131,7 @@ function main() {
   const scoped = records.filter((r) => specId == null || r.spec_id === specId);
   const open = scoped.filter((r) => r.pipeline_state?.phase && r.pipeline_state.phase !== "closed");
 
-  const dispatchable = new Set(computeWave(records, rules, specId).ready.map((item) => item.id));
+  const dispatchable = new Set(computeWave(records, rules, specId, config).ready.map((item) => item.id));
   const actionable = open.filter(
     (r) => r.pipeline_state.phase !== "planned" || dispatchable.has(r.id),
   );
@@ -155,6 +153,11 @@ function main() {
           version: next.pipeline_state.version ?? null,
           ...actionFor(next, rules),
         };
+
+  if (step != null && step.actor !== "operator" && config.agent_runtime?.command) {
+    step.interactive_command = `node agent-pipeline/scripts/dispatch.mjs ${step.issue} ${step.actor}`;
+    step.progress_interval_seconds = Number(config.agent_runtime.progress_interval_seconds ?? 20);
+  }
 
   if (asJson) {
     console.log(JSON.stringify({ step, open: open.length, actionable: actionable.length }, null, 2));
@@ -178,13 +181,18 @@ function main() {
     return;
   }
 
-  console.log("next step, exactly one:\n");
+  console.log("next bounded run:\n");
   console.log(`  issue    ${step.issue}${step.spec ? `  (${step.spec})` : ""}`);
   console.log(`  phase    ${step.phase}`);
   console.log(`  action   ${step.verb} ${step.actor}`);
   console.log(`  reason   ${step.reason}`);
   console.log(`  version  ${step.version}`);
-  console.log(`\nafter the step, check it did not overflow:`);
+  if (step.interactive_command != null) {
+    console.log(`\ninteractive dispatch (output streamed, Ctrl-C propagated):`);
+    console.log(`  ${step.interactive_command}`);
+    console.log(`  progress heartbeat every ${step.progress_interval_seconds}s`);
+  }
+  console.log(`\nafter the run, check it stayed within the transition budget:`);
   console.log(`  node agent-pipeline/scripts/next-step.mjs --assert-advanced ${step.issue} ${step.version}`);
 
   if (actionable.length > 1) {

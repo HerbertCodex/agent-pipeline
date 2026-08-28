@@ -3,15 +3,15 @@
 This document addresses **the human**. Everything else in `agent-pipeline/docs/` speaks to the agents; here we talk about what the machine cannot do for you, and what will not work if you do not do it.
 
 <!-- brief:orchestrator -->
-## Answer once, run through, report at the end
+## Answer once, keep the run observable
 
 Three things the operator asked for after a first real run, and each was missing for the same reason: the pipeline had no notion of a session that had already been told what to do.
 
 **The answer is a project fact.** `default_mode` in the configuration says `pipeline` or `direct`. Declared, `CLAUDE.md` renders with the answer instead of the question, and no later session asks again. Absent, the question stands — a project that never chose is a project nobody chose for.
 
-**Do not come back between two issues.** `next-issues` gives the wave, `next-step` gives the one step, and the escalations that reach the operator are the ones the rules define: a spec question, a dependency to install, three code rejections. Progress reported in between costs exactly the attention the pipeline exists to save.
+**Do not leave the operator staring at silence.** `next-step` gives one bounded step. When `agent_runtime.command` is configured it also prints an interactive `dispatch.mjs` command: child output is streamed immediately, a heartbeat is emitted every `progress_interval_seconds`, and Ctrl-C is propagated. A heartbeat asks for no response; it only distinguishes work in progress from a dead run.
 
-**Report when the spec closes, and only then.** `render-spec.mjs <out.html> <spec-id>` computes from the store what was built with the evidence QA observed, what surfaced along the way grouped by the destination each finding named, and what it cost split between agent, validation and waiting. No agent writes it: one that wrote its own report would be judged on prose it chose. It refuses a spec still running, because a report on unfinished work is wrong by the time it is read.
+**Ask when a decision changes the contract or authority.** A scope question, dependency installation, frozen-scope expansion or rejection-budget escalation waits for the operator. Ordinary progress does not. At closure, `render-spec.mjs <out.html> <spec-id>` computes the final report from the store.
 <!-- /brief -->
 
 <!-- brief:orchestrator,product,implementer,qa -->
@@ -47,7 +47,7 @@ flowchart TD
     F --> G["verify-scope<br/><i>le diff reel, pas le declare</i>"]
     G --> H["store-update<br/><i>verrou optimiste, version +1</i>"]
     H --> I["store-verify<br/><i>invariants</i>"]
-    I --> J["--assert-advanced<br/><i>exactement une transition</i>"]
+    I --> J["--assert-advanced<br/><i>cycle borne</i>"]
     J --> A
 
     style A fill:#1f6feb,color:#fff
@@ -140,7 +140,15 @@ Three prerequisites come from the pipeline itself, whatever the project's stack:
 
 ### What the framework expects of your agent harness
 
-`agent-pipeline/` is the framework; whatever the config points at is its consequence in this repository. The framework therefore assumes **nothing** about the tool executing the agents beyond Node, git and the forge client above. It does not assume a harness can host a page, that a browser exists, or that a link can be handed to a human.
+`agent-pipeline/` assumes no agent vendor. Configure `agent_runtime.command` and `agent_runtime.args` as an executable plus an argument list; `{role}` and `{package}` are the only substitutions, and no shell interprets them. The same driver can therefore invoke Codex, Claude Code, Kilo Code or another CLI without changing scheduling, validation or persistence. `prompt_adapter: "portable"` renders plain role prompts; `claude-code` adds Claude's YAML metadata and renders the optional root `CLAUDE.md` entry point.
+
+Run a computed step with:
+
+```
+node agent-pipeline/scripts/dispatch.mjs <issue-id> <role>
+```
+
+The generated JSON package contains the role, prompt and brief paths, the bounded record view, its hash and state version. The harness receives that package path; it does not need a vendor-specific store integration.
 
 The rule that follows holds for any output meant for a human: **the framework produces a self-contained file and names what a capable harness should do with it.** The capability belongs to the tool, never to the pipeline. The renderers therefore print, after the path written, the line saying what to do with it — publish if the harness can host, hand over the path otherwise. It is printed where the driver already looks, the command's output, rather than buried in a document it may not have read.
 

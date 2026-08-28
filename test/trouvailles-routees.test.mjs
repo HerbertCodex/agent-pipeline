@@ -36,17 +36,11 @@ function declare(discoveries) {
   return run(sandbox, "validate-handoff.mjs", [writeJson(sandbox, "h.json", { ...HANDOFF, discoveries })]);
 }
 
-describe("a finding says where it lands, or it lands in the backlog by default", () => {
-  test("refuses a finding that names no destination", () => {
+describe("a finding is parked by default and blocks only for a delivery reason", () => {
+  test("accepts a finding with no destination as parked work", () => {
     sandbox = createSandbox();
     const result = declare([{ title: "bits-ui leaks two attributes", rationale: "they reach the markup" }]);
-    assert.notEqual(result.status, 0);
-    assert.match(result.output, /lands/);
-    assert.match(
-      result.output,
-      /issue|pitfall|framework|spec/,
-      "the refusal names the destinations, or the agent guesses one",
-    );
+    assert.equal(result.status, 0, result.output);
   });
 
   test("refuses a destination nobody implements", () => {
@@ -56,40 +50,47 @@ describe("a finding says where it lands, or it lands in the backlog by default",
     assert.match(result.output, /somewhere/);
   });
 
-  test("a finding landing as an issue must name what is defective", () => {
+  test("a regression must name what is defective", () => {
     sandbox = createSandbox();
-    const result = declare([{ title: "the wiring is proven by nothing", rationale: "no constraint", lands: "issue" }]);
+    const result = declare([{ title: "the wiring is proven by nothing", rationale: "no constraint", lands: "regression" }]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /breaks/);
   });
 
-  test("a finding landing on the spec must name the criterion it contradicts", () => {
+  test("a criterion finding names the criterion it contradicts", () => {
     sandbox = createSandbox();
-    const result = declare([{ title: "criteria 8 and 6 pull apart", rationale: "one refuses the other", lands: "spec" }]);
+    const result = declare([{ title: "criteria 8 and 6 pull apart", rationale: "one refuses the other", lands: "criterion" }]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /criterion/);
   });
 
-  test("a pitfall carries the line that will be written down", () => {
+  test("a delivery blocker says why shipping is impossible", () => {
     sandbox = createSandbox();
-    const result = declare([{ title: "a local style rule beats :global()", rationale: "specificity", lands: "pitfall" }]);
+    const result = declare([{ title: "unsafe migration", rationale: "data can be lost", lands: "delivery_blocker" }]);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /line/);
+    assert.match(result.output, /blocked_because/);
   });
 
-  test("accepts the four destinations when each carries what it owes", () => {
+  test("a closure can carry parked and framework findings", () => {
     sandbox = createSandbox();
     const result = declare([
-      { title: "wiring unproven", rationale: "r", lands: "issue", breaks: "AmountField" },
-      { title: "criteria pull apart", rationale: "r", lands: "spec", criterion: "8" },
-      { title: "local rule beats global", rationale: "r", lands: "pitfall", line: "A local style rule wins (0,2,0)." },
+      { title: "later improvement", rationale: "r", lands: "parking" },
       { title: "the store drops claims_to_replay", rationale: "r", lands: "framework" },
     ]);
     assert.equal(result.status, 0, result.output);
   });
+
+  test("a criterion contradiction cannot hide inside a closure", () => {
+    sandbox = createSandbox();
+    const result = declare([
+      { title: "criteria pull apart", rationale: "r", lands: "criterion", criterion: "8" },
+    ]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /cannot accompany closure/i);
+  });
 });
 
-describe("closure is verified per destination, not by one count", () => {
+describe("parked findings are durable but do not create closure obligations", () => {
   /**
    * Prepares a project with a profile carrying a pitfalls document.
    *
@@ -108,7 +109,7 @@ describe("closure is verified per destination, not by one count", () => {
     return root;
   }
 
-  test("only a finding landing as an issue owes a created issue", () => {
+  test("several parked destinations can remain on a closed issue", () => {
     sandbox = withProfile();
     writeFileSync(join(sandbox, "pipeline", "findings.md"), "# Findings\n\n- the store drops claims_to_replay\n");
     writeFileSync(
@@ -122,8 +123,8 @@ describe("closure is verified per destination, not by one count", () => {
         criteria_ledger: [],
         acceptance_criteria: [],
         discoveries_declared: [
-          { title: "local rule beats global", lands: "pitfall", line: "A local style rule wins (0,2,0)." },
-          { title: "the store drops claims_to_replay", lands: "framework" },
+          { title: "local rule beats global", rationale: "specificity", lands: "pitfall", line: "A local style rule wins (0,2,0)." },
+          { title: "the store drops claims_to_replay", rationale: "the next role loses it", lands: "framework" },
         ],
       }),
     ]);
@@ -131,7 +132,7 @@ describe("closure is verified per destination, not by one count", () => {
     assert.equal(result.status, 0, result.output);
   });
 
-  test("a pitfall nobody wrote down still refuses the closure", () => {
+  test("a pitfall nobody wrote down does not keep correct product work open", () => {
     sandbox = withProfile("# Pitfalls\n");
     writeStore(sandbox, "issues", [
       issue({
@@ -140,16 +141,15 @@ describe("closure is verified per destination, not by one count", () => {
         criteria_ledger: [],
         acceptance_criteria: [],
         discoveries_declared: [
-          { title: "local rule beats global", lands: "pitfall", line: "A local style rule wins (0,2,0)." },
+          { title: "local rule beats global", rationale: "specificity", lands: "pitfall", line: "A local style rule wins (0,2,0)." },
         ],
       }),
     ]);
     const result = run(sandbox, "store-verify.mjs", []);
-    assert.notEqual(result.status, 0);
-    assert.match(result.output, /pitfall/i);
+    assert.equal(result.status, 0, result.output);
   });
 
-  test("a framework finding absent from the operator's list refuses the closure", () => {
+  test("a framework finding absent from another file still remains on the issue", () => {
     sandbox = withProfile();
     writeFileSync(join(sandbox, "pipeline", "findings.md"), "# Findings\n");
     writeStore(sandbox, "issues", [
@@ -158,15 +158,14 @@ describe("closure is verified per destination, not by one count", () => {
         pipeline_state: state({ phase: "closed", owner: "none" }),
         criteria_ledger: [],
         acceptance_criteria: [],
-        discoveries_declared: [{ title: "the store drops claims_to_replay", lands: "framework" }],
+        discoveries_declared: [{ title: "the store drops claims_to_replay", rationale: "the next role loses it", lands: "framework" }],
       }),
     ]);
     const result = run(sandbox, "store-verify.mjs", []);
-    assert.notEqual(result.status, 0);
-    assert.match(result.output, /findings/);
+    assert.equal(result.status, 0, result.output);
   });
 
-  test("a finding landing as an issue still owes its linked issue", () => {
+  test("a legacy issue destination no longer auto-expands the active spec", () => {
     sandbox = withProfile();
     writeStore(sandbox, "issues", [
       issue({
@@ -174,15 +173,14 @@ describe("closure is verified per destination, not by one count", () => {
         pipeline_state: state({ phase: "closed", owner: "none" }),
         criteria_ledger: [],
         acceptance_criteria: [],
-        discoveries_declared: [{ title: "wiring unproven", lands: "issue", breaks: "AmountField" }],
+        discoveries_declared: [{ title: "wiring unproven", rationale: "no constraint", lands: "issue", breaks: "AmountField" }],
       }),
     ]);
     const result = run(sandbox, "store-verify.mjs", []);
-    assert.notEqual(result.status, 0);
-    assert.match(result.output, /discovery|created issue/i);
+    assert.equal(result.status, 0, result.output);
   });
 
-  test("a record written before the destinations existed is read as an issue", () => {
+  test("a malformed historical finding is reported without manufacturing an issue", () => {
     // The old shape carried no destination and always meant one thing. Reading
     // it as anything else would rewrite history rather than describe it.
     sandbox = withProfile();
@@ -197,6 +195,6 @@ describe("closure is verified per destination, not by one count", () => {
     ]);
     const result = run(sandbox, "store-verify.mjs", []);
     assert.notEqual(result.status, 0);
-    assert.match(result.output, /discovery|created issue/i);
+    assert.match(result.output, /rationale/i);
   });
 });

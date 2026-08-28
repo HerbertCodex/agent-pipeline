@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { loadConfig, loadRules, pathAllowed, deferredGates, fail } from "./lib.mjs";
 import { ARCHITECTURES, PROJECT_TYPES } from "./architectures.mjs";
-import { stripUndeclaredGates, orphanGates, perIssueGates, closureGates } from "./gates.mjs";
+import { stripUndeclaredGates, orphanGates, perIssueGates, gatesForIssue, closureGates } from "./gates.mjs";
+import { adaptPrompt, promptAdapter, rendersClaudeEntry } from "./runtime-adapters.mjs";
 
 const CI_TEMPLATE = "agent-pipeline/templates/ci.template.yml";
 const AGENTS_TEMPLATE = "agent-pipeline/templates/AGENTS.template.md";
@@ -83,12 +84,15 @@ function renderAgents(config) {
  * @returns the block content, tags removed
  */
 function projectBlock(text, name, source) {
-  const open = `<!-- claude:${name} -->\n`;
+  const genericOpen = `<!-- agent:${name} -->\n`;
+  const legacyOpen = `<!-- claude:${name} -->\n`;
+  const open = text.includes(genericOpen) ? genericOpen : legacyOpen;
+  const close = open === genericOpen ? "\n<!-- /agent -->" : "\n<!-- /claude -->";
   const start = text.indexOf(open);
-  if (start === -1) fail(`${source}: block <!-- claude:${name} --> missing`);
+  if (start === -1) fail(`${source}: block <!-- agent:${name} --> missing (legacy claude block also accepted)`);
   const from = start + open.length;
-  const end = text.indexOf("\n<!-- /claude -->", from);
-  if (end === -1) fail(`${source}: claude block ${name} not closed`);
+  const end = text.indexOf(close, from);
+  if (end === -1) fail(`${source}: agent block ${name} not closed`);
   const body = text.slice(from, end).trim();
   if (body.length === 0) fail(`${source}: claude block ${name} empty`);
   return body;
@@ -129,7 +133,7 @@ function renderClaude(config) {
     .replaceAll(
       "{{mode}}",
       config.default_mode === "pipeline"
-        ? "**This project works through the pipeline.** The operator already answered, in `pipeline.config.json`: you do not ask again. Read the store, take the next step, and come back when the spec closes — not between two issues."
+        ? "**This project works through the pipeline.** The operator already answered, in `pipeline.config.json`: you do not ask again. Read the store and take the next step. Stream useful output while it runs; `dispatch.mjs` emits a heartbeat at the configured interval and propagates interruption. Ask only for a decision that changes scope or authority."
         : config.default_mode === "direct"
           ? "**This project works directly, by the operator's declaration** in `pipeline.config.json`. Commits still carry a `direct:` line saying why, so the choice stays legible to whoever reads the history."
           : "**Pipeline or direct?** Ask the operator. Not after reading the code, not once a plan is drafted — first. Declaring `default_mode` in `pipeline.config.json` answers it once and for all.",
@@ -151,7 +155,7 @@ function renderClaude(config) {
  * @param config - project configuration
  * @returns the rendered content, keyed by prompt file name
  */
-function renderPrompts(config) {
+function renderPrompts(config, adapter) {
   if (!existsSync(PROMPTS_SRC)) fail(`not found: ${PROMPTS_SRC}`);
   const rendered = new Map();
   for (const file of readdirSync(PROMPTS_SRC).filter((f) => f.endsWith(".md")).sort()) {
@@ -162,7 +166,7 @@ function renderPrompts(config) {
         // Rendered from this project's own table rather than recited: a
         // prompt listing gate names by hand tells a project to run what it
         // does not have, and to replay what it deferred.
-        .replaceAll("{{gates.per_issue}}", perIssueGates(config).map((key) => `\`${key}\``).join(", "))
+        .replaceAll("{{gates.per_issue}}", gatesForIssue([], config).map((key) => `\`${key}\``).join(", "))
         .replaceAll("{{gates.closure}}", closureGates(config).map((key) => `\`${key}\``).join(", ") || "aucune"),
       config,
     );
@@ -181,7 +185,7 @@ function renderPrompts(config) {
           "A role cannot tell a rule that binds it from one that binds nobody.",
       );
     }
-    rendered.set(file, text);
+    rendered.set(file, adaptPrompt(text, adapter, file.replace(/\.md$/, "")));
   }
   return rendered;
 }
@@ -658,6 +662,42 @@ function main() {
       fail(`risk.${key} is not a lane: only "high" and "low" are declared, everything else is normal.`);
     }
   }
+  if (config.workflow?.gates != null) {
+    const eligible = new Set(perIssueGates(config));
+    for (const lane of ["low", "normal", "high"]) {
+      const value = config.workflow.gates[lane];
+      if (value == null || value === "all") continue;
+      if (!Array.isArray(value)) fail(`workflow.gates.${lane} must be "all" or a list of command keys`);
+      for (const key of value) {
+        if (typeof config.commands?.[key] !== "string") {
+          fail(`workflow.gates.${lane} names ${key}, which commands does not declare`);
+        }
+        if (!eligible.has(key)) {
+          fail(`workflow.gates.${lane} names ${key}, but that gate is reserved for final closure`);
+        }
+      }
+    }
+  }
+  if (
+    config.workflow?.max_transitions_per_run != null &&
+    (!Number.isInteger(config.workflow.max_transitions_per_run) || config.workflow.max_transitions_per_run < 1)
+  ) {
+    fail("workflow.max_transitions_per_run must be a positive integer");
+  }
+  if (config.agent_runtime != null) {
+    const interval = config.agent_runtime.progress_interval_seconds;
+    if (interval != null && (typeof interval !== "number" || !Number.isFinite(interval) || interval <= 0)) {
+      fail("agent_runtime.progress_interval_seconds must be a positive number");
+    }
+    if (config.agent_runtime.command != null) {
+      if (typeof config.agent_runtime.command !== "string" || config.agent_runtime.command.trim().length === 0) {
+        fail("agent_runtime.command must be a non-empty executable name");
+      }
+      if (!Array.isArray(config.agent_runtime.args) || config.agent_runtime.args.some((arg) => typeof arg !== "string")) {
+        fail("agent_runtime.args must be a list of strings when command is configured");
+      }
+    }
+  }
   // A directory declared and empty exists on one machine and nowhere else:
   // git does not version empty directories. Observed on a real port, where
   // `docs/stack` was declared, empty, and present locally — `sync-briefs
@@ -753,8 +793,10 @@ function main() {
   }
 
   const rules = loadRules(RULES_PATH);
-  const currentPolicy = JSON.stringify(rules.file_policy ?? null);
-  const wantedPolicy = JSON.stringify(config.file_policy);
+  const sourceRules = JSON.parse(readFileSync(RULES_SRC, "utf8"));
+  const wantedRules = { ...sourceRules, file_policy: config.file_policy };
+  const currentRules = JSON.stringify(rules);
+  const renderedRules = JSON.stringify(wantedRules);
   const ciEnabled = config.ci.provider !== "none";
 
   let ci = "";
@@ -786,9 +828,15 @@ function main() {
   if (unresolved) fail(`${CI_TEMPLATE}: unresolved variable ${unresolved[0]}`);
   }
 
-  const prompts = renderPrompts(config);
+  let adapter;
+  try {
+    adapter = promptAdapter(config);
+  } catch (error) {
+    fail(error.message);
+  }
+  const prompts = renderPrompts(config, adapter);
   const agents = renderAgents(config);
-  const claude = renderClaude(config);
+  const claude = rendersClaudeEntry(adapter) ? renderClaude(config) : null;
 
   if (checkMode) {
     let drift = false;
@@ -797,10 +845,12 @@ function main() {
       console.error(`out of sync: ${AGENTS_OUT}`);
       drift = true;
     }
-    const currentClaude = existsSync(CLAUDE_OUT) ? readFileSync(CLAUDE_OUT, "utf8") : "";
-    if (currentClaude !== claude) {
-      console.error(`out of sync: ${CLAUDE_OUT}`);
-      drift = true;
+    if (claude != null) {
+      const currentClaude = existsSync(CLAUDE_OUT) ? readFileSync(CLAUDE_OUT, "utf8") : "";
+      if (currentClaude !== claude) {
+        console.error(`out of sync: ${CLAUDE_OUT}`);
+        drift = true;
+      }
     }
     for (const [file, text] of prompts) {
       const outPath = join(config.prompts_dir, file);
@@ -810,8 +860,8 @@ function main() {
         drift = true;
       }
     }
-    if (currentPolicy !== wantedPolicy) {
-      console.error(`out of sync: ${RULES_PATH} file_policy`);
+    if (currentRules !== renderedRules) {
+      console.error(`out of sync: ${RULES_PATH} (machine rules or file_policy)`);
       drift = true;
     }
     if (ciEnabled) {
@@ -828,13 +878,14 @@ function main() {
     if (drift) fail("Profile not applied.");
     console.log("Profile applied and in sync.");
   } else {
-    rules.file_policy = config.file_policy;
-    writeFileSync(RULES_PATH, JSON.stringify(rules, null, "\t") + "\n");
-    console.log(`written: ${RULES_PATH} (file_policy of profile ${config.profile})`);
+    writeFileSync(RULES_PATH, JSON.stringify(wantedRules, null, "\t") + "\n");
+    console.log(`written: ${RULES_PATH} (machine rules + file_policy of profile ${config.profile})`);
     writeFileSync(AGENTS_OUT, agents);
     console.log(`written: ${AGENTS_OUT} (invariants of profile ${config.profile})`);
-    writeFileSync(CLAUDE_OUT, claude);
-    console.log(`written: ${CLAUDE_OUT} (context from ${config.project_context})`);
+    if (claude != null) {
+      writeFileSync(CLAUDE_OUT, claude);
+      console.log(`written: ${CLAUDE_OUT} (context from ${config.project_context})`);
+    }
     if (ciEnabled) {
       mkdirSync(dirname(CI_OUT), { recursive: true });
       writeFileSync(CI_OUT, ci);
@@ -846,7 +897,9 @@ function main() {
     for (const [file, text] of prompts) {
       writeFileSync(join(config.prompts_dir, file), text);
     }
-    console.log(`written: ${config.prompts_dir}/ (${prompts.size} prompts, briefs -> ${config.briefs_dir})`);
+    console.log(
+      `written: ${config.prompts_dir}/ (${prompts.size} prompts, adapter ${adapter}, briefs -> ${config.briefs_dir})`,
+    );
     applySkills(config, false);
   }
 }

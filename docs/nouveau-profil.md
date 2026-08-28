@@ -39,15 +39,15 @@ Everything that speaks of the stack or of this repository lives in six places, a
 | The configuration | `pipeline.config.json` | commands, `file_policy`, directories, human-review surfaces, CI |
 | The invariants | `<profiles_dir>/<profile>/invariants.md` | section 9 of `AGENTS.md`: what is forbidden in this language |
 | The stack skills | `<profiles_dir>/<profile>/skills/` | what a skill knows about this stack and that has no place in the core |
-| The repository context | the `project_context` file | the three `CLAUDE.md` blocks: what the project is, its local commands, its accepted limits |
+| The repository context | the `project_context` file | three generic `agent` blocks (legacy `claude` markers accepted): summary, local commands, accepted limits |
 | The project tools | `scripts/` | the project map, the comment policy |
 | The standards | `docs/stack/` | conventions reviewed by QA |
 
 Skills are sorted by a single question: **would this skill still be right in a project on another stack?** If yes it belongs to `agent-pipeline/skills/` and travels with the pipeline. Otherwise it belongs to the profile. A web-interface skill in the core would make the core wrong for a Go project; `apply-profile` refuses the same name on both sides.
 
-`AGENTS.md`, `CLAUDE.md`, the `rules_path` file, the rendered prompts and the skills installed into `skills_dir` are **generated** by `apply-profile`. Never write them by hand: your change will be overwritten at the next render, and `apply-profile --check` will report it as drift before that.
+`AGENTS.md`, the `rules_path` file, the rendered prompts and the skills installed into `skills_dir` are **generated** by `apply-profile`. With the `claude-code` adapter, `CLAUDE.md` is generated too. Never write generated targets by hand: `apply-profile --check` reports drift.
 
-`CLAUDE.md` is loaded on every session and carries the obligation to ask "pipeline or direct" before acting. A repository without it starts with no entry point: that obligation then happens for nobody, and nothing reports it — which is why it is rendered rather than left to your good will.
+The harness entry point belongs to its adapter. Claude Code receives `CLAUDE.md` and YAML role metadata; the portable adapter emits plain Markdown prompts and leaves startup wiring to the configured CLI. The role contract itself stays identical.
 
 ## The order, and the check after each step
 
@@ -71,11 +71,15 @@ Also mandatory, outside `commands`: an `architecture` block, `{ id, project_type
 
 Mandatory paths, refused if absent: `profiles_dir`, `docs_dirs`, `briefs_dir`, `prompts_dir`, `skills_dir`, `rules_path`, `project_context`, `store_dir`.
 
-`findings_path` names the file where findings about the pipeline land — outside the product's backlog, because they are not work this project schedules.
+`agent_runtime` is the harness boundary. `prompt_adapter` is `portable` or `claude-code`; `command` is the chosen CLI executable; `args` is its argument vector using exact `{role}` and `{package}` placeholders; `progress_interval_seconds` defaults to 20. The driver uses no shell, streams both output channels, emits heartbeats and propagates interruption. Do not put Codex, Claude Code or Kilo Code flags in a core script — only in this project configuration.
+
+`workflow.max_transitions_per_run` bounds one orchestration context; four lets a nominal issue traverse its complete cycle while preventing a session from swallowing a spec. `workflow.gates.low|normal|high` is either `"all"` or a list of declared command keys. Low and normal lanes buy fast feedback; commands omitted from normal are replayed in the final closure battery. High-risk paths should stay `"all"`.
+
+`findings_path` remains the legacy destination for exported framework notes. Product findings themselves live once, in `discoveries_declared`; `findings.mjs` computes the inbox from that store data.
 
 The mechanism they leave behind is worth knowing before you read a store. A role that notices something real outside its issue declares it in `discoveries`, and the framework refuses to let the issue close until the finding reached somewhere. That part was right. What was wrong was having a single somewhere: every finding became a `planned` issue in the product's backlog. Measured on a real port — **32 findings for 3 issues closed, eleven new issues for every one finished**. A backlog growing faster than it drains never converges, and the operator watches a day of work produce nothing they asked for.
 
-A finding now carries `lands`: `issue` (a defect in delivered code, and it must name what `breaks`), `spec` (criteria that contradict, naming the `criterion`), `pitfall` (a trap, carrying the `line` written into `pitfalls.md`) or `framework` (not this project's work). `store-verify` checks each destination for what it owes, so the debt stays opposable while only one route creates work.
+A finding now defaults to `parking`, with no phase and no reservation. Only `criterion`, `regression` and `delivery_blocker` can block the current closure, because they name a contradiction or obstacle in the accepted delivery. `framework` stays outside product scope. Once a spec is active, its planned issue list is frozen; adding work requires `scope_change { approved_by: "operator", reason, approved_at }`.
 
 **A document may not prescribe a gate you do not have.** The briefs are compiled from these documents, and these documents describe gates a given project may never declare. Measured on a real port: nine rules across the four briefs named commands nothing answered for — in the very pages that teach the rules. A reader cannot tell such a rule from one that binds them, so they invent the gate, skip it in silence, or stop trusting the document; the third is the expensive one.
 
@@ -101,7 +105,7 @@ Running the page with no analysis at all asks the eight questions in full. That 
 
 Everything else here is written in English because models follow it more reliably. **The pages are the exception, and deliberately so**: they are the one artefact read by a person rather than by an agent, which is the same reason this repository's README is not in English either. The structure of the catalogue — ids, layers, allowed directions — stays in the code whatever the language, so a translation is added without touching a rule, and a rule changes without touching a translation. A test refuses a key present in one language and missing from the other, because a missing key renders as a blank space nobody notices. A second one renders **every** page on a French project and refuses any English left standing in the result: parity alone would pass a renderer that never reads the dictionary at all. That is what the six pages cost to keep honest — a sentence written straight into a renderer is caught by a run, not by a review.
 
-`decisions_dir` is required, and the directory must exist. `CLAUDE.md` sends every session to the decisions journal before touching a past decision, and Product is told to read it and never to edit it. Until 2026-08-19 those three instructions pointed at a document with no path, no key and no command behind it — the exact shape of rule this framework refuses everywhere else, sitting in its own prompts. The path now reaches the prompts, so the instruction designates something.
+`decisions_dir` is required, and the directory must exist. The rendered harness entry point and Product prompt send sessions to the decisions journal before touching a past decision. Until 2026-08-19 those instructions pointed at no configured path. The path now reaches every adapter's rendered prompt.
 
 An empty journal is accepted: a new project has decided nothing yet, and that is worth recording as such. What no command can check is whether a decision that was taken got written down — that judgement is the operator's, and pretending to enforce it would be worse than saying so.
 
@@ -109,9 +113,9 @@ An empty journal is accepted: a new project has decided nothing yet, and that is
 
 A name carrying a directory is still taken as given. And `render-architecture` runs before any configuration exists, since it produces the decision the configuration then records — it therefore asks where to write without depending on the answer.
 
-You are free to place them where you want, and that is the point: none of it is fixed in the core. Grouping the machinery under a single directory — `pipeline/profiles`, `pipeline/briefs`, `pipeline/store`, `pipeline/rules.json` — avoids fighting the host project for names it wants for itself, `docs/` and `scripts/` first among them. Only `AGENTS.md`, `CLAUDE.md`, the prompts directory and `pipeline.config.json` stay at the root: the platform looks for them there.
+You are free to place them where you want, and that is the point: none of it is fixed in the core. Grouping the machinery under a single directory — `pipeline/profiles`, `pipeline/briefs`, `pipeline/store`, `pipeline/rules.json` — avoids fighting the host project for names it wants for itself, `docs/` and `scripts/` first among them. Only `AGENTS.md`, the harness entry point when its adapter needs one, the prompts directory and `pipeline.config.json` stay at the root.
 
-`rules_path` is **seeded** at the first render from `agent-pipeline/schemas/rules.json`, then completed with the profile's `file_policy`. You do not copy it yourself.
+`rules_path` is rendered from `agent-pipeline/schemas/rules.json`, then completed with the profile's `file_policy`. Later renders update machine rules as well as policy; `--check` refuses either kind of drift.
 
 For a Python project, `check` becomes `mypy .`, `lint` becomes `ruff check . && ruff format --check .`, `test_unit` becomes `pytest`. For a Svelte project, `check` becomes `svelte-check`, `test_unit` becomes `vitest run`.
 

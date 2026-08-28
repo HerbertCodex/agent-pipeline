@@ -19,12 +19,24 @@
     "agent-pipeline/docs"
   ],
   "briefs_dir": "pipeline/briefs",
-  "prompts_dir": ".claude/agents",
-  "skills_dir": ".claude/skills",
+  "prompts_dir": "pipeline/agents",
+  "skills_dir": "pipeline/skills",
   "rules_path": "pipeline/rules.json",
   "project_context": "pipeline/project-context.md",
   "store_dir": "pipeline/store",
   "handoffs_dir": "pipeline/handoffs",
+  "agent_runtime": {
+    "prompt_adapter": "portable",
+    "progress_interval_seconds": 20
+  },
+  "workflow": {
+    "max_transitions_per_run": 4,
+    "gates": {
+      "low": ["check", "lint", "test_unit"],
+      "normal": ["check", "lint", "test_unit", "smoke"],
+      "high": "all"
+    }
+  },
   "findings_path": "pipeline/findings.md",
   "pages_dir": "pipeline/pages",
   "ci": {

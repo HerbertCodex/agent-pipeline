@@ -32,55 +32,17 @@ import { loadConfig, loadRules, readJsonl, fail } from "./lib.mjs";
 function verifyDiscoveries(record, all, rules, config, path) {
   const declared = record.discoveries_declared ?? [];
   if (declared.length === 0) return 0;
-  if (record.pipeline_state?.phase !== "closed") return 0;
-
   let violations = 0;
-  const wanted = declared.filter((item) => (item?.lands ?? "issue") === "issue");
-  if (wanted.length > 0) {
-    const type = rules.discovery_relationship;
-    const linked = all.filter((other) =>
-      (other.relationships ?? []).some(
-        (relation) => relation.type === type && relation.to === record.id,
-      ),
-    );
-    if (linked.length < wanted.length) {
-      console.error(
-        `${path}: issue ${record.id} closed with ${wanted.length} discovery(ies) landing as issues and ${linked.length} created issue(s)`,
-      );
+  for (const [index, item] of declared.entries()) {
+    if (typeof item?.title !== "string" || item.title.trim().length === 0) {
+      console.error(`${path}: issue ${record.id} finding ${index + 1} has no title`);
+      violations += 1;
+    }
+    if (typeof item?.rationale !== "string" || item.rationale.trim().length === 0) {
+      console.error(`${path}: issue ${record.id} finding ${index + 1} has no rationale`);
       violations += 1;
     }
   }
-
-  const pitfalls = join(config.profiles_dir, config.profile, "pitfalls.md");
-  const written = existsSync(pitfalls) ? readFileSync(pitfalls, "utf8") : "";
-  for (const item of declared.filter((entry) => entry?.lands === "pitfall")) {
-    if (typeof item.line === "string" && written.includes(item.line)) continue;
-    console.error(
-      `${path}: issue ${record.id} declares a pitfall absent from ${pitfalls}: "${item.title}". ` +
-        "A pitfall declared but never written is a pitfall nobody will read.",
-    );
-    violations += 1;
-  }
-
-  const framework = declared.filter((entry) => entry?.lands === "framework");
-  if (framework.length > 0) {
-    const list = config.findings_path;
-    if (typeof list !== "string") {
-      console.error(
-        `${path}: issue ${record.id} sends a finding to the framework, and findings_path names no file. ` +
-          "A finding with nowhere to land is a finding lost at closure.",
-      );
-      violations += 1;
-    } else {
-      const body = existsSync(list) ? readFileSync(list, "utf8") : "";
-      for (const item of framework) {
-        if (body.includes(item.title)) continue;
-        console.error(`${path}: issue ${record.id} declares a framework finding absent from ${list}: "${item.title}"`);
-        violations += 1;
-      }
-    }
-  }
-
   return violations;
 }
 

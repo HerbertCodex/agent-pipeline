@@ -114,6 +114,27 @@ export function perIssueGates(config) {
 }
 
 /**
+ * Returns the battery owed by one concrete issue.
+ *
+ * Projects may choose a smaller declared subset for low and normal lanes;
+ * high risk defaults to the complete per-issue battery. Anything omitted is
+ * part of the final closure battery, never silently discarded.
+ *
+ * @param paths - observed files for the issue
+ * @param config - project configuration
+ * @returns gate keys required before this issue moves on
+ */
+export function gatesForIssue(paths, config) {
+  const baseline = perIssueGates(config);
+  const lane = laneOf(paths, config?.risk);
+  const configured = config?.workflow?.gates?.[lane];
+  if (configured == null || configured === "all") return baseline;
+  if (!Array.isArray(configured)) return baseline;
+  const allowed = new Set(baseline);
+  return configured.filter((key) => allowed.has(key));
+}
+
+/**
  * The risk lane of what an issue touches.
  *
  * The lane is COMPUTED, never declared. A lane an agent chooses is a lane
@@ -148,6 +169,9 @@ export function laneOf(paths, risk) {
  * @returns the keys of `commands` replayed at closure only
  */
 export function closureGates(config) {
-  const perIssue = new Set(perIssueGates(config));
+  const normal = config?.workflow?.gates?.normal;
+  const perIssue = new Set(
+    Array.isArray(normal) ? normal.filter((key) => typeof config?.commands?.[key] === "string") : perIssueGates(config),
+  );
   return Object.keys(config?.commands ?? {}).filter((key) => !perIssue.has(key));
 }

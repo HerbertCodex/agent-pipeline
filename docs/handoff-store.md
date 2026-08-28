@@ -54,6 +54,8 @@ Nothing in the plan contradicts the approved scope. If the decomposition reveals
 
 A QA rejection carries a `fault` among `spec`, `test`, `dependency`, `code`, `infrastructure`; an approval carries none. A `fault: code` carries a `regression` block (`required`, then `criterion` or `reason`).
 
+Discoveries are durable but do not automatically become backlog. Missing `lands` means `parking`; `criterion`, `regression` and `delivery_blocker` are the only classifications that block closure and each names the fact that blocks it. `findings.mjs` renders the triage inbox from `discoveries_declared`. An active spec's issue list changes only through an operator-approved `scope_change`.
+
 ## A screen is coded against a mockup, not from memory
 
 On a project whose `architecture.project_type` has screens, an implementer handoff carrying a `commit_sha` declares `mockup { path }` — one of the paths the spec record's `mockups` carries, written there by the orchestrator from the plan — or `mockup { not_applicable }` with a reason. The validator reads the named file and refuses every colour, length and font that traces back to no declared token — it re-checks rather than trusts, because a mockup approved a week ago and edited since is exactly what a declaration alone cannot catch.

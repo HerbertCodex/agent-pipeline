@@ -51,7 +51,7 @@ Until 2026-08-19 the escalation carried only the fact of failure. Three cycles w
 
 QA never fixes. A code fault returns to the Implementer, **who pins it with a red test before correcting it**: a fix with no test that failed first proves nothing about the next regression.
 
-**Three code rejections on the same issue escalate to the operator**, never a fourth cycle. The counter lives in `pipeline_state.qa_code_rejections` and only counts `fault: code` — an infrastructure fault or a spec fault is somebody else's problem and does not consume the budget.
+**Three code rejections on the same issue escalate to the operator**, never a fourth cycle. `store-update` enforces the counter against `transition_reason.fault`: a code fault increments exactly once, the third must target `operator_escalation`, and `test`, infrastructure, dependency or spec faults do not consume the budget.
 
 ## Reservations
 
@@ -67,5 +67,5 @@ The store cannot distinguish a working role from a dead one: same record, same r
 
 Redispatching means handing back the previous document **in full, verbatim**. A cold agent given a summary of its own prior work will reconstruct the missing detail, and reconstruction is indistinguishable from fabrication until someone checks. This has already produced a handoff reporting eighteen commands that were never run.
 
-`next-step.mjs` names the step from the store, never from a memory of what was done before. `--assert-advanced <issue> <version-before>` is the gate the driver runs afterwards: `pipeline_state.version` increments by exactly one per persistence, so any other gap is a step that overflowed.
+`next-step.mjs` names the issue from the store, never from a memory of what was done before. A run may persist up to `workflow.max_transitions_per_run` transitions on that issue (four by default, one nominal cycle), then stops. `--assert-advanced <issue> <version-before>` refuses zero progress and any larger gap. This keeps context bounded without paying one orchestrator cold start per transition.
 <!-- /brief -->

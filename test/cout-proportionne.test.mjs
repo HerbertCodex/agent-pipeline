@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createSandbox, destroySandbox, writeJson, run, seedFramework } from "./harness.mjs";
-import { perIssueGates, laneOf } from "../scripts/gates.mjs";
+import { perIssueGates, gatesForIssue, closureGates, laneOf } from "../scripts/gates.mjs";
 
 let sandbox = null;
 afterEach(() => {
@@ -101,6 +101,19 @@ describe("the cost is proportionate to what the issue touches", () => {
 
   test("an issue with no declared risk map stays normal, whatever it touches", () => {
     assert.equal(laneOf(["src/auth/session.ts"], undefined), "normal");
+  });
+
+  test("configured normal and low lanes run a bounded battery while high risk keeps all gates", () => {
+    const config = {
+      commands: GATES,
+      closure_gates: ["coverage", "mutation", "build"],
+      risk: RISK,
+      workflow: { gates: { low: ["check", "lint"], normal: ["check", "lint", "test_unit"], high: "all" } },
+    };
+    assert.deepEqual(gatesForIssue(["src/styles/tokens.css"], config), ["check", "lint"]);
+    assert.deepEqual(gatesForIssue(["src/catalog/service.ts"], config), ["check", "lint", "test_unit"]);
+    assert.deepEqual(gatesForIssue(["src/auth/session.ts"], config), perIssueGates(config));
+    assert.ok(closureGates(config).includes("duplication"), "normal-lane omissions move to final closure");
   });
 
   test("a low-lane closure owes no replayed claim", () => {

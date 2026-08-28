@@ -87,7 +87,7 @@ Measured on a real run: an issue adding CSS variables to a stylesheet paid **eig
 
 Two things now scale with the issue rather than with nothing.
 
-**The per-issue battery is computed, not recited.** It is every declared gate minus what the project defers in `closure_gates`, minus the map's own gates, which are stale on the branch by construction. QA cites each one in `evidence.commands` as `{ key, cmd, exit }`, and a closure that does not carry the battery is refused. The rest is replayed once, before the pull request.
+**The per-issue battery is computed, not recited.** It begins with every declared gate minus `closure_gates` and the map gates. `workflow.gates` may select a smaller declared subset for low and normal risk; high risk defaults to all. QA cites the battery selected from the issue's observed files as `{ key, cmd, exit }`. Anything omitted from the normal lane joins the final closure battery, so reducing feedback latency does not delete proof.
 
 CI is deliberately not on that diet: a machine re-running `audit` on every push costs nothing and reports early, while an agent replaying it per issue costs the run. Only the map gates are deferred there.
 

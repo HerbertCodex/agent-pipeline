@@ -266,6 +266,38 @@ describe("validate-handoff: transitions and red proof", () => {
     assert.match(result.output, /was never red/);
   });
 
+  test("refuses a red proof that does not identify when and against which test commit it was observed", () => {
+    sandbox ??= createSandbox();
+    const path = writeJson(sandbox, "h-incomplete-red.json", {
+      ...ISSUE_BASE,
+      requested_transition: { from: "in_progress", to: "ready_for_qa" },
+      evidence: {
+        ...ISSUE_BASE.evidence,
+        red_proof: { cmd: "jest", exit: 1 },
+      },
+    });
+    const result = run(sandbox, "validate-handoff.mjs", [path]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /observed_before_implementation missing/);
+    assert.match(result.output, /test_commit_sha missing/);
+  });
+
+  test("refuses a red proof that merely carries the observation fields with false or empty values", () => {
+    sandbox ??= createSandbox();
+    const path = writeJson(sandbox, "h-false-red.json", {
+      ...ISSUE_BASE,
+      requested_transition: { from: "in_progress", to: "ready_for_qa" },
+      evidence: {
+        ...ISSUE_BASE.evidence,
+        red_proof: { cmd: "jest", exit: 1, observed_before_implementation: false, test_commit_sha: "" },
+      },
+    });
+    const result = run(sandbox, "validate-handoff.mjs", [path]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /observed_before_implementation must be true/);
+    assert.match(result.output, /test_commit_sha must name/);
+  });
+
   test("refuses a path outside the role policy", () => {
     sandbox ??= createSandbox();
     const path = writeJson(sandbox, "h.json", {

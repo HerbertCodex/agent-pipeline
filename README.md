@@ -110,6 +110,16 @@ Avant d’aller plus loin, voici les quelques termes utilisés dans le reste du 
 
 ---
 
+## 🔌 Codex, Claude Code, Kilo Code ou un autre agent
+
+Le cœur ne dépend d’aucun fournisseur d’agent. Les prompts canoniques décrivent seulement les rôles ; `agent_runtime.command` et `agent_runtime.args` désignent le CLI choisi par le projet, tandis qu’un adaptateur ajoute les éventuelles métadonnées propres au harness.
+
+`dispatch.mjs` remet au CLI un paquet JSON borné, diffuse sa sortie immédiatement, émet un heartbeat à l’intervalle configuré et propage l’interruption. Une exécution longue reste donc visible et interruptible sans introduire Codex, Claude Code ou Kilo Code dans le scheduler, le store ou la machine d’état.
+
+Les découvertes faites pendant une issue sont garées par défaut au lieu d’agrandir mécaniquement la spec active. Une expansion du scope exige une approbation explicite de l’opérateur ; `findings.mjs` conserve les observations dans une boîte de tri sans les transformer en travail planifié.
+
+---
+
 ## 🧭 Comment le travail est organisé
 
 Le pipeline utilise quatre rôles.

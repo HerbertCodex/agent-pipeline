@@ -82,6 +82,46 @@ describe("the project map is generated, so it never serialises a wave", () => {
   });
 });
 
+describe("a reservation-safe issue also needs one role able to author it", () => {
+  const config = {
+    file_policy: {
+      implementer: { allow: ["src/**", "test/**"] },
+      product: { allow: ["docs/**"] },
+      qa: { allow: [] },
+      orchestrator: { allow: ["pipeline/store/**"] },
+    },
+  };
+
+  test("a source issue is ready with its authoring role", () => {
+    const records = [issue({ id: "i-source", pipeline_state: state({ file_reservations: ["src/a.ts"] }) })];
+    const { ready, waiting } = computeWave(records, RULES, null, config);
+    assert.equal(waiting.length, 0);
+    assert.deepEqual(ready.map(({ id, role }) => ({ id, role })), [
+      { id: "i-source", role: "implementer" },
+    ]);
+  });
+
+  test("an operator chore is not advertised as dispatchable", () => {
+    const records = [issue({ id: "i-ci", pipeline_state: state({ file_reservations: [".github/workflows/ci.yml"] }) })];
+    const { ready, waiting } = computeWave(records, RULES, null, config);
+    assert.deepEqual(ready, []);
+    assert.match(waiting[0].reason, /no eligible role/i);
+  });
+
+  test("a scope split across roles is not advertised as dispatchable", () => {
+    const records = [
+      issue({
+        id: "i-split",
+        eligible_roles: ["implementer", "product"],
+        pipeline_state: state({ file_reservations: ["src/a.ts", "docs/a.md"] }),
+      }),
+    ];
+    const { ready, waiting } = computeWave(records, RULES, null, config);
+    assert.deepEqual(ready, []);
+    assert.match(waiting[0].reason, /complete reserved scope/i);
+  });
+});
+
 describe("a generated file has one writer, and it is never an issue", () => {
   test("a plan reserving the map is refused, with the reason", () => {
     sandbox = withMap();

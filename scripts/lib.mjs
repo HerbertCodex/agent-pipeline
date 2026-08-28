@@ -1,5 +1,15 @@
-import { readFileSync, existsSync } from "node:fs";
-import { createHash } from "node:crypto";
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  closeSync,
+  renameSync,
+  unlinkSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
+import { createHash, randomUUID } from "node:crypto";
 
 /**
  * Loads and minimally validates the project's profile configuration.
@@ -79,6 +89,66 @@ export function readJsonl(path) {
  */
 export function sha256(text) {
   return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+/**
+ * Replaces a file atomically through a temporary sibling.
+ *
+ * A process interruption can leave the temporary file behind, but never a
+ * half-written JSONL store: `rename` switches the visible file in one step.
+ *
+ * @param path - destination path
+ * @param content - complete next content
+ */
+export function atomicWrite(path, content) {
+  mkdirSync(dirname(path), { recursive: true });
+  const temporary = `${path}.tmp-${process.pid}-${randomUUID()}`;
+  try {
+    writeFileSync(temporary, content, { flag: "wx" });
+    renameSync(temporary, path);
+  } finally {
+    if (existsSync(temporary)) unlinkSync(temporary);
+  }
+}
+
+/**
+ * Takes the store-wide single-writer lock.
+ *
+ * A line-level optimistic hash detects stale work on one record. It cannot
+ * prevent two processes updating different lines from each rewriting the
+ * whole JSONL snapshot and losing the other's change. This lock closes that
+ * gap before either process reads the store.
+ *
+ * @param storeDir - configured durable store directory
+ * @returns idempotent release function
+ */
+export function acquireStoreLock(storeDir) {
+  mkdirSync(storeDir, { recursive: true });
+  const path = join(storeDir, ".store-update.lock");
+  let descriptor;
+  try {
+    descriptor = openSync(path, "wx");
+    writeFileSync(descriptor, `${process.pid}\n`);
+  } catch (error) {
+    if (descriptor != null) closeSync(descriptor);
+    if (error?.code === "EEXIST") {
+      throw new Error(`store writer busy: lock already held at ${path}`);
+    }
+    throw error;
+  }
+  closeSync(descriptor);
+
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    if (existsSync(path)) unlinkSync(path);
+  };
+  process.once("exit", release);
+  return () => {
+    process.off("exit", release);
+    release();
+  };
 }
 
 /**

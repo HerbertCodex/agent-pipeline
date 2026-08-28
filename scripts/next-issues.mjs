@@ -1,6 +1,38 @@
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { loadConfig, loadRules, readJsonl, patternsMayOverlap, generatedPaths } from "./lib.mjs";
+import { loadConfig, loadRules, readJsonl, patternsMayOverlap, generatedPaths, pathAllowed } from "./lib.mjs";
+
+/**
+ * Returns the authoring roles that can write an issue's complete scope.
+ *
+ * A reservation-safe issue is not necessarily dispatchable: the real store
+ * carried several planned issues whose paths no single role could write.
+ * Advertising those issues as ready made the orchestrator dispatch them to
+ * an agent that could only stop at its boundary. Eligibility belongs in the
+ * scheduler, where readiness is decided, rather than on a separate page the
+ * driver may or may not consult.
+ *
+ * `eligible_roles` lets a plan narrow authorship deliberately. Existing
+ * records default to the Implementer, the only role that authors ordinary
+ * issue work. When no file policy is supplied (unit use of `computeWave`),
+ * the historical default remains available.
+ *
+ * @param record - candidate issue
+ * @param reservations - generated paths already removed
+ * @param config - project configuration
+ * @returns roles able to write every reservation
+ */
+function eligibleRoles(record, reservations, config) {
+  const requested = Array.isArray(record.eligible_roles) && record.eligible_roles.length > 0
+    ? record.eligible_roles
+    : ["implementer"];
+  const policies = config.file_policy;
+  if (policies == null) return requested;
+  return requested.filter((role) => {
+    const policy = policies[role];
+    return policy != null && reservations.every((path) => pathAllowed(path, policy));
+  });
+}
 
 /**
  * Computes the wave of issues dispatchable now, and those that are not yet,
@@ -65,6 +97,15 @@ export function computeWave(records, rules, specId = null, config = {}) {
       continue;
     }
 
+    const roles = eligibleRoles(record, reservations, config);
+    if (roles.length === 0) {
+      waiting.push({
+        id: record.id,
+        reason: "no eligible role can write the complete reserved scope",
+      });
+      continue;
+    }
+
     const busy = heldElsewhere.find((held) =>
       reservations.some((ours) => patternsMayOverlap(ours, held.pattern)),
     );
@@ -87,7 +128,7 @@ export function computeWave(records, rules, specId = null, config = {}) {
       continue;
     }
 
-    ready.push({ id: record.id, reservations });
+    ready.push({ id: record.id, role: roles[0], reservations });
     for (const pattern of reservations) claimed.push({ id: record.id, pattern });
   }
 
@@ -119,7 +160,7 @@ function main() {
     console.log("no issue dispatchable right now.");
   } else {
     console.log(`vague dispatchable en parallele (${ready.length}) :`);
-    for (const item of ready) console.log(`  ${item.id}  [${item.reservations.join(", ")}]`);
+    for (const item of ready) console.log(`  ${item.id}  ${item.role}  [${item.reservations.join(", ")}]`);
   }
   if (waiting.length > 0) {
     console.log("en attente :");

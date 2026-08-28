@@ -1,6 +1,15 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { loadConfig, loadRules, readJsonl, sha256, sudocodeStatus, fail } from "./lib.mjs";
+import {
+  acquireStoreLock,
+  atomicWrite,
+  loadConfig,
+  loadRules,
+  readJsonl,
+  sha256,
+  sudocodeStatus,
+  fail,
+} from "./lib.mjs";
 
 /**
  * Validates a state block against the machine source of the rules.
@@ -20,6 +29,76 @@ function validateState(state, rules) {
     throw new Error(`owner ${state.owner} invalid for phase ${state.phase} (expected ${phase.owner})`);
   }
   if (!Number.isInteger(state.version) || state.version < 1) throw new Error("invalid version");
+  if (!Number.isInteger(state.schema_version) || state.schema_version < 1) throw new Error("invalid schema_version");
+  if (!Number.isInteger(state.qa_code_rejections) || state.qa_code_rejections < 0) {
+    throw new Error("qa_code_rejections must be a non-negative integer");
+  }
+  if (!Array.isArray(state.file_reservations) || state.file_reservations.some((path) => typeof path !== "string")) {
+    throw new Error("file_reservations must be a list of paths");
+  }
+}
+
+/**
+ * Enforces the QA rejection budget and prevents arbitrary counter edits.
+ *
+ * @param previous - persisted state
+ * @param next - proposed state
+ * @param reason - request transition_reason
+ * @param rules - machine rules
+ * @throws {Error} when the counter or route is inconsistent
+ */
+function validateRejectionBudget(previous, next, reason, rules) {
+  if (previous == null) return;
+  const from = previous.phase;
+  const to = next.phase;
+  const before = previous.qa_code_rejections;
+  const after = next.qa_code_rejections;
+  const returningFromQa = from === "qa_in_progress" && to !== "closed";
+
+  if (!returningFromQa) {
+    if (after !== before) throw new Error("qa_code_rejections changes only on a QA code rejection");
+    return;
+  }
+
+  const fault = reason?.fault;
+  if (typeof fault !== "string") throw new Error("transition_reason.fault missing for a QA rejection");
+  if (fault !== "code") {
+    if (after !== before) throw new Error(`fault ${fault} must not increment qa_code_rejections`);
+    if (to === "operator_escalation") throw new Error("operator escalation is reserved for the code rejection budget");
+    return;
+  }
+
+  if (after !== before + 1) throw new Error(`fault code must increment qa_code_rejections from ${before} to ${before + 1}`);
+  const maximum = rules.max_code_rejections;
+  if (!Number.isInteger(maximum) || maximum < 1) throw new Error("max_code_rejections missing or invalid in rules");
+  if (after >= maximum && to !== "operator_escalation") {
+    throw new Error(`code rejection ${after} reaches the limit ${maximum} and must route to operator_escalation`);
+  }
+  if (after < maximum && to === "operator_escalation") {
+    throw new Error(`code rejection ${after} has not reached the limit ${maximum}`);
+  }
+}
+
+/**
+ * Says whether the operator explicitly approved a frozen-scope change.
+ *
+ * @param value - request scope-change block
+ * @returns true when the approval is complete and dated
+ */
+function approvedScopeChange(value) {
+  return value?.approved_by === "operator" &&
+    typeof value?.reason === "string" && value.reason.trim().length > 0 &&
+    typeof value?.approved_at === "string" && !Number.isNaN(Date.parse(value.approved_at));
+}
+
+/**
+ * Says whether implementation may already have started for a spec.
+ *
+ * @param phase - spec phase
+ * @returns true when the planned issue list is frozen
+ */
+function scopeIsFrozen(phase) {
+  return ["active", "ready_for_pr", "pr_open", "merged"].includes(phase);
 }
 
 /**
@@ -66,6 +145,28 @@ function main() {
   const config = loadConfig();
   const rules = loadRules();
 
+  let release;
+  try {
+    release = acquireStoreLock(config.store_dir);
+  } catch (error) {
+    fail(`${error.message}. Nothing written.`);
+  }
+  try {
+    applyRequest(request, config, rules);
+  } finally {
+    release();
+  }
+}
+
+/**
+ * Applies a parsed request while the caller holds the store-wide lock.
+ *
+ * @param request - parsed update request
+ * @param config - project configuration
+ * @param rules - machine rules
+ */
+function applyRequest(request, config, rules) {
+
   if (request.create_record != null) {
     return create(request, config, rules);
   }
@@ -95,6 +196,11 @@ function main() {
     }
     const from = previous?.phase ?? null;
     const to = request.pipeline_state.phase;
+    try {
+      validateRejectionBudget(previous, request.pipeline_state, request.transition_reason, rules);
+    } catch (error) {
+      fail(`state refused: ${error.message}. Nothing written.`);
+    }
     const amendment = from === to;
     if (from != null && !amendment && !(rules.transitions ?? []).includes(`${from}->${to}`)) {
       fail(`transition ${from}->${to} absent from rules.json. Nothing written.`);
@@ -277,6 +383,17 @@ function main() {
         fail(`spec_fields.${key} has its own write path. Nothing written.`);
       }
     }
+    if (
+      Object.hasOwn(request.spec_fields, "issues") &&
+      scopeIsFrozen(record.spec_state?.phase) &&
+      JSON.stringify(request.spec_fields.issues) !== JSON.stringify(record.issues) &&
+      !approvedScopeChange(request.scope_change)
+    ) {
+      fail(
+        "spec issue list is frozen after activation. Park findings; expanding active scope requires " +
+          "scope_change { approved_by: operator, reason, approved_at }. Nothing written.",
+      );
+    }
     Object.assign(record, request.spec_fields);
   }
   if (request.discoveries_declared != null) {
@@ -296,8 +413,11 @@ function main() {
     for (const item of request.discoveries_declared) {
       const previous = merged.get(item.title);
       merged.set(item.title, {
+        ...item,
         title: item.title,
         rationale: item.rationale,
+        lands: item.lands ?? "parking",
+        status: item.status ?? previous?.status ?? "parked",
         at: previous?.at ?? now,
       });
     }
@@ -321,7 +441,7 @@ function main() {
     return line;
   });
   if (replaced !== 1) fail(`the target line appears ${replaced} times, write refused`);
-  writeFileSync(path, output.join("\n"));
+  atomicWrite(path, output.join("\n"));
   console.log(`written: ${path} record ${id} (1 line remplacee)`);
 }
 
@@ -373,6 +493,20 @@ function create(request, config, rules) {
     } catch (error) {
       fail(`state refused: ${error.message}. Nothing written.`);
     }
+    const specs = readJsonl(join(config.store_dir, "specs.jsonl"));
+    const spec = specs.find((entry) => entry.record.id === record.spec_id)?.record;
+    const planned = Array.isArray(spec?.issues) && spec.issues.includes(record.id);
+    if (
+      spec != null &&
+      scopeIsFrozen(spec.spec_state?.phase) &&
+      !planned &&
+      !approvedScopeChange(request.create_record.scope_change)
+    ) {
+      fail(
+        `spec ${spec.id} is active and does not plan ${record.id}. Findings are parked by default; ` +
+          "creating another issue requires scope_change approved by the operator.",
+      );
+    }
   }
   const path = join(config.store_dir, `${kind}s.jsonl`);
   const entries = readJsonl(path);
@@ -381,10 +515,9 @@ function create(request, config, rules) {
     const mirrored = sudocodeStatus(record.pipeline_state.phase, config.sudocode);
     if (mirrored != null && record.status == null) record.status = mirrored;
   }
-  mkdirSync(config.store_dir, { recursive: true });
   const existing = existsSync(path) ? readFileSync(path, "utf8") : "";
   const separator = existing.length === 0 || existing.endsWith("\n") ? "" : "\n";
-  writeFileSync(path, existing + separator + JSON.stringify(record) + "\n");
+  atomicWrite(path, existing + separator + JSON.stringify(record) + "\n");
   console.log(`written: ${path} record ${record.id} (1 line ajoutee)`);
 }
 

@@ -7,30 +7,17 @@ import { createHash } from "node:crypto";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SCRIPTS = join(here, "..", "scripts");
-const PROJECT_ROOT = join(here, "..", "..");
 
 /**
  * Resolves the rules file to copy into a sandbox.
  *
- * Inside a host project it is THAT project's file: `rules_path` is
- * configurable, and a harness assuming `pipeline/rules.json` would only run
- * on projects that kept the default.
- *
- * Outside a project, when the framework is cloned on its own, it is the
- * seeding source `schemas/rules.json`, which every project descends from. So
- * this is not a test rule set that would drift in silence: it is the
- * original. Without this fallback, a reader who clones and runs the tests
- * sees a hundred failures and concludes the framework is broken.
+ * Core tests exercise the seeding source `schemas/rules.json`, which every
+ * rendered project rule file descends from. Reading a host project's
+ * generated copy here hid source changes until that host was regenerated.
  *
  * @returns the absolute path of the rules file to use
  */
 function resolveRules() {
-  const hosted = join(PROJECT_ROOT, "pipeline.config.json");
-  if (existsSync(hosted)) {
-    const config = JSON.parse(readFileSync(hosted, "utf8"));
-    const path = join(PROJECT_ROOT, config.rules_path);
-    if (existsSync(path)) return path;
-  }
   return join(here, "..", "schemas", "rules.json");
 }
 

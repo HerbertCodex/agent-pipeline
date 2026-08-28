@@ -81,6 +81,7 @@
 	},
 	"fault_routing": {
 		"spec": "blocked_product",
+		"test": "in_progress",
 		"dependency": "blocked_dependency",
 		"infrastructure": "blocked_infrastructure"
 	},
@@ -106,7 +107,9 @@
 		"outcome": "ready_for_qa",
 		"fields": [
 			"cmd",
-			"exit"
+			"exit",
+			"observed_before_implementation",
+			"test_commit_sha"
 		]
 	},
 	"reservation_holding_phases": [

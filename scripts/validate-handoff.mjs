@@ -4,7 +4,7 @@ import { loadConfig, loadRules, readJsonl, pathAllowed, sha256, generatedPaths, 
 import { reviewDigest } from "./render-proposal.mjs";
 import { dependencyDigest } from "./render-dependency.mjs";
 import { tokensIn, offenders } from "./mockup-check.mjs";
-import { perIssueGates, laneOf } from "./gates.mjs";
+import { gatesForIssue, laneOf } from "./gates.mjs";
 
 /**
  * Where a finding can land, and what each destination costs.
@@ -15,7 +15,18 @@ import { perIssueGates, laneOf } from "./gates.mjs";
  * grew by eleven for every issue finished. Making the debt opposable was
  * right; giving it a single exit is what made it diverge.
  */
-const DISCOVERY_ROUTES = ["issue", "spec", "pitfall", "framework"];
+const DISCOVERY_ROUTES = [
+  "criterion",
+  "regression",
+  "delivery_blocker",
+  "parking",
+  "framework",
+  "issue",
+  "spec",
+  "pitfall",
+];
+
+const BLOCKING_DISCOVERY_ROUTES = new Set(["criterion", "regression", "delivery_blocker", "spec"]);
 
 /**
  * Refuses a criterion that designates something no one can point to.
@@ -728,7 +739,7 @@ function main() {
           .filter((item) => typeof item?.key === "string")
           .map((item) => [item.key, item.exit]),
       );
-      for (const key of perIssueGates(config)) {
+      for (const key of gatesForIssue(handoff.evidence?.files ?? [], config)) {
         if (cited.get(key) === 0) continue;
         errors.push(
           cited.has(key)
@@ -756,7 +767,7 @@ function main() {
           .filter((item) => typeof item?.key === "string")
           .map((item) => [item.key, item.exit]),
       );
-      for (const key of perIssueGates(config)) {
+      for (const key of gatesForIssue(handoff.reviewed_files ?? [], config)) {
         if (cited.get(key) === 0) continue;
         errors.push(
           cited.has(key)
@@ -799,6 +810,12 @@ function main() {
         for (const field of redRule.fields) {
           if (proof[field] == null) errors.push(`evidence.red_proof.${field} missing`);
         }
+        if (proof.observed_before_implementation !== true) {
+          errors.push("evidence.red_proof.observed_before_implementation must be true");
+        }
+        if (typeof proof.test_commit_sha !== "string" || proof.test_commit_sha.trim().length === 0) {
+          errors.push("evidence.red_proof.test_commit_sha must name the test commit");
+        }
         if (proof.exit === 0) {
           errors.push("evidence.red_proof.exit is 0: the test was never red");
         }
@@ -822,33 +839,29 @@ function main() {
             `discoveries[${index}].rationale missing: a finding with no rationale is not actionable`,
           );
         }
-        const lands = item?.lands;
-        if (lands == null) {
-          errors.push(
-            `discoveries[${index}].lands missing: say where the finding goes — "issue" (a defect in ` +
-              'delivered code), "spec" (criteria that contradict each other), "pitfall" (a trap to write ' +
-              'down), "framework" (not this project\'s work). Without it every observation becomes ' +
-              "scheduled product work.",
-          );
-        } else if (!DISCOVERY_ROUTES.includes(lands)) {
+        const lands = item?.lands ?? "parking";
+        if (!DISCOVERY_ROUTES.includes(lands)) {
           errors.push(
             `discoveries[${index}].lands "${lands}" is not a destination: ${DISCOVERY_ROUTES.join(", ")}.`,
           );
-        } else if (lands === "issue" && !item.breaks) {
+        } else if ((lands === "regression" || lands === "issue") && !item.breaks) {
           errors.push(
-            `discoveries[${index}].breaks missing: an issue names what is defective — a criterion or a ` +
-              "symbol. A finding that breaks nothing nameable is an observation, and observations go to " +
-              '"pitfall".',
+            `discoveries[${index}].breaks missing: a regression names the criterion or symbol it breaks.`,
           );
-        } else if (lands === "spec" && !item.criterion) {
+        } else if ((lands === "criterion" || lands === "spec") && !item.criterion) {
           errors.push(
             `discoveries[${index}].criterion missing: say which criterion the finding contradicts, or ` +
               "Product cannot amend anything.",
           );
-        } else if (lands === "pitfall" && !item.line) {
+        } else if (lands === "delivery_blocker" && !item.blocked_because) {
           errors.push(
-            `discoveries[${index}].line missing: write the sentence that goes into pitfalls.md. A pitfall ` +
-              "summarised at closure is a pitfall reworded by whoever writes it down.",
+            `discoveries[${index}].blocked_because missing: a delivery blocker names what cannot ship safely.`,
+          );
+        }
+        if (handoff.requested_transition?.to === "closed" && BLOCKING_DISCOVERY_ROUTES.has(lands)) {
+          errors.push(
+            `discoveries[${index}] lands as ${lands} and cannot accompany closure. Route the issue to the ` +
+              "responsible role; only parked or framework findings travel with a validation.",
           );
         }
       }

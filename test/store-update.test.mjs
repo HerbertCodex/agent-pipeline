@@ -1,5 +1,7 @@
 import { test, describe, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import { existsSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { createSandbox, destroySandbox, writeJson, run, readRecord, recordHash, issue, state } from "./harness.mjs";
 
 let sandbox = null;
@@ -21,6 +23,37 @@ function withIssue(overrides = {}) {
 }
 
 describe("store-update: optimistic lock", () => {
+  test("refuses a concurrent writer before reading and leaves the store untouched", () => {
+    const { root, id, hash } = withIssue();
+    const before = readRecord(root, "issues", id);
+    const lock = join(root, "pipeline", "store", ".store-update.lock");
+    writeFileSync(lock, "another writer\n");
+    const request = writeJson(root, "r.json", {
+      target: { kind: "issue", id },
+      expected_record_hash: hash,
+      set_status: "changed",
+    });
+    const result = run(root, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /store writer busy/);
+    assert.deepEqual(readRecord(root, "issues", id), before);
+    assert.equal(existsSync(lock), true, "a process must not remove a lock it did not acquire");
+  });
+
+  test("successful replacement is atomic and cleans its lock and temporary siblings", () => {
+    const { root, id, hash } = withIssue();
+    const request = writeJson(root, "r.json", {
+      target: { kind: "issue", id },
+      expected_record_hash: hash,
+      set_status: "changed",
+    });
+    assert.equal(run(root, "store-update.mjs", [request]).status, 0);
+    const leftovers = readdirSync(join(root, "pipeline", "store")).filter(
+      (name) => name.includes(".lock") || name.includes(".tmp-"),
+    );
+    assert.deepEqual(leftovers, []);
+  });
+
   test("refuses a stale hash without writing anything", () => {
     const { root, id } = withIssue();
     const before = readRecord(root, "issues", id);
@@ -109,6 +142,86 @@ describe("store-update: transitions confronted with rules.json", () => {
     assert.equal(journal.length, 1);
     assert.equal(journal[0].from, "planned");
     assert.equal(journal[0].to, "in_progress");
+  });
+});
+
+describe("store-update: QA rejection budget", () => {
+  function withQaIssue(rejections) {
+    return withIssue({
+      pipeline_state: state({
+        phase: "qa_in_progress",
+        owner: "qa",
+        version: 4,
+        qa_code_rejections: rejections,
+      }),
+    });
+  }
+
+  test("a code fault increments once and returns to implementation below the limit", () => {
+    const { root, id, hash } = withQaIssue(0);
+    const request = writeJson(root, "r.json", {
+      target: { kind: "issue", id },
+      expected_record_hash: hash,
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
+      transition_reason: { fault: "code" },
+      pipeline_state: state({
+        phase: "in_progress",
+        owner: "implementer",
+        version: 5,
+        qa_code_rejections: 1,
+      }),
+    });
+    assert.equal(run(root, "store-update.mjs", [request]).status, 0);
+  });
+
+  test("the third code rejection must escalate and a fourth cycle is impossible", () => {
+    const { root, id, hash } = withQaIssue(2);
+    const base = {
+      target: { kind: "issue", id },
+      expected_record_hash: hash,
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
+      transition_reason: { fault: "code" },
+    };
+    const returned = writeJson(root, "returned.json", {
+      ...base,
+      pipeline_state: state({ phase: "in_progress", owner: "implementer", version: 5, qa_code_rejections: 3 }),
+    });
+    const refusal = run(root, "store-update.mjs", [returned]);
+    assert.notEqual(refusal.status, 0);
+    assert.match(refusal.output, /must route to operator_escalation/);
+
+    const escalated = writeJson(root, "escalated.json", {
+      ...base,
+      pipeline_state: state({ phase: "operator_escalation", owner: "operator", version: 5, qa_code_rejections: 3 }),
+    });
+    assert.equal(run(root, "store-update.mjs", [escalated]).status, 0);
+  });
+
+  test("a test fault returns without consuming the code rejection budget", () => {
+    const { root, id, hash } = withQaIssue(1);
+    const request = writeJson(root, "r.json", {
+      target: { kind: "issue", id },
+      expected_record_hash: hash,
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
+      transition_reason: { fault: "test" },
+      pipeline_state: state({ phase: "in_progress", owner: "implementer", version: 5, qa_code_rejections: 1 }),
+    });
+    assert.equal(run(root, "store-update.mjs", [request]).status, 0);
+  });
+
+  test("the counter cannot be edited during an unrelated transition", () => {
+    const { root, id, hash } = withIssue();
+    const request = writeJson(root, "r.json", {
+      target: { kind: "issue", id },
+      expected_record_hash: hash,
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
+      pipeline_state: state({ phase: "in_progress", owner: "implementer", version: 2, qa_code_rejections: 1 }),
+    });
+    assert.notEqual(run(root, "store-update.mjs", [request]).status, 0);
   });
 });
 
