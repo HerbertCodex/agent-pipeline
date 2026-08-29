@@ -179,9 +179,41 @@ Une voie légère accélère le feedback intermédiaire. Elle ne réduit pas la 
 
 Le cœur n’a aucune dépendance npm de production.
 
-### Ajouter la pipeline à un projet
+### Installation par un agent — recommandée
 
-Depuis la racine du dépôt hôte :
+Dans une session ouverte à la racine du nouveau projet, donnez cette seule instruction à Codex, Claude Code, Kilo Code ou un autre agent capable de travailler dans le dépôt :
+
+~~~text
+Installe et configure complètement agent-pipeline dans ce dépôt depuis
+https://github.com/HerbertCodex/agent-pipeline.git.
+
+Après le clone, lis intégralement agent-pipeline/docs/nouveau-profil.md et
+exécute son parcours d’installation. Analyse la stack réelle au lieu de
+reprendre des commandes d’un autre projet. Ne modifie pas le cœur placé dans
+agent-pipeline/.
+
+Tu peux créer la configuration, le profil, le contexte, les outils propres à
+la stack, la carte du projet, le journal de décisions, le store, les hooks et
+la CI. Termine uniquement lorsque les sept contrôles du checkpoint final sont
+prouvés par leurs commandes.
+
+Ne m’interromps que pour choisir l’architecture, autoriser une nouvelle
+dépendance ou configurer une permission que seule la plateforme peut imposer.
+~~~
+
+L’agent prend en charge le clone, la détection de la stack, la création de `pipeline.config.json`, la calibration des gates, la génération des cibles et l’initialisation des deux fichiers du store.
+
+Cette installation reste agnostique : le parcours est décrit dans le dépôt et les contrôles sont des commandes Node. Aucun fournisseur d’agent particulier n’est imposé au bootstrap.
+
+Trois décisions ne sont volontairement pas automatisées :
+
+- l’architecture retenue ;
+- l’installation d’une nouvelle dépendance ;
+- les permissions réelles accordées par la plateforme à chaque rôle.
+
+### Installation manuelle — référence
+
+Si aucun agent ne peut préparer le dépôt, commencez par intégrer le framework :
 
 ~~~bash
 git clone https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
@@ -189,36 +221,18 @@ rm -rf agent-pipeline/.git
 node --test agent-pipeline/test
 ~~~
 
-La suppression du `.git` imbriqué fait de `agent-pipeline/` une partie versionnée du projet hôte. Si vous préférez un submodule ou un autre mécanisme de distribution, conservez l’historique séparé et adaptez votre politique de mise à jour.
+La suppression du `.git` imbriqué fait de `agent-pipeline/` une partie versionnée du projet hôte. Un submodule reste possible si vous préférez gérer ses mises à jour séparément.
 
-### Configurer le profil
-
-1. Copiez `templates/pipeline.config.template.json` vers `pipeline.config.json`.
-2. Choisissez ou créez un profil dans `profiles/`.
-3. Renseignez les commandes réelles du projet, les chemins autorisés et le runtime d’agent.
-4. Générez les fichiers dérivés.
+Le template de configuration est une base de chemins et de commandes fournies par le cœur, pas une configuration exécutable à copier telle quelle. Il faut créer le profil de stack, ajouter les gates obligatoires et adapter les permissions avant de lancer :
 
 ~~~bash
 node agent-pipeline/scripts/apply-profile.mjs
 node agent-pipeline/scripts/sync-briefs.mjs
 node agent-pipeline/scripts/preflight.mjs
-~~~
-
-Installez ensuite les hooks de contrôle :
-
-~~~bash
 node agent-pipeline/scripts/install-hooks.mjs
 ~~~
 
-Les modes `--check` permettent à la CI de refuser toute dérive :
-
-~~~bash
-node agent-pipeline/scripts/apply-profile.mjs --check
-node agent-pipeline/scripts/sync-briefs.mjs --check
-node agent-pipeline/scripts/install-hooks.mjs --check
-~~~
-
-Le guide complet de création d’un profil est dans [docs/nouveau-profil.md](docs/nouveau-profil.md).
+Le parcours complet, y compris la calibration et les sept preuves finales, est dans [docs/nouveau-profil.md](docs/nouveau-profil.md).
 
 ## Utilisation quotidienne
 
