@@ -188,25 +188,35 @@ Installe et configure complètement agent-pipeline dans ce dépôt depuis
 https://github.com/HerbertCodex/agent-pipeline.git.
 
 Après le clone, lis intégralement agent-pipeline/docs/nouveau-profil.md et
-exécute son parcours d’installation. Analyse la stack réelle au lieu de
-reprendre des commandes d’un autre projet. Ne modifie pas le cœur placé dans
+exécute son parcours d’installation. Ne modifie pas le cœur placé dans
 agent-pipeline/.
+
+Commence par inspecter les manifests, la configuration et les sources. S’ils
+prouvent une stack existante, utilise cette stack sans reprendre les commandes
+d’un autre projet. Si le dépôt est vide ou si les preuves sont insuffisantes,
+n’invente rien : demande-moi, dans un seul message court, quel produit nous
+construisons, ses contraintes, et si la stack est imposée. Si elle ne l’est
+pas, recommande une option principale avec ses compromis et attends mon
+accord. Fais ensuite valider l’architecture. Persiste ces réponses dans la
+configuration et le journal de décisions afin qu’aucun agent ne les redemande.
 
 Tu peux créer la configuration, le profil, le contexte, les outils propres à
 la stack, la carte du projet, le journal de décisions, le store, les hooks et
 la CI. Termine uniquement lorsque les sept contrôles du checkpoint final sont
 prouvés par leurs commandes.
 
-Ne m’interromps que pour choisir l’architecture, autoriser une nouvelle
-dépendance ou configurer une permission que seule la plateforme peut imposer.
+En dehors de ce bootstrap conditionnel, ne m’interromps que pour autoriser une
+nouvelle dépendance ou configurer une permission que seule la plateforme peut
+imposer.
 ~~~
 
-L’agent prend en charge le clone, la détection de la stack, la création de `pipeline.config.json`, la calibration des gates, la génération des cibles et l’initialisation des deux fichiers du store.
+L’agent prend en charge le clone, l’identification ou la sélection guidée de la stack, la création de `pipeline.config.json`, la calibration des gates, la génération des cibles et l’initialisation des deux fichiers du store.
 
 Cette installation reste agnostique : le parcours est décrit dans le dépôt et les contrôles sont des commandes Node. Aucun fournisseur d’agent particulier n’est imposé au bootstrap.
 
-Trois décisions ne sont volontairement pas automatisées :
+Les décisions suivantes ne sont volontairement pas inventées :
 
+- le produit, ses contraintes et la stack lorsqu’ils ne sont pas déjà établis ;
 - l’architecture retenue ;
 - l’installation d’une nouvelle dépendance ;
 - les permissions réelles accordées par la plateforme à chaque rôle.
