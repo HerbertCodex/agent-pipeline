@@ -69,7 +69,7 @@ Also mandatory, outside `commands`: an `architecture` block, `{ id, project_type
 
 `apply-profile` refuses an unknown id, and refuses an id that does not apply to the declared `project_type`: hexagonal ports and adapters proposed for a browser interface is a catalogue copied out, not a decision. `"custom"` is a valid answer and requires a `note` — that note then **is** the reference.
 
-Mandatory paths, refused if absent: `profiles_dir`, `docs_dirs`, `briefs_dir`, `prompts_dir`, `skills_dir`, `rules_path`, `project_context`, `store_dir`.
+Mandatory paths, refused if absent: `profiles_dir`, `docs_dirs`, `briefs_dir`, `prompts_dir`, `skills_dir`, `rules_path`, `project_context`, `store_dir`. New installations also configure `issue_tracker` for Sudocode; its `root` must stay distinct from `store_dir`.
 
 `agent_runtime` is the harness boundary. `prompt_adapter` is `portable` or `claude-code`; `command` is the chosen CLI executable; `args` is its argument vector using exact `{role}` and `{package}` placeholders; `progress_interval_seconds` defaults to 20. The driver uses no shell, streams both output channels, emits heartbeats and propagates interruption. Do not put Codex, Claude Code or Kilo Code flags in a core script — only in this project configuration.
 
@@ -215,16 +215,23 @@ The `project_map` line is of another nature, and the distinction matters to you.
 
 Check they are **installed**, not merely written: a `.git/hooks/` containing only `.sample` files means no hook runs.
 
-### 7. Seed the store
+### 7. Initialize Sudocode and seed the control store
 
-The store is `<store_dir>/issues.jsonl` and `<store_dir>/specs.jsonl`. Two empty files are enough to start.
+Sudocode is the issue/spec source. Initialize it at `issue_tracker.root` through its CLI; do not fabricate its files:
 
 ```
+sudocode init
+```
+
+The separate pipeline control store is `<store_dir>/issues.jsonl` and `<store_dir>/specs.jsonl`. Two empty files are enough to start. Never place it under `.sudocode`, whose exports may discard pipeline-only fields.
+
+```
+node agent-pipeline/scripts/tracker-sync.mjs
 node agent-pipeline/scripts/store-verify.mjs
 node agent-pipeline/scripts/next-step.mjs
 ```
 
-The first must report the invariants respected, the second that there is no step to run. The pipeline is ready.
+The tracker check and store invariants must pass; `next-step` must report that there is no step to run. The pipeline is ready.
 
 ## The final checkpoint
 
@@ -235,7 +242,7 @@ Before handing back, answer these questions with a command, never with a reading
 3. Has every gate in `commands` failed at least once, on a deliberate break?
 4. Does `preflight` confirm that **every declared gate is executable**? An unrunnable gate fails instead of protecting.
 5. Are the hooks installed and do they fire?
-6. Is `store-verify` green?
+6. Are `tracker-sync` and `store-verify` green against the real Sudocode files?
 7. Does every profile invariant have a gate that makes it fail?
 
 **An "I think so" to any of these seven questions is a no.**

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { atomicWrite, loadConfig, loadRules, readJsonl, sha256, fail } from "./lib.mjs";
 import { contextsFor } from "./store-read.mjs";
+import { projectedStatus, readIssueTracker, trackerMatch } from "./issue-tracker.mjs";
 
 /**
  * Writes the bounded input handed to one role.
@@ -30,6 +31,23 @@ export function writeTaskPackage(issueId, role, config = loadConfig()) {
   const prompt = join(config.prompts_dir, `${role}.md`);
   const brief = join(config.briefs_dir, `${role}.md`);
   const record = { ...entry.record, contexts: contextsFor(entry.record.contexts, role) };
+  const tracker = readIssueTracker(config);
+  let trackerRecord = null;
+  if (tracker != null) {
+    const match = trackerMatch(entry.record, tracker);
+    if (match.drift != null) {
+      throw new Error(
+        `tracker binding ${match.drift} for ${issueId}; refresh the pipeline control record before dispatch`,
+      );
+    }
+    const desired = projectedStatus(entry.record.pipeline_state?.phase ?? "unknown", config);
+    if (match.entry.record.status !== desired) {
+      throw new Error(
+        `tracker status ${match.entry.record.status} for ${issueId} must be ${desired}; run tracker-sync --apply`,
+      );
+    }
+    trackerRecord = match.entry.record;
+  }
   const body = {
     schema_version: 1,
     generated_at: new Date().toISOString(),
@@ -39,6 +57,7 @@ export function writeTaskPackage(issueId, role, config = loadConfig()) {
     record_hash: sha256(entry.raw),
     state_version: entry.record.pipeline_state?.version ?? null,
     record,
+    tracker_record: trackerRecord,
   };
   const out = join(config.handoffs_dir, `${issueId}-${role}-package.json`);
   atomicWrite(out, `${JSON.stringify(body, null, 2)}\n`);

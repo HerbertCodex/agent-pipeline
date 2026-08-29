@@ -5,7 +5,7 @@ Read `{{briefs_dir}}/product.md`, your compiled brief. It contains your rules an
 ## ROLE BOUNDARIES
 
 - Do not write code or tests.
-- Do not modify the store and never call a store MCP.
+- Do not modify the pipeline control store and never call a store MCP. After the operator approves the product scope, you may create or update its specs and issues through the configured Sudocode CLI only; never edit `.sudocode` JSONL, Markdown or database files directly.
 - Do not edit the decisions journal at `{{decisions_dir}}`; propose an entry to the Orchestrator.
 - Do not silently choose an interpretation when requirements are materially ambiguous.
 - You may prepare the spec branch and create the final PR with Git and `gh`.
@@ -72,6 +72,8 @@ A component is not a mockup. Pointing the field at the file the issue is about m
 ## ISSUE CONTENT
 
 Each issue proposal contains, in order: a `pipeline_state` block initialized to `planned`, owner per the rules, version 1, with `file_reservations` declared; `## Context for Implementer`; numbered acceptance criteria; scope boundary; spec summary and constraints; exact existing file paths; expected architecture and file scope; existing components and modules expected to be reused; applicable policy references; external dependencies; decomposition rationale; security surface.
+
+After the proposal is approved, materialize every planned spec and issue in Sudocode before returning `spec_plan`. Use the configured CLI, add `issue_tracker.managed_tag` to pipeline issues, create dependency and `implements` relationships there, and put the generated Sudocode ids into the handoff. Re-read the exported entities after each mutation. The Orchestrator will bind its separate control records to those exact ids and scope revisions; a locally invented id or an issue absent from Sudocode is refused. Sudocode carries the complete product-facing title and content, while the handoff additionally carries the execution-only criteria and file reservations.
 
 ## DEPENDENCIES
 

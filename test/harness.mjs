@@ -161,6 +161,65 @@ export function writeJson(root, name, value) {
 }
 
 /**
+ * Enables the Sudocode adapter in a sandbox and writes its git snapshot.
+ *
+ * @param {string} root - Sandbox path.
+ * @param {object} options - Sudocode issues and specs.
+ * @returns {object} The tracker configuration written to pipeline.config.json.
+ */
+export function enableIssueTracker(root, { issues = [], specs = [] } = {}) {
+  const tracker = {
+    provider: "sudocode",
+    enabled: true,
+    root: ".sudocode",
+    issues_file: "issues.jsonl",
+    specs_file: "specs.jsonl",
+    command: "sudocode",
+    args: [],
+    managed_tag: "agent-pipeline",
+    status_map: {
+      planned: "open",
+      in_progress: "in_progress",
+      ready_for_qa: "needs_review",
+      qa_in_progress: "needs_review",
+      closed: "closed",
+      "blocked_*": "blocked",
+      operator_escalation: "blocked",
+    },
+  };
+  mkdirSync(join(root, ".sudocode"), { recursive: true });
+  const serialize = (records) => records.map((record) => JSON.stringify(record)).join("\n") +
+    (records.length > 0 ? "\n" : "");
+  writeFileSync(join(root, ".sudocode", "issues.jsonl"), serialize(issues));
+  writeFileSync(join(root, ".sudocode", "specs.jsonl"), serialize(specs));
+  const configPath = join(root, "pipeline.config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  config.issue_tracker = tracker;
+  writeFileSync(configPath, JSON.stringify(config));
+  return tracker;
+}
+
+/**
+ * Builds a minimal Sudocode issue accepted by the adapter.
+ *
+ * @param {object} overrides - Fields to replace.
+ * @returns {object} Sudocode issue record.
+ */
+export function trackerIssue(overrides = {}) {
+  return {
+    id: "i-t1",
+    uuid: "11111111-1111-4111-8111-111111111111",
+    title: "issue de test",
+    content: "Implement the bounded issue.",
+    status: "open",
+    priority: 2,
+    tags: ["agent-pipeline"],
+    relationships: [],
+    ...overrides,
+  };
+}
+
+/**
  * Runs a core script inside the sandbox.
  *
  * @param root - sandbox path, used as the working directory

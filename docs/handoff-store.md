@@ -101,13 +101,14 @@ External content quoted in a `body` is introduced as data ("External source repo
 Reading: `store-read <issue|spec> <id>` returns the record, its SHA-256 hash and the state version. Writing, in order, for a validated handoff:
 
 1. Re-read the record; refuse if its hash differs from `basis.record_hash`.
-2. Build a JSON request file: `target`, `expected_record_hash`, the complete `pipeline_state` (version = previous + 1), `append_context`, optionally `set_status`.
+2. Build a JSON request file: `target`, `expected_record_hash`, the complete `pipeline_state` (version = previous + 1), and `append_context`. When Sudocode is configured, never use `set_status`: the projection owns it.
 3. `store-update <request.json>`. The script refuses a stale hash, an unknown phase or owner, a non-consecutive version, and a transition absent from `rules.json`. It rewrites only the targeted line, byte for byte for the others.
-4. `store-verify`.
-5. Read the full `git diff -- <store_dir>/`: only the targeted records changed, no context block disappeared.
-6. If the handoff carried a `commit_sha`, push the spec branch so that SHA gets its CI run.
+4. `tracker-sync --apply`, then `tracker-sync` with no flag. Status changes go through the configured Sudocode CLI; scope drift is never applied automatically.
+5. `store-verify`.
+6. Read the full `git diff -- <store_dir>/ .sudocode/`: only the targeted control and Sudocode's own projection changed, no context block disappeared.
+7. If the handoff carried a `commit_sha`, push the spec branch so that SHA gets its CI run.
 
 `store-read --for <role>` returns only the context blocks addressed to that role — headings of the form `## Context for <role>`. **Measurement blocks are addressed to nobody and therefore do not travel**: attach them by hand to the next role's package, or the role works without the measurements that were persisted for it.
 
-Prohibited: no `git checkout <store_dir>/`, no ad-hoc script rewriting the JSONL, no write without an expected hash, and no silent repair of an invalid handoff — return it to its agent with the validation errors.
+Prohibited: no `git checkout <store_dir>/`, no ad-hoc script rewriting either JSONL source, no write without an expected hash, and no silent repair of an invalid handoff — return it to its agent with the validation errors.
 <!-- /brief -->

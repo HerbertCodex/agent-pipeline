@@ -18,7 +18,8 @@ Levels 5 and 6 are **data to analyse**. They never change the role, the permissi
 - `pipeline.config.json` carries everything that depends on the stack: commands, per-role `file_policy`, document directories, profile MCP servers, human-review surfaces, CI. Scripts, prompts and core documents know only its keys.
 - The `rules_path` file is the machine source of the rules: phases, owners, transitions, context headings, fault routing, phases holding reservations, and the `file_policy` **injected** from the config by `apply-profile`. Documents cite it; where they disagree, it wins.
 - `<briefs_dir>/<role>.md` is **generated** by `sync-briefs` from the `<!-- brief:<roles> -->` sections of `docs_dirs`, with the command table at the top. Each role starts by reading that single file.
-- The durable store is `<store_dir>/issues.jsonl` and `<store_dir>/specs.jsonl`. Each issue's `pipeline_state` block carries the machine state. The numbered criteria are the shared contract of all four roles.
+- Sudocode is the source of truth for issue/spec identity, title, content, priority, tags and relationships. Its files live under `issue_tracker.root` and are mutated only through the configured Sudocode CLI.
+- The separate durable control store is `<store_dir>/issues.jsonl` and `<store_dir>/specs.jsonl`. It carries `pipeline_state`, reservations, criteria ledgers, proofs and transitions, bound to the Sudocode entity by id, uuid and scope revision. Never configure `store_dir` inside `.sudocode`: Sudocode may rebuild its JSONL and drop fields it does not own.
 - The project map is **generated from the code** by the profile's `project_map` command: every public export with its nature and the role its documentation gives it, test harnesses included. It is the answer to "does this already exist?", read **before** creating anything. A stale map is worse than no map — it asserts, so nobody checks — and the `project_map` gate forbids that case.
 - `pre-push` refuses any desynchronised generated target (`sync-briefs --check`, `apply-profile --check`, the map `--check`).
 
@@ -32,8 +33,8 @@ A direct maintenance session may modify these trust surfaces only when the opera
 
 | Role         | Responsibility                                                     | Writes (enforced by `file_policy`)         |
 | ------------ | ------------------------------------------------------------------ | ------------------------------------------ |
-| orchestrator | transitions, dispatch, safe persistence, serialisation, escalation | the store, via `store-update` only         |
-| product      | requirements, specs, issues, dependencies, branch, PR              | no source, no test, no store               |
+| orchestrator | transitions, dispatch, safe persistence, serialisation, escalation | control store via `store-update`; Sudocode status via its CLI |
+| product      | requirements, specs, issues, dependencies, branch, PR              | Sudocode issue/spec definitions via its CLI; no source, test or control store |
 | implementer  | red tests proven, then code matching the criteria                  | sources and tests outside the `deny` globs |
 | qa           | deterministic and qualitative validation, rejection routing        | nothing                                    |
 
@@ -41,7 +42,7 @@ A direct maintenance session may modify these trust surfaces only when the opera
 
 ## 4. Store: a single writer
 
-Product, Implementer and QA read through `store-read` and never write to the store. They finish with a JSON handoff between `AGENT_HANDOFF_START` and `AGENT_HANDOFF_END`. The orchestrator validates (`validate-handoff`), confronts it with the real diff (`verify-scope`, once, its output attached to the next role's package), persists (`store-update`, optimistic hash lock, version incremented by one) and verifies (`store-verify` plus reading the store diff).
+Implementer and QA never write to the control store or mutate Sudocode. Product may create and refine issue/spec definitions through the configured Sudocode CLI after product approval, but never edits its JSONL or database directly. All roles finish with a JSON handoff between `AGENT_HANDOFF_START` and `AGENT_HANDOFF_END`. The orchestrator validates (`validate-handoff`), confronts it with the real diff (`verify-scope`, once, its output attached to the next role's package), persists (`store-update`, optimistic hash lock, version incremented by one), projects the coarse status through `tracker-sync --apply`, then verifies (`tracker-sync`, `store-verify`, plus reading the control-store diff). A changed Sudocode scope blocks dispatch until an explicit binding refresh; after work starts, that refresh also requires operator-approved `scope_change`.
 
 ## 5. State machine
 
@@ -57,7 +58,7 @@ The generated CI replays every command from the config on every push. The orches
 
 ## 8. Quality gates
 
-Dead code (`dead_code`), static security analysis (`sast`), documentation contracts (`doc_lint`), forbidden narration (`comment_policy`), design limits (`design_limits`), and a reuse note required for every creation. Quality is a command that fails or a proof that is demanded, never an adjective.
+Issue-source drift (`tracker_sync`), dead code (`dead_code`), static security analysis (`sast`), documentation contracts (`doc_lint`), forbidden narration (`comment_policy`), design limits (`design_limits`), and a reuse note required for every creation. Quality is a command that fails or a proof that is demanded, never an adjective.
 
 ## 9. Profile invariants
 

@@ -1,8 +1,12 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { readJsonl } from "../scripts/lib.mjs";
+import { computeWave } from "../scripts/next-issues.mjs";
+import { projectedStatus, readIssueTracker, trackerMatch } from "../scripts/issue-tracker.mjs";
 import { dashboardPage } from "./page.mjs";
 
 const ROLES = new Set(["orchestrator", "product", "implementer", "qa"]);
@@ -64,6 +68,7 @@ function publicRun(run) {
     elapsed_ms: run.elapsed_ms,
     exit_code: run.exit_code,
     output: run.output,
+    interactive: run.interactive,
   };
 }
 
@@ -84,13 +89,187 @@ function defaultLaunch(frameworkRoot, cwd, issueId, role) {
   return spawn(
     process.execPath,
     [join(frameworkRoot, "scripts", "dispatch.mjs"), issueId, role, "--json"],
-    { cwd, env: process.env, shell: false, stdio: ["ignore", "pipe", "pipe"] },
+    { cwd, env: process.env, shell: false, stdio: ["pipe", "pipe", "pipe"] },
   );
 }
 
+function readProjectJson(path, label) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    throw new Error(`${label} cannot be read: ${error.message}`);
+  }
+}
+
+function recommendation(record, rules, ready, waiting) {
+  const phase = record.pipeline_state?.phase ?? "unknown";
+  const owner = rules.phases?.[phase]?.owner ?? "unknown";
+  if (phase === "planned") {
+    const available = ready.get(record.id);
+    if (available != null) {
+      return { role: available.role, dispatchable: true, reason: "Ready to start" };
+    }
+    return {
+      role: null,
+      dispatchable: false,
+      reason: waiting.get(record.id) ?? "Not in the current dispatchable wave",
+    };
+  }
+  if (phase === "closed") {
+    return { role: null, dispatchable: false, reason: "Issue already closed" };
+  }
+  if (phase === "operator_escalation") {
+    return { role: null, dispatchable: false, reason: "Waiting for the operator" };
+  }
+  if (phase === "ready_for_qa") {
+    return { role: "qa", dispatchable: true, reason: "Ready for QA" };
+  }
+  if (ROLES.has(owner)) {
+    const action = phase.startsWith("blocked_") ? "Unblock with the phase owner" : "Resume the phase owner";
+    return { role: owner, dispatchable: true, reason: action };
+  }
+  return { role: null, dispatchable: false, reason: `No agent owns phase ${phase}` };
+}
+
+function titleOf(record) {
+  for (const key of ["title", "summary", "name", "description"]) {
+    if (typeof record[key] === "string" && record[key].trim().length > 0) return record[key].trim();
+  }
+  return "Untitled issue";
+}
+
+function publicIssue(record, rules, ready, waiting) {
+  const phase = record.pipeline_state?.phase ?? "unknown";
+  return {
+    id: record.id,
+    title: titleOf(record),
+    spec_id: record.spec_id ?? null,
+    phase,
+    owner: rules.phases?.[phase]?.owner ?? "unknown",
+    priority: record.priority ?? null,
+    depends_on: Array.isArray(record.depends_on) ? record.depends_on : [],
+    reservations: Array.isArray(record.pipeline_state?.file_reservations)
+      ? record.pipeline_state.file_reservations
+      : [],
+    criteria_count: Array.isArray(record.acceptance_criteria)
+      ? record.acceptance_criteria.length
+      : 0,
+    ...recommendation(record, rules, ready, waiting),
+  };
+}
+
+function trackerIssueWithoutControl(entry, dependencies, managedTag) {
+  const record = entry.record;
+  const managed = typeof managedTag === "string" && record.tags?.includes(managedTag);
+  return {
+    id: record.id,
+    title: titleOf(record),
+    spec_id: null,
+    phase: "not_imported",
+    tracker_status: record.status,
+    owner: managed ? "product" : "operator",
+    priority: record.priority ?? null,
+    depends_on: dependencies.get(record.id) ?? [],
+    reservations: [],
+    criteria_count: 0,
+    role: managed ? "product" : null,
+    dispatchable: false,
+    reason: managed
+      ? "Import this Sudocode issue into pipeline control"
+      : `Add the ${managedTag} tag to manage this issue with the pipeline`,
+  };
+}
+
+function issueFromTracker(control, match, snapshot, config, rules, ready, waiting) {
+  const source = match.entry.record;
+  const merged = {
+    ...control,
+    title: source.title,
+    priority: source.priority ?? null,
+    depends_on: snapshot.dependencies.get(source.id) ?? [],
+  };
+  const issue = {
+    ...publicIssue(merged, rules, ready, waiting),
+    tracker_status: source.status,
+  };
+  const managedTag = config.issue_tracker?.managed_tag;
+  if (typeof managedTag === "string" && !source.tags?.includes(managedTag)) {
+    return { ...issue, role: null, dispatchable: false, reason: `Missing Sudocode tag ${managedTag}` };
+  }
+  if (match.drift != null) {
+    return {
+      ...issue,
+      role: null,
+      dispatchable: false,
+      reason: `Sudocode scope is ${match.drift}; refresh pipeline control`,
+    };
+  }
+  const desired = projectedStatus(control.pipeline_state?.phase ?? "unknown", config);
+  if (source.status !== desired) {
+    return {
+      ...issue,
+      role: null,
+      dispatchable: false,
+      reason: `Sudocode status must be ${desired}; run tracker-sync --apply`,
+    };
+  }
+  return issue;
+}
+
+/**
+ * Reads the host project's issue store and derives safe dispatch choices.
+ *
+ * @param {string} cwd - Host project root containing pipeline.config.json.
+ * @returns {Array<object>} Public issue rows with their recommended role.
+ */
+export function readIssueCatalog(cwd) {
+  const config = readProjectJson(resolve(cwd, "pipeline.config.json"), "pipeline configuration");
+  if (typeof config.store_dir !== "string" || typeof config.rules_path !== "string") {
+    throw new Error("pipeline configuration must declare store_dir and rules_path");
+  }
+  const rules = readProjectJson(resolve(cwd, config.rules_path), "pipeline rules");
+  const records = readJsonl(resolve(cwd, config.store_dir, "issues.jsonl")).map(
+    (entry) => entry.record,
+  );
+  const wave = computeWave(records, rules, null, config);
+  const ready = new Map(wave.ready.map((item) => [item.id, item]));
+  const waiting = new Map(wave.waiting.map((item) => [item.id, item.reason]));
+  const tracker = readIssueTracker(config, cwd);
+  if (tracker == null) return records.map((record) => publicIssue(record, rules, ready, waiting));
+
+  const controls = new Map(records.map((record) => [record.id, record]));
+  const issues = tracker.issues.map((entry) => {
+    const control = controls.get(entry.record.id);
+    if (control == null) {
+      return trackerIssueWithoutControl(entry, tracker.dependencies, config.issue_tracker?.managed_tag);
+    }
+    controls.delete(control.id);
+    return issueFromTracker(
+      control,
+      trackerMatch(control, tracker),
+      tracker,
+      config,
+      rules,
+      ready,
+      waiting,
+    );
+  });
+  for (const control of controls.values()) {
+    issues.push({
+      ...publicIssue(control, rules, ready, waiting),
+      tracker_status: null,
+      role: null,
+      dispatchable: false,
+      reason: "Pipeline control has no matching Sudocode issue",
+    });
+  }
+  return issues;
+}
+
 class RunRegistry {
-  constructor(launchProcess) {
+  constructor(launchProcess, interactiveInput) {
     this.launchProcess = launchProcess;
+    this.interactiveInput = interactiveInput;
     this.runs = new Map();
     this.children = new Map();
     this.clients = new Set();
@@ -133,6 +312,7 @@ class RunRegistry {
       elapsed_ms: 0,
       exit_code: null,
       output: "",
+      interactive: this.interactiveInput,
     };
     const child = this.launchProcess(issueId, role);
     this.runs.set(id, run);
@@ -144,6 +324,10 @@ class RunRegistry {
 
   bind(child, run) {
     let buffer = "";
+    child.stdin?.on("error", (error) => {
+      appendOutput(run, `\n[interactive input unavailable] ${error.message}\n`);
+      this.broadcast();
+    });
     child.stdout.on("data", (chunk) => {
       buffer = this.consume(run, buffer + chunk.toString());
       this.broadcast();
@@ -201,6 +385,27 @@ class RunRegistry {
     return true;
   }
 
+  sendInput(id, message) {
+    if (!this.interactiveInput) return { ok: false, reason: "interactive input is disabled for this runtime" };
+    const child = this.children.get(id);
+    if (child == null || child.stdin == null || child.stdin.destroyed || !child.stdin.writable) {
+      return { ok: false, reason: "active runtime input is unavailable" };
+    }
+    try {
+      child.stdin.write(`${message}\n`);
+    } catch (error) {
+      return { ok: false, reason: `runtime input failed: ${error.message}` };
+    }
+    const run = this.runs.get(id);
+    if (run != null) appendOutput(run, `\n[operator] ${message}\n`);
+    this.broadcast();
+    return { ok: true };
+  }
+
+  hasActive(issueId) {
+    return [...this.children.keys()].some((id) => this.runs.get(id)?.issue_id === issueId);
+  }
+
   shutdown() {
     for (const client of this.clients) client.end();
     this.clients.clear();
@@ -209,7 +414,26 @@ class RunRegistry {
   }
 }
 
-function serveReadRoute(request, response, pathname, registry, token) {
+function issuesSnapshot(issueSource, registry) {
+  return {
+    generated_at: new Date().toISOString(),
+    issues: issueSource().map((issue) =>
+      registry.hasActive(issue.id)
+        ? { ...issue, dispatchable: false, reason: "An agent is already running", active: true }
+        : { ...issue, active: false },
+    ),
+  };
+}
+
+function serveIssues(response, issueSource, registry) {
+  try {
+    sendJson(response, 200, issuesSnapshot(issueSource, registry));
+  } catch (error) {
+    sendJson(response, 500, { error: error.message });
+  }
+}
+
+function serveReadRoute(request, response, pathname, registry, token, issueSource) {
   if (request.method !== "GET") return false;
   if (pathname === "/") {
     response.writeHead(200, {
@@ -227,6 +451,10 @@ function serveReadRoute(request, response, pathname, registry, token) {
     sendJson(response, 200, registry.snapshot());
     return true;
   }
+  if (pathname === "/api/issues") {
+    serveIssues(response, issueSource, registry);
+    return true;
+  }
   if (pathname === "/events") {
     registry.subscribe(request, response);
     return true;
@@ -234,7 +462,7 @@ function serveReadRoute(request, response, pathname, registry, token) {
   return false;
 }
 
-async function dispatch(request, response, registry) {
+async function dispatch(request, response, registry, issueSource) {
   let body;
   try {
     body = await readJson(request);
@@ -251,6 +479,21 @@ async function dispatch(request, response, registry) {
     return;
   }
   try {
+    const issue = issuesSnapshot(issueSource, registry).issues.find(
+      (candidate) => candidate.id === body.issue_id,
+    );
+    if (issue == null) {
+      sendJson(response, 404, { error: `issue not found: ${body.issue_id}` });
+      return;
+    }
+    if (!issue.dispatchable) {
+      sendJson(response, 409, { error: issue.reason });
+      return;
+    }
+    if (issue.role !== body.role) {
+      sendJson(response, 409, { error: `issue requires role ${issue.role}` });
+      return;
+    }
     sendJson(response, 202, { run_id: registry.launch(body.issue_id, body.role) });
   } catch (error) {
     sendJson(response, 500, { error: error.message });
@@ -268,24 +511,41 @@ function interrupt(response, registry, pathname) {
   return true;
 }
 
-async function serveMutationRoute(request, response, pathname, registry, token) {
+async function serveMutationRoute(request, response, pathname, registry, token, issueSource) {
   if (request.method !== "POST") return false;
   if (request.headers["x-dashboard-token"] !== token) {
     sendJson(response, 403, { error: "request token refused" });
     return true;
   }
   if (pathname === "/api/dispatch") {
-    await dispatch(request, response, registry);
+    await dispatch(request, response, registry, issueSource);
+    return true;
+  }
+  const input = pathname.match(/^\/api\/runs\/([A-Za-z0-9-]+)\/input$/);
+  if (input != null) {
+    let body;
+    try {
+      body = await readJson(request);
+    } catch (error) {
+      sendJson(response, 400, { error: error.message });
+      return true;
+    }
+    if (typeof body.message !== "string" || body.message.trim().length === 0 || body.message.length > 4_000) {
+      sendJson(response, 400, { error: "message must contain between 1 and 4000 characters" });
+      return true;
+    }
+    const result = registry.sendInput(input[1], body.message.trim());
+    sendJson(response, result.ok ? 202 : 409, result.ok ? { run_id: input[1], status: "sent" } : { error: result.reason });
     return true;
   }
   return interrupt(response, registry, pathname);
 }
 
-function requestHandler(registry, token) {
+function requestHandler(registry, token, issueSource) {
   return async (request, response) => {
     const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
-    if (serveReadRoute(request, response, pathname, registry, token)) return;
-    if (await serveMutationRoute(request, response, pathname, registry, token)) return;
+    if (serveReadRoute(request, response, pathname, registry, token, issueSource)) return;
+    if (await serveMutationRoute(request, response, pathname, registry, token, issueSource)) return;
     sendJson(response, 404, { error: "not found" });
   };
 }
@@ -329,19 +589,33 @@ function lifecycle(server, registry, token) {
  * @param {string} [options.cwd] - Host project working directory.
  * @param {string} [options.frameworkRoot] - Root containing the core scripts.
  * @param {Function} [options.launchProcess] - Testable dispatch launcher.
+ * @param {Function} [options.issueSource] - Testable issue catalog reader.
+ * @param {boolean} [options.interactiveInput] - Override runtime stdin capability.
  * @returns {object} Dashboard lifecycle and its HTTP server state.
  */
 export function createDashboard({
   cwd = process.cwd(),
   frameworkRoot = DEFAULT_FRAMEWORK_ROOT,
   launchProcess = null,
+  issueSource = null,
+  interactiveInput = null,
 } = {}) {
   const token = randomBytes(24).toString("hex");
   const launcher =
     launchProcess ??
     ((issueId, role) => defaultLaunch(frameworkRoot, cwd, issueId, role));
-  const registry = new RunRegistry(launcher);
-  const server = createServer(requestHandler(registry, token));
+  let acceptsInput = interactiveInput;
+  if (acceptsInput == null) {
+    try {
+      const config = readProjectJson(resolve(cwd, "pipeline.config.json"), "pipeline configuration");
+      acceptsInput = config.agent_runtime?.interactive_input === true;
+    } catch {
+      acceptsInput = false;
+    }
+  }
+  const registry = new RunRegistry(launcher, acceptsInput === true);
+  const source = issueSource ?? (() => readIssueCatalog(cwd));
+  const server = createServer(requestHandler(registry, token, source));
   return lifecycle(server, registry, token);
 }
 

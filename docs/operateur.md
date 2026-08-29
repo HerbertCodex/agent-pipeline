@@ -192,11 +192,30 @@ ls .git/hooks/ | grep -v sample
 
 If that command returns nothing, **no hook runs** — whatever the documents say. A generated target can then desynchronise, be pushed and merged with nothing reporting it.
 
-## The sudocode mirror
+## Sudocode is the issue source, not the control store
 
-When the configuration's `sudocode` block is active, the store **is** the sudocode directory: same `issues.jsonl` and `specs.jsonl` files, same ids. `store-update` automatically mirrors every phase change into the `status` field according to `status_map`; the sudocode UI and CLI therefore show progress live with no extra script. The `pipeline_state` block and the `contexts` travel as additional record fields.
+Sudocode owns issue/spec identity, title, content, priority, tags and relationships. The pipeline owns fine-grained phases, file reservations, criteria ledgers, proofs and transition history in the separate `store_dir`. Never point `store_dir` into `.sudocode`: Sudocode exports its SQLite state back to JSONL and does not promise to retain arbitrary fields such as `pipeline_state`.
 
-Three rules hold the integration together: the single-writer principle stays intact, agents never write through the sudocode CLI or MCP; a concurrent write made on the sudocode side changes the line, therefore stales the expected hash, therefore is detected instead of overwritten (re-read, merge deliberately, write again); and if the installed version of sudocode rewrites records dropping fields it does not know, move `store_dir` back to a private directory and treat sudocode as upstream only — losing `pipeline_state` is an integration defect, never an acceptable state.
+Initialize and open Sudocode with its own CLI:
+
+```bash
+sudocode init
+sudocode server
+```
+
+Tag work intended for this pipeline with `issue_tracker.managed_tag` (`agent-pipeline` by default). The dashboard shows every Sudocode issue, but dispatches only those carrying that tag and a current pipeline control record. Product proposes the criteria and reservations; the Orchestrator creates the bound control record through `store-update`. An issue visible as `not_imported` is therefore waiting for planning, not broken.
+
+Every control record stores a binding to the Sudocode id, uuid and scope revision. Status and `updated_at` are excluded from that revision, so routine progress does not look like a scope change. Title, content, priority, parent, relationships and tags are included. If any of those changes, task packaging and dashboard dispatch stop. Refresh deliberately through `store-update` with `refresh_tracker: true`; once the issue is active, also provide an operator-approved `scope_change`. The approval is appended to `tracker_scope_changes`. A changed uuid is never refreshable: a replacement entity cannot inherit another issue's execution history.
+
+After every persisted phase transition:
+
+```bash
+node agent-pipeline/scripts/tracker-sync.mjs --apply
+node agent-pipeline/scripts/tracker-sync.mjs
+node agent-pipeline/scripts/store-verify.mjs
+```
+
+The first command projects the coarse status through the configured Sudocode CLI, using an argument vector with no shell. The second refuses missing bindings on existing controls, scope drift and remaining status drift. Tagged issues without controls are reported as Product-ready backlog, but do not freeze unrelated active work. No pipeline role rewrites `.sudocode/*.jsonl` directly.
 
 ## Putting the pipeline to work
 
@@ -247,6 +266,7 @@ node agent-pipeline/scripts/next-step.mjs        # the next step: an issue, an a
 node agent-pipeline/scripts/next-issues.mjs      # the issues dispatchable in parallel right now
 node agent-pipeline/scripts/metrics.mjs          # throughput and escaped defects
 node agent-pipeline/scripts/store-verify.mjs     # store invariants
+node agent-pipeline/scripts/tracker-sync.mjs     # Sudocode binding, scope and status projection
 node agent-pipeline/scripts/render-proposal.mjs <proposal.json> <out.html>   # review a spec before approving
 node agent-pipeline/scripts/render-decisions.mjs <out.html> [proposal.json]  # what awaits your decision
 node agent-pipeline/scripts/render-architecture.mjs <out.html> <type> [analysis.json]  # choose how to lay out the code

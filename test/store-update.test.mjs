@@ -1,8 +1,21 @@
 import { test, describe, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createSandbox, destroySandbox, writeJson, run, readRecord, recordHash, issue, state } from "./harness.mjs";
+import {
+  createSandbox,
+  destroySandbox,
+  enableIssueTracker,
+  writeJson,
+  run,
+  readRecord,
+  recordHash,
+  issue,
+  state,
+  trackerIssue,
+  writeStore,
+} from "./harness.mjs";
+import { readIssueTracker, trackerBinding } from "../scripts/issue-tracker.mjs";
 
 let sandbox = null;
 afterEach(() => {
@@ -317,5 +330,103 @@ describe("store-update: write isolation", () => {
     const result = run(root, "store-update.mjs", [request]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /already present/);
+  });
+});
+
+describe("store-update: Sudocode source binding", () => {
+  test("creates control only for a managed Sudocode issue and records its projection", () => {
+    sandbox = createSandbox();
+    enableIssueTracker(sandbox, { issues: [trackerIssue({ title: "Source title" })] });
+    const request = writeJson(sandbox, "create.json", {
+      create_record: { kind: "issue", record: issue({ title: "Stale local title" }) },
+    });
+
+    const result = run(sandbox, "store-update.mjs", [request]);
+    assert.equal(result.status, 0, result.output);
+    const created = readRecord(sandbox, "issues", "i-t1");
+    assert.equal(created.title, "Source title");
+    assert.equal(created.tracker.provider, "sudocode");
+    assert.equal(created.tracker_sync.desired_status, "open");
+    assert.equal(Object.hasOwn(created, "status"), false);
+  });
+
+  test("refuses a control record with no corresponding Sudocode issue", () => {
+    sandbox = createSandbox();
+    enableIssueTracker(sandbox);
+    const request = writeJson(sandbox, "create.json", {
+      create_record: { kind: "issue", record: issue() },
+    });
+    const result = run(sandbox, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /Create it in Sudocode first/);
+  });
+
+  test("refreshes planned scope explicitly but requires operator approval after work starts", () => {
+    sandbox = createSandbox();
+    enableIssueTracker(sandbox, { issues: [trackerIssue()] });
+    const config = JSON.parse(readFileSync(join(sandbox, "pipeline.config.json"), "utf8"));
+    let snapshot = readIssueTracker(config, sandbox);
+    writeStore(sandbox, "issues", [issue({ tracker: trackerBinding(snapshot.issues[0]) })]);
+    enableIssueTracker(sandbox, { issues: [trackerIssue({ content: "Planned scope changed." })] });
+    let request = writeJson(sandbox, "refresh-planned.json", {
+      target: { kind: "issue", id: "i-t1" },
+      expected_record_hash: recordHash(sandbox, "issues", "i-t1"),
+      refresh_tracker: true,
+    });
+    assert.equal(run(sandbox, "store-update.mjs", [request]).status, 0);
+
+    enableIssueTracker(sandbox, { issues: [trackerIssue({ status: "in_progress" })] });
+    snapshot = readIssueTracker(config, sandbox);
+    writeStore(sandbox, "issues", [
+      issue({
+        pipeline_state: state({ phase: "in_progress", owner: "implementer", version: 2 }),
+        tracker: trackerBinding(snapshot.issues[0]),
+      }),
+    ]);
+    enableIssueTracker(sandbox, {
+      issues: [trackerIssue({ status: "in_progress", content: "Active scope changed." })],
+    });
+    request = writeJson(sandbox, "refresh-active.json", {
+      target: { kind: "issue", id: "i-t1" },
+      expected_record_hash: recordHash(sandbox, "issues", "i-t1"),
+      refresh_tracker: true,
+    });
+    let result = run(sandbox, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /scope_change/);
+
+    request = writeJson(sandbox, "refresh-approved.json", {
+      ...JSON.parse(readFileSync(request, "utf8")),
+      scope_change: {
+        approved_by: "operator",
+        reason: "The operator approved the revised contract.",
+        approved_at: "2026-08-29T12:00:00.000Z",
+      },
+    });
+    result = run(sandbox, "store-update.mjs", [request]);
+    assert.equal(result.status, 0, result.output);
+    const refreshed = readRecord(sandbox, "issues", "i-t1");
+    assert.equal(refreshed.title, "issue de test");
+    assert.equal(refreshed.tracker_scope_changes.at(-1).approved_by, "operator");
+    assert.equal(refreshed.tracker_scope_changes.at(-1).reason, "The operator approved the revised contract.");
+  });
+
+  test("never attaches existing history to a recycled Sudocode identity", () => {
+    sandbox = createSandbox();
+    enableIssueTracker(sandbox, { issues: [trackerIssue()] });
+    const config = JSON.parse(readFileSync(join(sandbox, "pipeline.config.json"), "utf8"));
+    const snapshot = readIssueTracker(config, sandbox);
+    writeStore(sandbox, "issues", [issue({ tracker: trackerBinding(snapshot.issues[0]) })]);
+    enableIssueTracker(sandbox, {
+      issues: [trackerIssue({ uuid: "99999999-9999-4999-8999-999999999999" })],
+    });
+    const request = writeJson(sandbox, "identity.json", {
+      target: { kind: "issue", id: "i-t1" },
+      expected_record_hash: recordHash(sandbox, "issues", "i-t1"),
+      refresh_tracker: true,
+    });
+    const result = run(sandbox, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /cannot inherit its history/);
   });
 });

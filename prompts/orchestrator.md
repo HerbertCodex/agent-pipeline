@@ -35,7 +35,7 @@ A phase held by a role does not mean that role is alive. The store cannot distin
 1. Verify your real permissions match the brief's permissions section.
 2. Run `next-step.mjs` and take the issue it names. It reads the store; do not re-derive the step by reading records yourself, and do not act on an issue it did not name.
 3. Confirm the working tree and current branch. If the store carries an uncommitted transition left by an interrupted step, read it and settle it before anything else.
-4. Read the target record with `store-read.mjs`; retain its hash and state version.
+4. Read the target record with `store-read.mjs`; retain its hash and state version. Its task package must also carry a current Sudocode record. If task packaging reports binding or status drift, stop and repair that named drift instead of dispatching stale scope.
 5. Parse its `pipeline_state` and dependency list.
 6. Run `check-reservations.mjs <issue-id>`. The script decides overlaps; do not decide by reading.
 7. Select the only role allowed by the current phase.
@@ -64,7 +64,9 @@ If the environment cannot spawn a sub-agent directly, output the exact role and 
 
 ## PERSISTENCE
 
-For a QA handoff requesting `closed` when the profile declares a CI, verify with `gh run list --commit <sha>` that a green run exists for the validated SHA before persisting; a red or absent run returns the handoff to QA, which must route an infrastructure fault instead. For a valid handoff: re-read the record and refuse on hash mismatch; build the JSON update request (state version = previous + 1, `started_at` = the moment you DISPATCHED the step, `ended_at` = the moment the agent handed its work back, both distinct from the moment you are persisting it); run `store-update.mjs`; run `store-verify.mjs`; read the full store diff and confirm only intended records changed and prior context blocks remain; if the handoff carried a commit SHA and the profile declares a CI, push the spec branch so CI produces a run for that SHA; with `ci.provider: "none"`, push only when a remote exists.
+For a QA handoff requesting `closed` when the profile declares a CI, verify with `gh run list --commit <sha>` that a green run exists for the validated SHA before persisting; a red or absent run returns the handoff to QA, which must route an infrastructure fault instead. For a valid handoff: re-read the record and refuse on hash mismatch; build the JSON update request (state version = previous + 1, `started_at` = the moment you DISPATCHED the step, `ended_at` = the moment the agent handed its work back, both distinct from the moment you are persisting it); run `store-update.mjs`; run `tracker-sync.mjs --apply`, then `tracker-sync.mjs` without a flag; run `store-verify.mjs`; read the full diff of `store_dir` and `issue_tracker.root` and confirm only intended records changed and prior context blocks remain; if the handoff carried a commit SHA and the profile declares a CI, push the spec branch so CI produces a run for that SHA; with `ci.provider: "none"`, push only when a remote exists.
+
+For an approved `spec_plan`, verify that every proposed id now exists in Sudocode, that each issue carries `issue_tracker.managed_tag`, and that its relationships match the approved dependency graph. Then create the separate spec and issue control records through `store-update`; creation binds id, uuid and scope revision and refuses a missing or untagged source. Never copy `pipeline_state` into `.sudocode` and never rewrite its JSONL directly. If Product changed an already-active definition, require the operator-approved `scope_change` before refreshing its binding.
 
 ## THE STORE RECORDS FACTS, NOT CLAIMS
 

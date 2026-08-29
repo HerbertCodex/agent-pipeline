@@ -45,13 +45,16 @@ agent-pipeline traite ces problèmes comme des propriétés de workflow.
 ~~~mermaid
 flowchart LR
     U[Opérateur] --> O[Orchestrator]
+    U --> SU[Sudocode UI / CLI]
+    SU --> ST[(.sudocode issues + specs)]
+    ST --> O
     O --> P[Product]
     O --> I[Implementer]
     O --> Q[QA]
     P -->|handoff JSON| O
     I -->|handoff JSON| O
     Q -->|handoff JSON| O
-    O --> S[(Store JSONL)]
+    O --> S[(Pipeline control store)]
     O --> D[Driver d’agent]
     D --> R[Codex, Claude Code, Kilo Code ou autre CLI]
     C[pipeline.config.json] --> O
@@ -70,6 +73,14 @@ Les rôles sont volontairement étroits :
 
 Les permissions doivent être imposées par la plateforme qui exécute l’agent. Un prompt qui interdit une écriture n’est pas une frontière de sécurité.
 
+### Sudocode pour les issues, la pipeline pour l’exécution
+
+[Sudocode](https://github.com/sudocode-ai/sudocode) est la source de vérité pour les titres, descriptions, priorités, tags et dépendances des issues et des specs. La pipeline conserve séparément ce que Sudocode ne modélise pas : phase fine, propriétaire, réservations de fichiers, critères vérifiés, preuves et journal des transitions.
+
+Cette séparation est volontaire. Sudocode reconstruit ses fichiers JSONL depuis sa base locale et ne garantit pas la conservation de champs arbitraires. Placer `pipeline_state` directement dans `.sudocode/issues.jsonl` risquerait donc de perdre l’état d’exécution.
+
+Le lien entre les deux stores est contrôlé par identifiant, UUID et empreinte du périmètre. Un changement de statut seul reste synchronisable ; un changement de titre, contenu, dépendances ou tags bloque le dispatch jusqu’à un rafraîchissement explicite. Après le début du travail, ce rafraîchissement exige l’approbation de l’opérateur afin qu’une édition d’issue ne puisse pas élargir silencieusement les specs.
+
 ## Agnostique par construction
 
 Le cœur ne connaît ni Codex, ni Claude Code, ni Kilo Code. Il lance la commande déclarée dans `pipeline.config.json` et lui transmet un paquet portable :
@@ -83,6 +94,7 @@ Le cœur ne connaît ni Codex, ni Claude Code, ni Kilo Code. Il lance la command
       "vos-options",
       "Lis le paquet {package} et exécute le rôle {role}."
     ],
+    "interactive_input": false,
     "progress_interval_seconds": 20
   }
 }
@@ -123,7 +135,7 @@ Les événements distinguent notamment :
 - le heartbeat périodique ;
 - la fin et son code de sortie.
 
-`Ctrl+C` est propagé au processus enfant. L’utilisateur n’est donc pas prisonnier d’une exécution silencieuse. Pour rendre la session véritablement conversationnelle, le runtime choisi doit lui-même exposer une entrée interactive ; la pipeline ne simule pas cette capacité.
+`Ctrl+C` est propagé au processus enfant. L’utilisateur n’est donc pas prisonnier d’une exécution silencieuse. Si la CLI choisie accepte réellement des messages sur son entrée standard pendant l’exécution, activez `agent_runtime.interactive_input: true` : le dashboard affiche alors un champ « Send » par agent et transmet le texte à ce processus précis. La valeur reste `false` par défaut, car prétendre qu’une CLI non interactive a reçu un message serait plus dangereux qu’un refus clair.
 
 ### Dashboard local en direct
 
@@ -133,9 +145,9 @@ Le dashboard consomme ce même flux sans introduire un second scheduler :
 node agent-pipeline/dashboard/server.mjs
 ~~~
 
-Ouvrez ensuite `http://127.0.0.1:4399`. La page permet de dispatcher un rôle, suivre son statut, son heartbeat, son temps et sa sortie, puis interrompre précisément son processus. Un autre port se choisit avec `--port <nombre>`.
+Ouvrez ensuite `http://127.0.0.1:4399`. La page lit la liste depuis Sudocode, la joint à l’état de contrôle de la pipeline, permet de rechercher et filtrer, puis calcule le rôle attendu depuis la phase. Une issue Sudocode pas encore préparée est visible mais non dispatchable ; une dérive de scope ou de statut expose sa correction au lieu de lancer un agent avec un brief périmé. Après sélection, la page permet de suivre le statut, le heartbeat, le temps et la sortie du rôle, d’envoyer une précision si le runtime est interactif, puis d’interrompre précisément son processus. Un autre port se choisit avec `--port <nombre>`.
 
-Le serveur n’écoute que sur la boucle locale, protège les actions par un jeton aléatoire et lance les commandes sans shell. Les sorties restent en mémoire pendant la session du serveur : ce journal d’exécution n’est ni le store durable ni une nouvelle source de vérité.
+Le serveur n’écoute que sur la boucle locale, protège les actions par un jeton aléatoire et lance les commandes sans shell. Il revérifie l'existence, la disponibilité et le rôle de l'issue au moment du dispatch, et refuse deux exécutions simultanées de la même issue. Les sorties restent en mémoire pendant la session du serveur : ce journal d’exécution n’est ni le store durable ni une nouvelle source de vérité.
 
 Le framework peut également rester dans un dépôt voisin :
 
@@ -151,7 +163,7 @@ AGENT_PIPELINE_PROJECT="$PWD" \
   docker compose -f agent-pipeline/dashboard/compose.yaml up --build
 ~~~
 
-Compose monte le projet dans `/workspace` et ne publie la page que sur `127.0.0.1:4399`. Le port hôte peut être remplacé avec `AGENT_PIPELINE_DASHBOARD_PORT`. L’image de base contient Node, Git et la pipeline, mais aucune CLI d’agent ni toolchain frontend : pour dispatcher réellement depuis le conteneur, elles doivent être ajoutées à une image dérivée avec leurs identifiants montés, jamais incorporés. Le guide complet est dans [dashboard/README.md](dashboard/README.md).
+Compose monte le projet dans `/workspace` et ne publie la page que sur `127.0.0.1:4399`. Le port hôte peut être remplacé avec `AGENT_PIPELINE_DASHBOARD_PORT`. L’image de base contient Node, Git et la pipeline, mais ni Sudocode, ni CLI d’agent, ni toolchain du projet : pour dispatcher réellement depuis le conteneur, elles doivent être ajoutées à une image dérivée avec leurs identifiants montés, jamais incorporés. Le guide complet est dans [dashboard/README.md](dashboard/README.md).
 
 ## Un périmètre qui converge
 
@@ -213,11 +225,23 @@ La cohérence visuelle suit l’ordre `tokens → primitives → composants prod
 
 ## Installation
 
+### Quick start avec Sudocode
+
+~~~bash
+npm install -g sudocode
+cd /chemin/du/projet
+sudocode init
+sudocode server
+~~~
+
+La pipeline attend ensuite `issue_tracker.command: "sudocode"`. Une équipe qui préfère `npx` peut configurer `command: "npx"` et `args: ["--yes", "sudocode"]` ; le cœur ne dépend pas du mode d’installation, seulement d’une commande exécutable.
+
 ### Prérequis
 
 - Node.js 20 ou supérieur ;
 - Git ;
 - un dépôt hôte ;
+- la CLI [Sudocode](https://github.com/sudocode-ai/sudocode) pour la gestion des issues (`npm install -g sudocode`) ;
 - au moins une CLI d’agent si vous souhaitez utiliser le dispatch automatique.
 
 Le cœur n’a aucune dépendance npm de production.
@@ -244,16 +268,18 @@ accord. Fais ensuite valider l’architecture. Persiste ces réponses dans la
 configuration et le journal de décisions afin qu’aucun agent ne les redemande.
 
 Tu peux créer la configuration, le profil, le contexte, les outils propres à
-la stack, la carte du projet, le journal de décisions, le store, les hooks et
-la CI. Termine uniquement lorsque les sept contrôles du checkpoint final sont
-prouvés par leurs commandes.
+la stack, la carte du projet, le journal de décisions, le store de contrôle,
+les hooks et la CI. Installe ou initialise Sudocode si nécessaire, configure
+`issue_tracker`, et prouve que `tracker-sync` lit ses fichiers réels sans
+mélanger son store avec celui de la pipeline. Termine uniquement lorsque les
+contrôles du checkpoint final sont prouvés par leurs commandes.
 
 En dehors de ce bootstrap conditionnel, ne m’interromps que pour autoriser une
 nouvelle dépendance ou configurer une permission que seule la plateforme peut
 imposer.
 ~~~
 
-L’agent prend en charge le clone, l’identification ou la sélection guidée de la stack, la création de `pipeline.config.json`, la calibration des gates, la génération des cibles et l’initialisation des deux fichiers du store.
+L’agent prend en charge le clone, l’identification ou la sélection guidée de la stack, la création de `pipeline.config.json`, la calibration des gates, la génération des cibles, l’initialisation de Sudocode et celle du store de contrôle séparé.
 
 Pour un frontend TypeScript, il utilise le bundle de référence comme liste de contrôles, puis remplace chaque commande par l’outil réellement choisi pour le projet.
 
@@ -291,6 +317,26 @@ Le parcours complet, y compris la calibration et les sept preuves finales, est d
 
 ## Utilisation quotidienne
 
+### 0. Gérer le backlog dans Sudocode
+
+Initialisez une fois le projet, puis lancez son interface lorsque vous voulez gérer les specs et les issues :
+
+~~~bash
+sudocode init
+sudocode server
+~~~
+
+Les issues confiées à la pipeline portent le tag configuré, `agent-pipeline` par défaut. Product prépare ensuite leur contrat interne (critères et réservations) ; tant que ce contrôle n’existe pas, le dashboard les affiche comme « not imported » sans autoriser un dispatch d’implémentation.
+
+Après chaque transition persistée, l’orchestrateur applique puis vérifie la projection du statut :
+
+~~~bash
+node agent-pipeline/scripts/tracker-sync.mjs --apply
+node agent-pipeline/scripts/tracker-sync.mjs
+~~~
+
+La pipeline n’écrit jamais directement les JSONL de Sudocode : les mutations passent par sa CLI, avec un vecteur d’arguments et sans shell.
+
 ### 1. Voir la prochaine action
 
 ~~~bash
@@ -320,7 +366,8 @@ Les rôles non orchestrateurs produisent un handoff JSON délimité. L’orchest
 1. valide sa structure ;
 2. le confronte au diff réel ;
 3. persiste la transition avec verrou optimiste ;
-4. relit et vérifie le store.
+4. projette le statut dans Sudocode via sa CLI ;
+5. relit et vérifie les deux sources.
 
 Commandes concernées :
 

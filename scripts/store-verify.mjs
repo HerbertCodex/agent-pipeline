@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig, loadRules, readJsonl, fail } from "./lib.mjs";
+import { readIssueTracker } from "./issue-tracker.mjs";
+import { trackerProjection } from "./tracker-sync.mjs";
 
 /**
  * Checks that each declared finding reached the destination it named.
@@ -225,6 +227,7 @@ function main() {
   const config = loadConfig();
   const rules = loadRules();
   let problems = 0;
+  let issueRecords = [];
 
   for (const kind of ["issues", "specs"]) {
     const path = join(config.store_dir, `${kind}.jsonl`);
@@ -237,6 +240,7 @@ function main() {
       continue;
     }
     const seen = new Set();
+    if (kind === "issues") issueRecords = entries.map((entry) => entry.record);
     for (const entry of entries) {
       const id = entry.record.id;
       if (id == null) {
@@ -273,6 +277,29 @@ function main() {
         );
       }
     }
+  }
+
+  try {
+    const tracker = readIssueTracker(config);
+    if (tracker != null) {
+      const projection = trackerProjection(issueRecords, tracker, config);
+      for (const item of projection.errors) {
+        console.error(`issue tracker: ${item.id}: ${item.reason}`);
+        problems += 1;
+      }
+      for (const item of projection.unmanaged) {
+        console.log(`issue tracker: ${item.id} is ready for Product planning and has no control record yet`);
+      }
+      for (const item of projection.pending) {
+        console.error(
+          `issue tracker: ${item.id} status ${item.current} must be ${item.desired}; run tracker-sync --apply`,
+        );
+        problems += 1;
+      }
+    }
+  } catch (error) {
+    console.error(`issue tracker: ${error.message}`);
+    problems += 1;
   }
 
   if (problems > 0) fail(`${problems} invariant(s) viole(s)`);

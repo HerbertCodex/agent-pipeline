@@ -61,7 +61,7 @@ describe("frontend TypeScript reference profile: measurable structure", () => {
     }
   });
 
-  test("keeps agents away from dependency, pipeline and generated-policy files", () => {
+  test("keeps coding agents away from policy files and limits Product to Sudocode", () => {
     const policy = manifest().file_policy;
     const denied = policy.implementer.deny.join("\n");
 
@@ -70,7 +70,8 @@ describe("frontend TypeScript reference profile: measurable structure", () => {
     assert.match(denied, /pipeline\.config\.json/);
     assert.match(denied, /AGENTS\.md/);
     assert.deepEqual(policy.qa.allow, []);
-    assert.deepEqual(policy.product.allow, []);
+    assert.deepEqual(policy.product.allow, [".sudocode/**"]);
+    assert.ok(policy.orchestrator.allow.includes(".sudocode/**"));
   });
 
   test("maps production and test code before allowing a new export", () => {

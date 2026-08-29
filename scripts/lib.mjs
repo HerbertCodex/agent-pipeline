@@ -299,22 +299,3 @@ export function fail(message) {
   console.error(message);
   process.exit(1);
 }
-
-/**
- * Resolves the sudocode status to mirror for a pipeline phase.
- *
- * Resolution order: exact key, then the blocked-family wildcard, then the
- * global wildcard. Returns null when the integration is disabled or the table
- * does not cover the phase.
- *
- * @param phase - current pipeline phase
- * @param sudocode - the configuration's sudocode block, or none
- * @returns the status to write, or null to mirror nothing
- */
-export function sudocodeStatus(phase, sudocode) {
-  if (sudocode?.enabled !== true) return null;
-  const map = sudocode.status_map ?? {};
-  if (map[phase] != null) return map[phase];
-  if (phase.startsWith("blocked_") && map["blocked_*"] != null) return map["blocked_*"];
-  return map["*"] ?? null;
-}

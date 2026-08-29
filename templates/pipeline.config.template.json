@@ -5,6 +5,7 @@
     "doc_lint": "node agent-pipeline/scripts/doc-lint.mjs",
     "sast": "node agent-pipeline/scripts/sast.mjs",
     "duplication": "node agent-pipeline/scripts/duplication.mjs",
+    "tracker_sync": "node agent-pipeline/scripts/tracker-sync.mjs",
     "project_map": "node agent-pipeline/scripts/project-map.mjs --check",
     "map_coverage": "node agent-pipeline/scripts/map-coverage.mjs"
   },
@@ -24,9 +25,29 @@
   "rules_path": "pipeline/rules.json",
   "project_context": "pipeline/project-context.md",
   "store_dir": "pipeline/store",
+  "issue_tracker": {
+    "provider": "sudocode",
+    "enabled": true,
+    "root": ".sudocode",
+    "issues_file": "issues.jsonl",
+    "specs_file": "specs.jsonl",
+    "command": "sudocode",
+    "args": [],
+    "managed_tag": "agent-pipeline",
+    "status_map": {
+      "planned": "open",
+      "in_progress": "in_progress",
+      "ready_for_qa": "needs_review",
+      "qa_in_progress": "needs_review",
+      "closed": "closed",
+      "blocked_*": "blocked",
+      "operator_escalation": "blocked"
+    }
+  },
   "handoffs_dir": "pipeline/handoffs",
   "agent_runtime": {
     "prompt_adapter": "portable",
+    "interactive_input": false,
     "progress_interval_seconds": 20
   },
   "workflow": {

@@ -7,9 +7,14 @@ import {
   loadRules,
   readJsonl,
   sha256,
-  sudocodeStatus,
   fail,
 } from "./lib.mjs";
+import {
+  projectedStatus,
+  readIssueTracker,
+  trackerBinding,
+  trackerMatch,
+} from "./issue-tracker.mjs";
 
 /**
  * Validates a state block against the machine source of the rules.
@@ -101,6 +106,70 @@ function scopeIsFrozen(phase) {
   return ["active", "ready_for_pr", "pr_open", "merged"].includes(phase);
 }
 
+function trackerSourceFields(kind, entry, snapshot) {
+  const source = entry.record;
+  const fields = { title: source.title, priority: source.priority ?? null };
+  if (kind !== "issue") return fields;
+  fields.depends_on = snapshot.dependencies.get(source.id) ?? [];
+  const specs = (source.relationships ?? [])
+    .filter((relationship) => relationship.to_type === "spec" && relationship.type === "implements")
+    .map((relationship) => relationship.to);
+  if (specs.length > 1) fail(`Sudocode issue ${source.id} implements more than one spec. Nothing written.`);
+  if (specs.length === 1) fields.spec_id = specs[0];
+  return fields;
+}
+
+function trackerEntry(config, kind, id) {
+  const snapshot = readIssueTracker(config);
+  if (snapshot == null) return null;
+  const entries = kind === "issue" ? snapshot.issues : snapshot.specs;
+  const entry = entries.find((candidate) => candidate.record.id === id);
+  if (entry == null) fail(`Sudocode ${kind} not found: ${id}. Create it in Sudocode first. Nothing written.`);
+  const managedTag = config.issue_tracker?.managed_tag;
+  if (kind === "issue" && typeof managedTag === "string" && !entry.record.tags?.includes(managedTag)) {
+    fail(`Sudocode issue ${id} is not tagged ${managedTag}. Nothing written.`);
+  }
+  return { entry, snapshot };
+}
+
+function refreshTracker(record, kind, config, request) {
+  const source = trackerEntry(config, kind, record.id);
+  if (source == null) return;
+  const match = trackerMatch(record, source.snapshot, kind);
+  if (match.drift == null) return;
+  if (match.drift === "identity") {
+    fail(
+      `tracker identity changed for ${record.id}; a replacement Sudocode entity cannot inherit its history. ` +
+        "Create a new control record or restore the original entity. Nothing written.",
+    );
+  }
+  if (request.refresh_tracker !== true) {
+    fail(`tracker binding ${match.drift} for ${record.id}; refresh it explicitly. Nothing written.`);
+  }
+  const active = kind === "issue"
+    ? record.pipeline_state?.phase !== "planned"
+    : scopeIsFrozen(record.spec_state?.phase);
+  if (active && !approvedScopeChange(request.scope_change)) {
+    fail(
+      `tracker scope changed for active ${record.id}; refresh requires ` +
+        "scope_change { approved_by: operator, reason, approved_at }. Nothing written.",
+    );
+  }
+  const previousRevision = record.tracker?.revision ?? null;
+  Object.assign(record, trackerSourceFields(kind, source.entry, source.snapshot));
+  record.tracker = trackerBinding(source.entry);
+  record.tracker_scope_changes = [
+    ...(record.tracker_scope_changes ?? []),
+    {
+      from_revision: previousRevision,
+      to_revision: record.tracker.revision,
+      approved_by: active ? request.scope_change.approved_by : null,
+      reason: active ? request.scope_change.reason : "refreshed before work started",
+      at: active ? request.scope_change.approved_at : new Date().toISOString(),
+    },
+  ];
+}
+
 /**
  * Applies a write request to the store under an optimistic lock.
  *
@@ -184,6 +253,7 @@ function applyRequest(request, config, rules) {
   }
 
   const record = entry.record;
+  refreshTracker(record, kind, config, request);
   if (request.pipeline_state != null) {
     try {
       validateState(request.pipeline_state, rules);
@@ -207,8 +277,14 @@ function applyRequest(request, config, rules) {
     }
     const at = request.pipeline_state.last_transition_at ?? new Date().toISOString();
     record.pipeline_state = request.pipeline_state;
-    const mirrored = sudocodeStatus(request.pipeline_state.phase, config.sudocode);
-    if (mirrored != null) record.status = mirrored;
+    const projected = projectedStatus(request.pipeline_state.phase, config);
+    if (projected != null) {
+      record.tracker_sync = {
+        provider: "sudocode",
+        desired_status: projected,
+        requested_at: at,
+      };
+    }
 
     if (!amendment) {
       // `at` says when the step was persisted; `started_at` says when it was
@@ -423,7 +499,12 @@ function applyRequest(request, config, rules) {
     }
     record.discoveries_declared = [...merged.values()];
   }
-  if (request.set_status != null) record.status = request.set_status;
+  if (request.set_status != null) {
+    if (kind === "issue" && config.issue_tracker?.enabled !== false && config.issue_tracker != null) {
+      fail("set_status cannot bypass the configured issue tracker. Nothing written.");
+    }
+    record.status = request.set_status;
+  }
   if (request.append_context != null) {
     const { heading, body } = request.append_context;
     if (!heading || !body) fail("append_context requires heading and body");
@@ -475,6 +556,11 @@ function create(request, config, rules) {
   } = request.create_record;
   if (kind !== "issue" && kind !== "spec") fail("create_record.kind must be issue or spec");
   if (!record?.id) fail("create_record.record.id missing");
+  const source = trackerEntry(config, kind, record.id);
+  if (source != null) {
+    Object.assign(record, trackerSourceFields(kind, source.entry, source.snapshot));
+    record.tracker = trackerBinding(source.entry);
+  }
   if (discoveredFrom != null) {
     const type = rules.discovery_relationship;
     if (type == null) fail("discovery_relationship absent from the rules");
@@ -512,8 +598,15 @@ function create(request, config, rules) {
   const entries = readJsonl(path);
   if (entries.some((e) => e.record.id === record.id)) fail(`id already present: ${record.id}`);
   if (kind === "issue") {
-    const mirrored = sudocodeStatus(record.pipeline_state.phase, config.sudocode);
-    if (mirrored != null && record.status == null) record.status = mirrored;
+    const projected = projectedStatus(record.pipeline_state.phase, config);
+    if (projected != null) {
+      record.tracker_sync = {
+        provider: "sudocode",
+        desired_status: projected,
+        requested_at: new Date().toISOString(),
+      };
+      delete record.status;
+    }
   }
   const existing = existsSync(path) ? readFileSync(path, "utf8") : "";
   const separator = existing.length === 0 || existing.endsWith("\n") ? "" : "\n";

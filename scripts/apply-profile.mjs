@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { loadConfig, loadRules, pathAllowed, deferredGates, fail } from "./lib.mjs";
@@ -695,6 +695,58 @@ function main() {
       }
       if (!Array.isArray(config.agent_runtime.args) || config.agent_runtime.args.some((arg) => typeof arg !== "string")) {
         fail("agent_runtime.args must be a list of strings when command is configured");
+      }
+    }
+    if (
+      config.agent_runtime.interactive_input != null &&
+      typeof config.agent_runtime.interactive_input !== "boolean"
+    ) {
+      fail("agent_runtime.interactive_input must be a boolean");
+    }
+  }
+  if (config.issue_tracker != null && config.issue_tracker.enabled !== false) {
+    const tracker = config.issue_tracker;
+    if (tracker.provider !== "sudocode") fail("issue_tracker.provider must be sudocode");
+    for (const key of ["root", "issues_file", "specs_file", "command", "managed_tag"]) {
+      if (typeof tracker[key] !== "string" || tracker[key].trim().length === 0) {
+        fail(`issue_tracker.${key} must be a non-empty string`);
+      }
+    }
+    if (!Array.isArray(tracker.args) || tracker.args.some((arg) => typeof arg !== "string")) {
+      fail("issue_tracker.args must be a list of strings");
+    }
+    if (typeof config.commands.tracker_sync !== "string") {
+      fail("commands.tracker_sync missing: a configured issue tracker needs a gate that refuses drift");
+    }
+    const trackerRoot = resolve(tracker.root);
+    const controlRoot = resolve(config.store_dir);
+    if (
+      trackerRoot === controlRoot ||
+      trackerRoot.startsWith(`${controlRoot}${sep}`) ||
+      controlRoot.startsWith(`${trackerRoot}${sep}`)
+    ) {
+      fail("issue_tracker.root and store_dir must be separate directories");
+    }
+    const statuses = new Set(["open", "in_progress", "blocked", "needs_review", "closed"]);
+    for (const phase of [
+      "planned",
+      "in_progress",
+      "ready_for_qa",
+      "qa_in_progress",
+      "closed",
+      "blocked_*",
+      "operator_escalation",
+    ]) {
+      if (!statuses.has(tracker.status_map?.[phase])) {
+        fail(`issue_tracker.status_map.${phase} must be a valid Sudocode status`);
+      }
+    }
+    const trackerProbe = join(tracker.root, tracker.issues_file).replaceAll("\\", "/");
+    for (const role of ["product", "orchestrator"]) {
+      if (!pathAllowed(trackerProbe, config.file_policy?.[role])) {
+        fail(
+          `file_policy.${role} forbids ${trackerProbe}, but ${role} must mutate Sudocode through its CLI`,
+        );
       }
     }
   }

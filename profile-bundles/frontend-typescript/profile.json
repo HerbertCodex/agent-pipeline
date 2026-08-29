@@ -68,7 +68,8 @@
     "orchestrator": {
       "allow": [
         "pipeline/store/**",
-        "docs/project-map.md"
+        "docs/project-map.md",
+        ".sudocode/**"
       ],
       "deny": [
         "src/**",
@@ -78,9 +79,21 @@
       ]
     },
     "product": {
-      "allow": [],
+      "allow": [
+        ".sudocode/**"
+      ],
       "deny": [
-        "**"
+        "src/**",
+        "test/**",
+        "tests/**",
+        "e2e/**",
+        "public/**",
+        "pipeline/**",
+        "agent-pipeline/**",
+        "pipeline.config.json",
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".github/**"
       ]
     },
     "implementer": {
