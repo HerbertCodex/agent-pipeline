@@ -1,0 +1,14 @@
+name: agent-pipeline-dashboard
+
+services:
+  dashboard:
+    image: agent-pipeline-dashboard:local
+    build:
+      context: ..
+      dockerfile: dashboard/Dockerfile
+    init: true
+    ports:
+      - "127.0.0.1:${AGENT_PIPELINE_DASHBOARD_PORT:-4399}:4399"
+    volumes:
+      - "${AGENT_PIPELINE_PROJECT:?Set AGENT_PIPELINE_PROJECT to an absolute host project path}:/workspace"
+    stop_grace_period: 10s

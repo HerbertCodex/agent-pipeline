@@ -1,0 +1,115 @@
+{
+  "name": "frontend-typescript",
+  "project_type": "frontend",
+  "calibration_required": true,
+  "commands": {
+    "check": "npm run check",
+    "lint": "npm run lint",
+    "format": "npm run format:check",
+    "build": "npm run build",
+    "test_unit": "npm run test:unit",
+    "test_e2e": "npm run test:e2e",
+    "coverage": "npm run test:coverage",
+    "mutation": "npm run test:mutation",
+    "smoke": "npm run test:smoke",
+    "accessibility": "npm run test:a11y",
+    "architecture": "npm run check:architecture",
+    "design_system": "npm run check:design-system",
+    "design_tokens": "npm run check:tokens",
+    "visual_regression": "npm run test:visual",
+    "dead_code": "npm run check:dead-code",
+    "duplication": "npm run check:duplication",
+    "design_limits": "npm run check:design-limits",
+    "comment_policy": "npm run check:comments",
+    "sast": "npm run check:security",
+    "audit": "npm audit --audit-level=high",
+    "secrets_scan": "npm run scan:secrets",
+    "project_map": "npm run project-map -- --check"
+  },
+  "project_map": {
+    "out": "docs/project-map.md",
+    "roots": [
+      "src",
+      "test",
+      "tests",
+      "e2e"
+    ],
+    "skip": [
+      "dist/**",
+      "build/**",
+      "coverage/**",
+      "**/*.generated.*"
+    ],
+    "regenerate": "npm run project-map"
+  },
+  "doc_policy": {
+    "roots": [
+      "src",
+      "test",
+      "tests",
+      "e2e"
+    ],
+    "skip": [
+      "**/*.generated.*"
+    ]
+  },
+  "comment_policy": {
+    "roots": [
+      "src",
+      "test",
+      "tests",
+      "e2e"
+    ],
+    "skip": [
+      "**/*.generated.*"
+    ]
+  },
+  "file_policy": {
+    "orchestrator": {
+      "allow": [
+        "pipeline/store/**",
+        "docs/project-map.md"
+      ],
+      "deny": [
+        "src/**",
+        "test/**",
+        "tests/**",
+        "e2e/**"
+      ]
+    },
+    "product": {
+      "allow": [],
+      "deny": [
+        "**"
+      ]
+    },
+    "implementer": {
+      "allow": [
+        "src/**",
+        "test/**",
+        "tests/**",
+        "e2e/**",
+        "public/**",
+        "mockups/**"
+      ],
+      "deny": [
+        "package.json",
+        "package-lock.json",
+        "pnpm-lock.yaml",
+        "yarn.lock",
+        "pipeline.config.json",
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".github/**",
+        "agent-pipeline/**",
+        "pipeline/**"
+      ]
+    },
+    "qa": {
+      "allow": [],
+      "deny": [
+        "**"
+      ]
+    }
+  }
+}

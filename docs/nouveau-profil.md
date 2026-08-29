@@ -73,6 +73,8 @@ Mandatory paths, refused if absent: `profiles_dir`, `docs_dirs`, `briefs_dir`, `
 
 `agent_runtime` is the harness boundary. `prompt_adapter` is `portable` or `claude-code`; `command` is the chosen CLI executable; `args` is its argument vector using exact `{role}` and `{package}` placeholders; `progress_interval_seconds` defaults to 20. The driver uses no shell, streams both output channels, emits heartbeats and propagates interruption. Do not put Codex, Claude Code or Kilo Code flags in a core script — only in this project configuration.
 
+Once that command runs, `node agent-pipeline/dashboard/server.mjs` provides the local live surface over the same NDJSON events. It launches `dispatch.mjs`; it does not schedule, persist pipeline state or replace the store. Binding stays on the loopback interface, and a server restart deliberately forgets runtime output.
+
 `workflow.max_transitions_per_run` bounds one orchestration context; four lets a nominal issue traverse its complete cycle while preventing a session from swallowing a spec. `workflow.gates.low|normal|high` is either `"all"` or a list of declared command keys. Low and normal lanes buy fast feedback; commands omitted from normal are replayed in the final closure battery. High-risk paths should stay `"all"`.
 
 `findings_path` remains the legacy destination for exported framework notes. Product findings themselves live once, in `discoveries_declared`; `findings.mjs` computes the inbox from that store data.
@@ -290,6 +292,8 @@ The nearest token is only offered when there is a real neighbour. Suggesting the
 ## Projects with screens declare their design system
 
 A project with screens also declares `commands.accessibility`. It sits here rather than in the general list because a service with no screen has nothing to check. The reason it is a command at all, when the rest of interface design is not, is that it is the measurable half: contrast ratio, focus order, keyboard reachability, what a screen reader announces. Everything else a design skill says is judgement, and judgement is argued in review.
+
+For a TypeScript frontend, `agent-pipeline/profile-bundles/frontend-typescript` is the reference contract. Importing it names the required surfaces without choosing a UI framework: compiler, architecture boundaries, tokens, accessibility, browser flows, visual regression, dead code, duplication and production smoke. Its npm script names are interfaces, not implementations. Replace each with the selected project's real tool, make it fail on purpose, and only then clear `calibration_required`.
 
 `apply-profile` refuses a `frontend`, `mobile` or `fullstack` project that has no `design_system` block. A back-end project is never asked: putting a question where there is no screen produces an empty key that people learn to skip, and a question people learn to skip ends up hiding the ones that matter.
 

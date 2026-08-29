@@ -1,5 +1,5 @@
 {
-  "profiles_dir": "agent-pipeline/profiles",
+  "profiles_dir": "pipeline/profiles",
   "commands": {
     "dead_code": "node agent-pipeline/scripts/dead-code.mjs",
     "doc_lint": "node agent-pipeline/scripts/doc-lint.mjs",

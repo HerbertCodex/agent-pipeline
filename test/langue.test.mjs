@@ -150,10 +150,12 @@ function comments(source) {
 describe("the framework speaks one language", () => {
   test("no user-facing message is in French", () => {
     const offenders = [];
-    for (const name of readdirSync(join(FRAMEWORK, "scripts")).filter((f) => f.endsWith(".mjs"))) {
-      for (const line of userFacing(readFileSync(join(FRAMEWORK, "scripts", name), "utf8"))) {
-        const hit = frenchIn(line);
-        if (hit != null) offenders.push(`${name} : « ${line.slice(0, 60)} » (${hit})`);
+    for (const directory of ["scripts", "dashboard"]) {
+      for (const name of readdirSync(join(FRAMEWORK, directory)).filter((f) => f.endsWith(".mjs"))) {
+        for (const line of userFacing(readFileSync(join(FRAMEWORK, directory, name), "utf8"))) {
+          const hit = frenchIn(line);
+          if (hit != null) offenders.push(`${directory}/${name} : « ${line.slice(0, 60)} » (${hit})`);
+        }
       }
     }
     assert.deepEqual(
@@ -193,7 +195,7 @@ describe("the framework speaks one language", () => {
 
   test("no script comment is in French", () => {
     const offenders = [];
-    for (const directory of ["scripts", "test"]) {
+    for (const directory of ["scripts", "dashboard", "test"]) {
       for (const name of readdirSync(join(FRAMEWORK, directory)).filter((f) => f.endsWith(".mjs"))) {
         if (name === SELF) continue;
         for (const block of comments(readFileSync(join(FRAMEWORK, directory, name), "utf8"))) {

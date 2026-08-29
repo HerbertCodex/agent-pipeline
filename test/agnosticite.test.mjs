@@ -9,6 +9,7 @@ import { ARCHITECTURES, PROJECT_TYPES } from "../scripts/architectures.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 const FRAMEWORK = join(here, "..");
 const SCRIPTS = join(FRAMEWORK, "scripts");
+const DASHBOARD = join(FRAMEWORK, "dashboard");
 const TESTS = here;
 
 /**
@@ -51,7 +52,7 @@ function codeOnly(source) {
 describe("agnosticism: the framework knows nothing of the project stack", () => {
   test("no core script invokes an ecosystem task runner", () => {
     const offenders = [];
-    for (const [name, source] of [...filesIn(SCRIPTS), ...filesIn(TESTS)]) {
+    for (const [name, source] of [...filesIn(SCRIPTS), ...filesIn(DASHBOARD), ...filesIn(TESTS)]) {
       if (name === SELF) continue;
       const match = codeOnly(source).match(/npm run|npx |yarn |pnpm |\bpoetry run\b|\bcargo run\b/);
       if (match != null) offenders.push(`${name} : ${match[0].trim()}`);
@@ -65,7 +66,7 @@ describe("agnosticism: the framework knows nothing of the project stack", () => 
 
   test("no core script depends on an installed package", () => {
     const offenders = [];
-    for (const [name, source] of filesIn(SCRIPTS)) {
+    for (const [name, source] of [...filesIn(SCRIPTS), ...filesIn(DASHBOARD)]) {
       for (const match of source.matchAll(/^\s*import[^;]*?from\s+"([^"]+)"/gm)) {
         const target = match[1];
         const builtin = target.startsWith("node:");
@@ -79,7 +80,7 @@ describe("agnosticism: the framework knows nothing of the project stack", () => 
   test("no core script hardcodes a path the configuration owns", () => {
     const owned = /"pipeline\/(rules\.json|store|briefs|profiles)/;
     const offenders = [];
-    for (const [name, source] of filesIn(SCRIPTS)) {
+    for (const [name, source] of [...filesIn(SCRIPTS), ...filesIn(DASHBOARD)]) {
       const match = codeOnly(source).match(owned);
       if (match != null) offenders.push(`${name} : ${match[0]}`);
     }

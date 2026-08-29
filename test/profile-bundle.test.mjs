@@ -131,8 +131,8 @@ describe("import-profile: installing a profile without silently overwriting", ()
     const { bundle, host } = exported();
     const result = run(sandbox, "import-profile.mjs", [bundle, host]);
     assert.equal(result.status, 0, result.output);
-    assert.ok(existsSync(join(host, "agent-pipeline", "profiles", "api-demo", "invariants.md")));
-    assert.ok(existsSync(join(host, "agent-pipeline", "profiles", "api-demo", "skills", "demo-module", "SKILL.md")));
+    assert.ok(existsSync(join(host, "pipeline", "profiles", "api-demo", "invariants.md")));
+    assert.ok(existsSync(join(host, "pipeline", "profiles", "api-demo", "skills", "demo-module", "SKILL.md")));
   });
 
   test("writes the configuration only when the project has none", () => {

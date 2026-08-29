@@ -125,6 +125,34 @@ Les événements distinguent notamment :
 
 `Ctrl+C` est propagé au processus enfant. L’utilisateur n’est donc pas prisonnier d’une exécution silencieuse. Pour rendre la session véritablement conversationnelle, le runtime choisi doit lui-même exposer une entrée interactive ; la pipeline ne simule pas cette capacité.
 
+### Dashboard local en direct
+
+Le dashboard consomme ce même flux sans introduire un second scheduler :
+
+~~~bash
+node agent-pipeline/dashboard/server.mjs
+~~~
+
+Ouvrez ensuite `http://127.0.0.1:4399`. La page permet de dispatcher un rôle, suivre son statut, son heartbeat, son temps et sa sortie, puis interrompre précisément son processus. Un autre port se choisit avec `--port <nombre>`.
+
+Le serveur n’écoute que sur la boucle locale, protège les actions par un jeton aléatoire et lance les commandes sans shell. Les sorties restent en mémoire pendant la session du serveur : ce journal d’exécution n’est ni le store durable ni une nouvelle source de vérité.
+
+Le framework peut également rester dans un dépôt voisin :
+
+~~~bash
+cd /chemin/du/projet
+node ../agent-pipeline/dashboard/server.mjs
+~~~
+
+Pour Docker :
+
+~~~bash
+AGENT_PIPELINE_PROJECT="$PWD" \
+  docker compose -f agent-pipeline/dashboard/compose.yaml up --build
+~~~
+
+Compose monte le projet dans `/workspace` et ne publie la page que sur `127.0.0.1:4399`. Le port hôte peut être remplacé avec `AGENT_PIPELINE_DASHBOARD_PORT`. L’image de base contient Node, Git et la pipeline, mais aucune CLI d’agent ni toolchain frontend : pour dispatcher réellement depuis le conteneur, elles doivent être ajoutées à une image dérivée avec leurs identifiants montés, jamais incorporés. Le guide complet est dans [dashboard/README.md](dashboard/README.md).
+
 ## Un périmètre qui converge
 
 Dès qu’une issue quitte `planned`, ses critères et ses réservations deviennent le contrat actif. Une découverte ne rejoint pas automatiquement ce contrat.
@@ -157,16 +185,31 @@ Le workflow peut limiter le travail réalisé lors d’une seule invocation :
 {
   "workflow": {
     "max_transitions_per_run": 4,
-    "risk_lanes": {
+    "gates": {
       "low": ["check", "lint", "test_unit"],
       "normal": ["check", "lint", "test_unit", "smoke"],
-      "high": ["all"]
+      "high": "all"
     }
   }
 }
 ~~~
 
 Une voie légère accélère le feedback intermédiaire. Elle ne réduit pas la définition de « terminé » : les gates omises doivent être rejouées avant la fermeture.
+
+## Qualité frontend
+
+Le bundle [profile-bundles/frontend-typescript](profile-bundles/frontend-typescript) définit un contrat de référence indépendant de React, Vue, Svelte ou Angular :
+
+~~~bash
+node agent-pipeline/scripts/import-profile.mjs \
+  agent-pipeline/profile-bundles/frontend-typescript
+~~~
+
+Il exige des portes distinctes pour le typage strict, l’architecture et ses cycles, les tokens, l’accessibilité, les limites de conception, le code mort, la duplication, les tests navigateur, les régressions visuelles, le smoke test et la carte du projet.
+
+Ce bundle ne prétend pas deviner la toolchain. Il déclare des noms de scripts npm stables que l’agent de bootstrap relie aux outils réellement retenus. Son drapeau `calibration_required` bloque l’application du profil jusqu’à ce que chaque commande existe, soit réglée sur le projet et ait échoué une fois sur un défaut volontaire.
+
+La cohérence visuelle suit l’ordre `tokens → primitives → composants produit → mockup validé → écrans`. Cela refuse une interface incohérente ; cela ne garantit pas qu’elle soit belle ou distinctive, ce qui reste une décision produit et humaine.
 
 ## Installation
 
@@ -211,6 +254,8 @@ imposer.
 ~~~
 
 L’agent prend en charge le clone, l’identification ou la sélection guidée de la stack, la création de `pipeline.config.json`, la calibration des gates, la génération des cibles et l’initialisation des deux fichiers du store.
+
+Pour un frontend TypeScript, il utilise le bundle de référence comme liste de contrôles, puis remplace chaque commande par l’outil réellement choisi pour le projet.
 
 Cette installation reste agnostique : le parcours est décrit dans le dépôt et les contrôles sont des commandes Node. Aucun fournisseur d’agent particulier n’est imposé au bootstrap.
 
@@ -340,8 +385,9 @@ La pipeline garantit surtout que les décisions, preuves, transitions et excepti
 | Chemin | Contenu |
 | --- | --- |
 | `scripts/` | moteur, gates, génération, store, dispatch et observabilité |
+| `dashboard/` | serveur local et interface de supervision en direct |
 | `prompts/` | rôles génériques |
-| `profiles/` | règles et extensions propres aux stacks |
+| `profile-bundles/` | contrats de stack réutilisables à recalibrer |
 | `schemas/` | contrats machine du store, des règles et des handoffs |
 | `templates/` | configuration, politique centrale et CI générée |
 | `skills/` | conseils portables installés par profil |

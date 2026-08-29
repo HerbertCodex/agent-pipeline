@@ -262,8 +262,15 @@ node agent-pipeline/scripts/import-profile.mjs <dir>  # install one, then recali
 node agent-pipeline/scripts/status.mjs           # issues by column, overview
 node agent-pipeline/scripts/permissions.mjs      # the paths refused to each role
 node agent-pipeline/scripts/install-hooks.mjs    # install or check the git hooks
+node agent-pipeline/dashboard/server.mjs         # local live agents, heartbeats, output and interruption
 node --test "agent-pipeline/test/**/*.test.mjs"  # prove the core itself
 ```
+
+The dashboard may run from a sibling framework checkout because it resolves
+the core from its own module and the project from the current directory. Its
+Docker image mounts that project at `/workspace`. The image contains no agent
+vendor or project toolchain: dispatch inside the container is real only when
+the configured runtime and commands were deliberately installed there.
 
 Most projects alias them in their task runner — see the repository `README` for the local form.
 
