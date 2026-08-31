@@ -184,5 +184,8 @@ describe("a prompt is held to the same rule as a brief", () => {
     const qa = readFileSync(join(sandbox, ".claude", "agents", "qa.md"), "utf8");
     assert.ok(!qa.includes("mutation"), "a rule binding nobody was rendered into the prompt");
     assert.ok(!qa.includes("<!-- gate:"), "the marker itself must not reach the reader");
+    const policy = readFileSync(join(sandbox, "AGENTS.md"), "utf8");
+    assert.ok(!policy.includes("dead_code"), "AGENTS.md must not promise a gate the project omitted");
+    assert.match(policy, /No remote CI is configured/);
   });
 });

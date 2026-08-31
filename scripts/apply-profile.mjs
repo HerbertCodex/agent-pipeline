@@ -62,12 +62,35 @@ function renderAgents(config) {
   const invariants = readFileSync(invariantsPath, "utf8").trim();
   if (invariants.length === 0) fail(`${invariantsPath} is empty`);
 
+  const qualityDescriptions = {
+    tracker_sync: "Issue-source drift",
+    dead_code: "Dead code",
+    sast: "Static security analysis",
+    doc_lint: "Documentation contracts",
+    comment_policy: "Forbidden narration",
+    design_limits: "Measured design limits",
+  };
+  const qualityGates = Object.entries(qualityDescriptions)
+    .filter(([key]) => typeof config.commands?.[key] === "string")
+    .map(([key, description]) => `- ${description} (\`${key}\`).`)
+    .join("\n");
+  const ciPolicy = config.ci?.provider === "none"
+    ? "No remote CI is configured. Local gate results are evidence only for the machine and SHA on which they ran; a merge has no remote proof until the operator configures a provider."
+    : "The generated CI replays regular commands on pushes and deferred closure gates on pull requests. The orchestrator pushes the spec branch after each persistence carrying a commit. A green run on the exact SHA is proof; QA reads it instead of re-running, and re-runs only what CI does not cover or when no run exists.";
+
   let text = readFileSync(AGENTS_TEMPLATE, "utf8")
     .replaceAll("{{profile}}", config.profile)
-    .replaceAll("{{profile_invariants}}", invariants);
+    .replaceAll("{{profile_invariants}}", invariants)
+    .replaceAll("{{ci_policy}}", ciPolicy)
+    .replaceAll("{{quality_gates}}", qualityGates || "- No optional framework quality gate is configured.");
 
   const unresolved = text.match(/\{\{[a-z._]+\}\}/);
   if (unresolved) fail(`${AGENTS_TEMPLATE}: unresolved variable ${unresolved[0]}`);
+  text = stripUndeclaredGates(text, config);
+  const orphans = orphanGates(text, config);
+  if (orphans.length > 0) {
+    fail(`${AGENTS_TEMPLATE}: rendered policy names undeclared gates: ${orphans.join(", ")}`);
+  }
   return text;
 }
 
@@ -702,6 +725,12 @@ function main() {
       typeof config.agent_runtime.interactive_input !== "boolean"
     ) {
       fail("agent_runtime.interactive_input must be a boolean");
+    }
+    if (
+      config.agent_runtime.runs_dir != null &&
+      (typeof config.agent_runtime.runs_dir !== "string" || config.agent_runtime.runs_dir.trim().length === 0)
+    ) {
+      fail("agent_runtime.runs_dir must be a non-empty path");
     }
   }
   if (config.issue_tracker != null && config.issue_tracker.enabled !== false) {

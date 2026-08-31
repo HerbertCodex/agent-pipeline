@@ -106,6 +106,34 @@ function scopeIsFrozen(phase) {
   return ["active", "ready_for_pr", "pr_open", "merged"].includes(phase);
 }
 
+/**
+ * Decides whether an approved change may still enter the current delivery.
+ *
+ * Active work may still be renegotiated by the operator. Once the spec is
+ * ready for review, only a concrete delivery blocker may join it; ordinary
+ * improvements become a follow-up spec. A merged spec is historical and can
+ * never change scope.
+ *
+ * @param phase - current spec phase
+ * @param value - request scope-change block
+ * @returns true when the change may alter the frozen contract
+ */
+function scopeChangeAllowed(phase, value) {
+  if (!scopeIsFrozen(phase)) return true;
+  if (!approvedScopeChange(value)) return false;
+  if (phase === "active") return true;
+  if (["ready_for_pr", "pr_open"].includes(phase)) return value.kind === "delivery_blocker";
+  return false;
+}
+
+function scopeChangeInstruction(phase) {
+  if (["ready_for_pr", "pr_open"].includes(phase)) {
+    return "Only scope_change.kind=delivery_blocker may still join this delivery; create a follow-up spec otherwise.";
+  }
+  if (phase === "merged") return "A merged spec is immutable; create a follow-up spec.";
+  return "Provide scope_change { approved_by: operator, reason, approved_at }.";
+}
+
 function trackerSourceFields(kind, entry, snapshot) {
   const source = entry.record;
   const fields = { title: source.title, priority: source.priority ?? null };
@@ -149,10 +177,11 @@ function refreshTracker(record, kind, config, request) {
   const active = kind === "issue"
     ? record.pipeline_state?.phase !== "planned"
     : scopeIsFrozen(record.spec_state?.phase);
-  if (active && !approvedScopeChange(request.scope_change)) {
+  const contractPhase = kind === "issue" ? "active" : record.spec_state?.phase;
+  if (active && !scopeChangeAllowed(contractPhase, request.scope_change)) {
     fail(
-      `tracker scope changed for active ${record.id}; refresh requires ` +
-        "scope_change { approved_by: operator, reason, approved_at }. Nothing written.",
+      `tracker scope changed for ${record.id} in ${contractPhase}; ` +
+        `${scopeChangeInstruction(contractPhase)} Nothing written.`,
     );
   }
   const previousRevision = record.tracker?.revision ?? null;
@@ -449,6 +478,23 @@ function applyRequest(request, config, rules) {
         fail(`spec transition forbidden : ${previous.phase}->${next.phase}. Nothing written.`);
       }
     }
+    if (next.phase === "pr_open" && typeof (next.pr_url ?? previous.pr_url) !== "string") {
+      fail("pr_open requires spec_state.pr_url. Nothing written.");
+    }
+    if (next.phase === "merged") {
+      if (previous.phase !== "pr_open") {
+        fail(`merged requires a recorded pr_open state, not ${previous.phase ?? "no phase"}. Nothing written.`);
+      }
+      if (!/^[a-f0-9]{7,64}$/i.test(next.merge_sha ?? "")) {
+        fail("merged requires spec_state.merge_sha. Nothing written.");
+      }
+      if (typeof next.merged_at !== "string" || Number.isNaN(Date.parse(next.merged_at))) {
+        fail("merged requires a valid spec_state.merged_at. Nothing written.");
+      }
+      if (typeof (next.pr_url ?? previous.pr_url) !== "string") {
+        fail("merged requires the pull request URL recorded by pr_open. Nothing written.");
+      }
+    }
     record.spec_state = { ...previous, ...next };
   }
   if (request.spec_fields != null) {
@@ -463,11 +509,11 @@ function applyRequest(request, config, rules) {
       Object.hasOwn(request.spec_fields, "issues") &&
       scopeIsFrozen(record.spec_state?.phase) &&
       JSON.stringify(request.spec_fields.issues) !== JSON.stringify(record.issues) &&
-      !approvedScopeChange(request.scope_change)
+      !scopeChangeAllowed(record.spec_state?.phase, request.scope_change)
     ) {
       fail(
-        "spec issue list is frozen after activation. Park findings; expanding active scope requires " +
-          "scope_change { approved_by: operator, reason, approved_at }. Nothing written.",
+        `spec issue list is frozen in ${record.spec_state?.phase}. Park findings. ` +
+          `${scopeChangeInstruction(record.spec_state?.phase)} Nothing written.`,
       );
     }
     Object.assign(record, request.spec_fields);
@@ -586,11 +632,11 @@ function create(request, config, rules) {
       spec != null &&
       scopeIsFrozen(spec.spec_state?.phase) &&
       !planned &&
-      !approvedScopeChange(request.create_record.scope_change)
+      !scopeChangeAllowed(spec.spec_state?.phase, request.create_record.scope_change)
     ) {
       fail(
-        `spec ${spec.id} is active and does not plan ${record.id}. Findings are parked by default; ` +
-          "creating another issue requires scope_change approved by the operator.",
+        `spec ${spec.id} is in ${spec.spec_state?.phase} and does not plan ${record.id}. ` +
+          `Findings are parked by default. ${scopeChangeInstruction(spec.spec_state?.phase)}`,
       );
     }
   }

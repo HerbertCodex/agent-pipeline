@@ -135,7 +135,7 @@ Les événements distinguent notamment :
 - le heartbeat périodique ;
 - la fin et son code de sortie.
 
-`Ctrl+C` est propagé au processus enfant. L’utilisateur n’est donc pas prisonnier d’une exécution silencieuse. Si la CLI choisie accepte réellement des messages sur son entrée standard pendant l’exécution, activez `agent_runtime.interactive_input: true` : le dashboard affiche alors un champ « Send » par agent et transmet le texte à ce processus précis. La valeur reste `false` par défaut, car prétendre qu’une CLI non interactive a reçu un message serait plus dangereux qu’un refus clair.
+`Ctrl+C` est propagé au processus enfant. L’utilisateur n’est donc pas prisonnier d’une exécution silencieuse. Chaque lancement écrit aussi sous `agent_runtime.runs_dir` une preuve non sensible contenant le rôle, le digest du package, le PID, les horaires et le code de sortie ; la sortie complète reste en mémoire. Si la CLI choisie accepte réellement des messages sur son entrée standard pendant l’exécution, activez `agent_runtime.interactive_input: true` : le dashboard affiche alors un champ « Send » par agent et transmet le texte à ce processus précis. La valeur reste `false` par défaut, car prétendre qu’une CLI non interactive a reçu un message serait plus dangereux qu’un refus clair.
 
 ### Dashboard local en direct
 
@@ -187,7 +187,17 @@ node agent-pipeline/scripts/findings.mjs --spec <spec-id>
 node agent-pipeline/scripts/findings.mjs --all --json
 ~~~
 
-Le parking ne devient jamais une file de travail implicite. Élargir les critères actifs exige une décision opérateur explicite de type `scope_change`.
+Le parking ne devient jamais une file de travail implicite. Élargir les critères actifs exige une décision opérateur explicite de type `scope_change`. À partir de `ready_for_pr`, seul un `delivery_blocker` approuvé peut encore rejoindre la livraison ; le reste devient une nouvelle spec. Une spec `merged` est immuable.
+
+Après le merge humain, la livraison est réconciliée avec le commit réellement présent dans Git :
+
+~~~bash
+node agent-pipeline/scripts/reconcile-merge.mjs <spec-id> \
+  --sha <merge-commit> \
+  --merged-at <date-ISO>
+~~~
+
+Tant que cette commande n’a pas réussi, une spec encore marquée `pr_open` n’est pas considérée comme terminée.
 
 ## Un coût proportionné au risque
 

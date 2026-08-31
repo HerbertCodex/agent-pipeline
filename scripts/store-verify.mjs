@@ -85,6 +85,33 @@ function verifyClaimsCarried(record, path) {
   return 1;
 }
 
+function verifyMergedSpec(record, issues, path) {
+  if (record.spec_state?.phase !== "merged") return 0;
+  let problems = 0;
+  const state = record.spec_state;
+  if (!/^[a-f0-9]{7,64}$/i.test(state.merge_sha ?? "")) {
+    console.error(`${path}: merged spec ${record.id} has no valid merge_sha`);
+    problems += 1;
+  }
+  if (typeof state.merged_at !== "string" || Number.isNaN(Date.parse(state.merged_at))) {
+    console.error(`${path}: merged spec ${record.id} has no valid merged_at`);
+    problems += 1;
+  }
+  if (typeof state.pr_url !== "string" || state.pr_url.trim().length === 0) {
+    console.error(`${path}: merged spec ${record.id} has no pr_url`);
+    problems += 1;
+  }
+  const byId = new Map(issues.map((issue) => [issue.id, issue]));
+  for (const id of record.issues ?? []) {
+    const issue = byId.get(id);
+    if (issue?.pipeline_state?.phase !== "closed") {
+      console.error(`${path}: merged spec ${record.id} contains non-closed issue ${id}`);
+      problems += 1;
+    }
+  }
+  return problems;
+}
+
 /**
  * Checks an issue's verification ledger.
  *
@@ -275,6 +302,8 @@ function main() {
           config,
           path,
         );
+      } else {
+        problems += verifyMergedSpec(entry.record, issueRecords, path);
       }
     }
   }

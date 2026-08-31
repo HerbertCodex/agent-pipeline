@@ -48,6 +48,7 @@
   "agent_runtime": {
     "prompt_adapter": "portable",
     "interactive_input": false,
+    "runs_dir": "pipeline/runs",
     "progress_interval_seconds": 20
   },
   "workflow": {

@@ -150,6 +150,14 @@ node agent-pipeline/scripts/dispatch.mjs <issue-id> <role>
 
 The generated JSON package contains the role, prompt and brief paths, the bounded record view, its hash and state version. The harness receives that package path; it does not need a vendor-specific store integration.
 
+After a human merge, fetch the merge commit and close the durable delivery record:
+
+```
+node agent-pipeline/scripts/reconcile-merge.mjs <spec-id> --sha <merge-commit> --merged-at <ISO-date>
+```
+
+The command verifies that the SHA exists locally, that the spec reached `pr_open`, and that the store remains valid before and after recording `merged`. A PR merged while its spec still says `pr_open` is drift, not completion.
+
 The rule that follows holds for any output meant for a human: **the framework produces a self-contained file and names what a capable harness should do with it.** The capability belongs to the tool, never to the pipeline. The renderers therefore print, after the path written, the line saying what to do with it — publish if the harness can host, hand over the path otherwise. It is printed where the driver already looks, the command's output, rather than buried in a document it may not have read.
 
 Corollary worth knowing: a harness that cannot publish degrades **nothing** that was guaranteed. The pages open on their own, with no network and no dependency. What is lost is the convenience of a link, not a proof.

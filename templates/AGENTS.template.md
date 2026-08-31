@@ -54,11 +54,15 @@ Parallel dispatch only if dependencies are closed and `check-reservations` repor
 
 ## 7. CI and proof by SHA
 
-The generated CI replays every command from the config on every push. The orchestrator pushes the spec branch after each persistence carrying a commit. A green run on the exact SHA is proof; QA reads it instead of re-running, and re-runs only what CI does not cover or when no run exists.
+{{ci_policy}}
 
 ## 8. Quality gates
 
-Issue-source drift (`tracker_sync`), dead code (`dead_code`), static security analysis (`sast`), documentation contracts (`doc_lint`), forbidden narration (`comment_policy`), design limits (`design_limits`), and a reuse note required for every creation. Quality is a command that fails or a proof that is demanded, never an adjective.
+The configured cross-cutting policy gates named here are:
+
+{{quality_gates}}
+
+A reuse note is required for every creation. Quality is a command that fails or a proof that is demanded, never an adjective.
 
 ## 9. Profile invariants
 
@@ -74,6 +78,6 @@ A PR is reviewed by a human if it touches the profile's `human_review_paths`, or
 
 Every tool loop has an explicit limit, set by the workflow section that introduces it. An unavailable command is reported (`blocked_infrastructure`), never replaced by a mock pretending to prove the real system.
 
-An active spec's issue list is frozen. A discovery is persisted as a parked finding by default and does not become scheduled work. `store-update` accepts an expansion only with `scope_change { approved_by: "operator", reason, approved_at }`; an agent never grants that approval to itself.
+An active spec's issue list is frozen. A discovery is persisted as a parked finding by default and does not become scheduled work. During `active`, `store-update` accepts an expansion only with `scope_change { approved_by: "operator", reason, approved_at }`. In `ready_for_pr` or `pr_open`, it additionally requires `kind: "delivery_blocker"`; every ordinary improvement becomes a follow-up spec. A merged spec is immutable. An agent never grants approval to itself.
 
 Agent execution goes through the configured command adapter when one exists. `dispatch.mjs` streams output, emits a heartbeat at `agent_runtime.progress_interval_seconds`, and propagates interruption. Harness-specific executable names, flags and prompt metadata belong to adapters, never to the canonical role prompts or the scheduler.

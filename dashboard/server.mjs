@@ -60,6 +60,8 @@ function appendOutput(run, text) {
 function publicRun(run) {
   return {
     id: run.id,
+    runtime_run_id: run.runtime_run_id,
+    run_record: run.run_record,
     issue_id: run.issue_id,
     role: run.role,
     status: run.status,
@@ -73,7 +75,10 @@ function publicRun(run) {
 }
 
 function processEvent(run, event) {
-  if (event.type === "started") run.status = "running";
+  if (event.type === "started") {
+    run.status = "running";
+    if (typeof event.run_id === "string") run.runtime_run_id = event.run_id;
+  }
   if (event.type === "heartbeat" && Number.isFinite(event.elapsed_ms)) run.elapsed_ms = event.elapsed_ms;
   if (event.type === "output" && typeof event.text === "string") appendOutput(run, event.text);
   if (event.type === "interrupted") run.status = "interrupted";
@@ -81,6 +86,7 @@ function processEvent(run, event) {
     run.status = event.exit_code === 0 ? "completed" : "failed";
     run.exit_code = event.exit_code;
     if (Number.isFinite(event.elapsed_ms)) run.elapsed_ms = event.elapsed_ms;
+    if (typeof event.run_record === "string") run.run_record = event.run_record;
   }
   run.updated_at = new Date().toISOString();
 }
@@ -304,6 +310,8 @@ class RunRegistry {
     const timestamp = new Date().toISOString();
     const run = {
       id,
+      runtime_run_id: null,
+      run_record: null,
       issue_id: issueId,
       role,
       status: "starting",

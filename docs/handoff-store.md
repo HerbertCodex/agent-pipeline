@@ -54,7 +54,7 @@ Nothing in the plan contradicts the approved scope. If the decomposition reveals
 
 A QA rejection carries a `fault` among `spec`, `test`, `dependency`, `code`, `infrastructure`; an approval carries none. A `fault: code` carries a `regression` block (`required`, then `criterion` or `reason`).
 
-Discoveries are durable but do not automatically become backlog. Missing `lands` means `parking`; `criterion`, `regression` and `delivery_blocker` are the only classifications that block closure and each names the fact that blocks it. `findings.mjs` renders the triage inbox from `discoveries_declared`. An active spec's issue list changes only through an operator-approved `scope_change`.
+Discoveries are durable but do not automatically become backlog. Missing `lands` means `parking`; `criterion`, `regression` and `delivery_blocker` are the only classifications that block closure and each names the fact that blocks it. `findings.mjs` renders the triage inbox from `discoveries_declared`. An active spec's issue list changes only through an operator-approved `scope_change`; after `ready_for_pr`, that approval must name `kind: "delivery_blocker"`, and after `merged` the list is immutable.
 
 ## A screen is coded against a mockup, not from memory
 

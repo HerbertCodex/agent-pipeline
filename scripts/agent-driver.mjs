@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
-import { loadConfig, loadRules, fail } from "./lib.mjs";
+import { atomicWrite, loadConfig, loadRules, sha256, fail } from "./lib.mjs";
 
 /**
  * Replaces exact runtime placeholders without invoking a shell.
@@ -40,6 +41,34 @@ function emit(event, json) {
   }
 }
 
+function runRecord(config, runId, role, packagePath, startedAt) {
+  const directory = config.agent_runtime?.runs_dir ?? join(config.store_dir, "runs");
+  const path = join(directory, `${runId}.json`);
+  const taskPackage = readFileSync(packagePath, "utf8");
+  const record = {
+    schema_version: 1,
+    run_id: runId,
+    role,
+    package: relative(process.cwd(), packagePath),
+    package_sha256: sha256(taskPackage),
+    adapter: config.agent_runtime.command,
+    parent_process_id: process.pid,
+    process_id: null,
+    status: "starting",
+    started_at: startedAt,
+    ended_at: null,
+    elapsed_ms: null,
+    exit_code: null,
+  };
+  atomicWrite(path, `${JSON.stringify(record, null, 2)}\n`);
+  return { path, record };
+}
+
+function persistRun(run, changes) {
+  Object.assign(run.record, changes);
+  atomicWrite(run.path, `${JSON.stringify(run.record, null, 2)}\n`);
+}
+
 /**
  * Runs one configured agent command while streaming output and heartbeats.
  *
@@ -69,15 +98,23 @@ export async function runAgent(role, packagePath, config, json = false) {
   }
   const intervalMs = Math.max(50, intervalSeconds * 1000);
   const started = Date.now();
+  const startedAt = new Date().toISOString();
   const runId = randomUUID();
-  emit({ type: "started", run_id: runId, role, package: packagePath, at: new Date().toISOString() }, json);
+  const run = runRecord(config, runId, role, packagePath, startedAt);
+  emit({ type: "started", run_id: runId, role, package: packagePath, at: startedAt }, json);
 
   const child = spawn(runtime.command, args, {
     cwd: runtime.cwd ?? process.cwd(),
-    env: process.env,
+    env: {
+      ...process.env,
+      AGENT_PIPELINE_RUN_ID: runId,
+      AGENT_PIPELINE_ROLE: role,
+      AGENT_PIPELINE_TASK_PACKAGE: packagePath,
+    },
     shell: false,
     stdio: ["inherit", "pipe", "pipe"],
   });
+  persistRun(run, { status: "running", process_id: child.pid ?? null });
 
   child.stdout.on("data", (chunk) => {
     emit({ type: "output", run_id: runId, role, stream: "stdout", text: chunk.toString() }, json);
@@ -98,23 +135,40 @@ export async function runAgent(role, packagePath, config, json = false) {
   process.once("SIGINT", interrupt);
   process.once("SIGTERM", interrupt);
 
-  const exitCode = await new Promise((resolve, reject) => {
-    child.once("error", reject);
-    child.once("close", (code) => resolve(code ?? 1));
-  }).finally(() => {
+  let exitCode;
+  try {
+    exitCode = await new Promise((resolve, reject) => {
+      child.once("error", reject);
+      child.once("close", (code) => resolve(code ?? 1));
+    });
+  } catch (error) {
+    persistRun(run, {
+      status: "failed",
+      ended_at: new Date().toISOString(),
+      elapsed_ms: Date.now() - started,
+      exit_code: 1,
+      error: error.message,
+    });
+    throw error;
+  } finally {
     clearInterval(heartbeat);
     process.off("SIGINT", interrupt);
     process.off("SIGTERM", interrupt);
-  });
+  }
 
-  if (interrupted) emit({ type: "interrupted", run_id: runId, role, at: new Date().toISOString() }, json);
+  const endedAt = new Date().toISOString();
+  const elapsedMs = Date.now() - started;
+  const status = interrupted ? "interrupted" : exitCode === 0 ? "completed" : "failed";
+  persistRun(run, { status, ended_at: endedAt, elapsed_ms: elapsedMs, exit_code: exitCode });
+  if (interrupted) emit({ type: "interrupted", run_id: runId, role, at: endedAt }, json);
   emit({
     type: "completed",
     run_id: runId,
     role,
     exit_code: exitCode,
-    elapsed_ms: Date.now() - started,
-    at: new Date().toISOString(),
+    elapsed_ms: elapsedMs,
+    run_record: run.path,
+    at: endedAt,
   }, json);
   return exitCode;
 }

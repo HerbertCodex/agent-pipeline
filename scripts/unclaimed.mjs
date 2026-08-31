@@ -54,6 +54,11 @@ export function unclaimed(root, config, records) {
   );
   const known = new Set(records.map((record) => record.id));
 
+  const namesKnownIssue = (subject) => [...known].some((id) => {
+    const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(^|[^A-Za-z0-9._-])${escaped}(?=$|[^A-Za-z0-9._-])`).test(subject);
+  });
+
   return log
     .split("\x1e")
     .map((entry) => entry.trim())
@@ -63,7 +68,7 @@ export function unclaimed(root, config, records) {
       return { sha, subject, body: body ?? "" };
     })
     .filter((commit) => !claimed.has(commit.sha))
-    .filter((commit) => ![...(commit.subject.match(/\bi-\d+\b/g) ?? [])].some((id) => known.has(id)))
+    .filter((commit) => !namesKnownIssue(commit.subject))
     .filter((commit) => !/^direct:/m.test(`${commit.subject}\n${commit.body}`));
 }
 

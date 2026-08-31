@@ -325,7 +325,9 @@ const PAGE = `<!doctype html>
       title.textContent = run.issue_id + " · " + run.role;
       const meta = document.createElement("p");
       meta.className = "meta";
-      meta.textContent = run.id;
+      meta.textContent = run.runtime_run_id == null
+        ? run.id
+        : run.id + " · runtime " + run.runtime_run_id;
       titleBox.append(title, meta);
       const status = document.createElement("span");
       status.className = "status " + run.status;
@@ -336,6 +338,7 @@ const PAGE = `<!doctype html>
       facts.append(
         fact("Elapsed", (run.elapsed_ms / 1000).toFixed(1) + " s"),
         fact("Exit", run.exit_code == null ? "—" : String(run.exit_code)),
+        fact("Record", run.run_record == null ? "—" : run.run_record),
       );
       const output = document.createElement("pre");
       output.textContent = run.output || "Waiting for output…";

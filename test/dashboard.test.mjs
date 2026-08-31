@@ -175,12 +175,14 @@ describe("live dashboard: a local view over portable agent events", () => {
     child.stdout.write('{"type":"started","run_id":"agent-run","role":"implementer"}\n');
     child.stdout.write('{"type":"heartbeat","run_id":"agent-run","role":"implementer","elapsed_ms":2500}\n');
     child.stdout.write('{"type":"output","run_id":"agent-run","role":"implementer","stream":"stdout","text":"red test pinned\\n"}\n');
-    child.stdout.write('{"type":"completed","run_id":"agent-run","role":"implementer","exit_code":0,"elapsed_ms":3200}\n');
+    child.stdout.write('{"type":"completed","run_id":"agent-run","role":"implementer","exit_code":0,"elapsed_ms":3200,"run_record":"pipeline/runs/agent-run.json"}\n');
     child.emit("close", 0);
 
     const snapshot = await (await fetch(`${origin}/api/snapshot`)).json();
     assert.equal(snapshot.runs.length, 1);
     assert.equal(snapshot.runs[0].id, accepted.run_id);
+    assert.equal(snapshot.runs[0].runtime_run_id, "agent-run");
+    assert.equal(snapshot.runs[0].run_record, "pipeline/runs/agent-run.json");
     assert.equal(snapshot.runs[0].issue_id, "i-001");
     assert.equal(snapshot.runs[0].status, "completed");
     assert.equal(snapshot.runs[0].elapsed_ms, 3200);

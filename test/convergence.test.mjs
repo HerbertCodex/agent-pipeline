@@ -70,6 +70,58 @@ describe("an active spec converges instead of absorbing every finding", () => {
     assert.match(result.output, /frozen|scope_change/i);
     assert.deepEqual(readRecord(sandbox, "specs", "s-t1").issues, ["i-t1"]);
   });
+
+  test("an ordinary operator request cannot expand a spec already ready for review", () => {
+    sandbox = createSandbox({ specs: [activeSpec({ spec_state: { phase: "ready_for_pr" } })] });
+    const request = writeJson(sandbox, "update.json", {
+      target: { kind: "spec", id: "s-t1" },
+      expected_record_hash: recordHash(sandbox, "specs", "s-t1"),
+      spec_fields: { issues: ["i-t1", "i-nice-to-have"] },
+      scope_change: {
+        approved_by: "operator",
+        reason: "one more useful feature",
+        approved_at: "2026-08-28T12:00:00.000Z",
+      },
+    });
+    const result = run(sandbox, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /delivery_blocker|follow-up spec/i);
+  });
+
+  test("an approved delivery blocker may join an unmerged delivery", () => {
+    sandbox = createSandbox({ specs: [activeSpec({ spec_state: { phase: "pr_open" } })] });
+    const request = writeJson(sandbox, "update.json", {
+      target: { kind: "spec", id: "s-t1" },
+      expected_record_hash: recordHash(sandbox, "specs", "s-t1"),
+      spec_fields: { issues: ["i-t1", "i-blocker"] },
+      scope_change: {
+        kind: "delivery_blocker",
+        approved_by: "operator",
+        reason: "the current build loses accepted data",
+        approved_at: "2026-08-28T12:00:00.000Z",
+      },
+    });
+    assert.equal(run(sandbox, "store-update.mjs", [request]).status, 0);
+    assert.deepEqual(readRecord(sandbox, "specs", "s-t1").issues, ["i-t1", "i-blocker"]);
+  });
+
+  test("a merged spec is immutable even for a delivery blocker", () => {
+    sandbox = createSandbox({ specs: [activeSpec({ spec_state: { phase: "merged" } })] });
+    const request = writeJson(sandbox, "update.json", {
+      target: { kind: "spec", id: "s-t1" },
+      expected_record_hash: recordHash(sandbox, "specs", "s-t1"),
+      spec_fields: { issues: ["i-t1", "i-blocker"] },
+      scope_change: {
+        kind: "delivery_blocker",
+        approved_by: "operator",
+        reason: "found after merge",
+        approved_at: "2026-08-28T12:00:00.000Z",
+      },
+    });
+    const result = run(sandbox, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /immutable|follow-up spec/i);
+  });
 });
 
 describe("findings remain queryable data rather than scheduled work", () => {

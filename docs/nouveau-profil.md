@@ -71,7 +71,7 @@ Also mandatory, outside `commands`: an `architecture` block, `{ id, project_type
 
 Mandatory paths, refused if absent: `profiles_dir`, `docs_dirs`, `briefs_dir`, `prompts_dir`, `skills_dir`, `rules_path`, `project_context`, `store_dir`. New installations also configure `issue_tracker` for Sudocode; its `root` must stay distinct from `store_dir`.
 
-`agent_runtime` is the harness boundary. `prompt_adapter` is `portable` or `claude-code`; `command` is the chosen CLI executable; `args` is its argument vector using exact `{role}` and `{package}` placeholders; `progress_interval_seconds` defaults to 20. The driver uses no shell, streams both output channels, emits heartbeats and propagates interruption. Do not put Codex, Claude Code or Kilo Code flags in a core script — only in this project configuration.
+`agent_runtime` is the harness boundary. `prompt_adapter` is `portable` or `claude-code`; `command` is the chosen CLI executable; `args` is its argument vector using exact `{role}` and `{package}` placeholders; `progress_interval_seconds` defaults to 20. `runs_dir` receives one durable JSON record per child process: role, package digest, PID, timestamps and exit status, never the potentially sensitive output. The driver uses no shell, streams both output channels, emits heartbeats and propagates interruption. Do not put Codex, Claude Code or Kilo Code flags in a core script — only in this project configuration.
 
 Once that command runs, `node agent-pipeline/dashboard/server.mjs` provides the local live surface over the same NDJSON events. It launches `dispatch.mjs`; it does not schedule, persist pipeline state or replace the store. Binding stays on the loopback interface, and a server restart deliberately forgets runtime output.
 

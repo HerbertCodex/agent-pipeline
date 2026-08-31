@@ -74,6 +74,23 @@ describe("the store knowing nothing of the work is itself reportable", () => {
     assert.deepEqual(unclaimed(root, { project_map: { roots: ["src"] } }, records), []);
   });
 
+  test("Sudocode alphanumeric issue ids claim their earlier commits", () => {
+    const { root, shas } = repository([
+      ["src/a.test.ts", "test: cover catalogue search for i-6lso"],
+      ["src/a.ts", "feat: implement catalogue search for i-6lso"],
+    ]);
+    sandbox = root;
+    const records = [issue({ id: "i-6lso", pipeline_state: state({ last_commit_sha: shas[1] }) })];
+    assert.deepEqual(unclaimed(root, { project_map: { roots: ["src"] } }, records), []);
+  });
+
+  test("an issue id is not confused with a longer id sharing its prefix", () => {
+    const { root } = repository([["src/a.ts", "feat: implement i-6lso-extra"]]);
+    sandbox = root;
+    const records = [issue({ id: "i-6lso" })];
+    assert.equal(unclaimed(root, { project_map: { roots: ["src"] } }, records).length, 1);
+  });
+
   test("a commit naming an issue the store does not carry is still unclaimed", () => {
     const { root } = repository([["src/a.ts", "feat(i-0099): du travail invente"]]);
     sandbox = root;

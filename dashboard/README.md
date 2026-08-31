@@ -24,9 +24,11 @@ keeping the current directory as the host project. A test runs this exact
 sibling layout and asserts that the dispatched process works in the host.
 
 Open `http://127.0.0.1:4399`. Use `--port <number>` when that port is
-already allocated. Runtime output stays in memory and disappears
-when the server stops. Durable issue definitions remain in Sudocode and
-execution control remains in the separate configured store.
+already allocated. Runtime output stays in memory and disappears when the
+server stops. The driver still writes a non-sensitive lifecycle record under
+`agent_runtime.runs_dir`, so the role, task-package digest, child PID,
+timestamps and exit status remain auditable. Durable issue definitions remain
+in Sudocode and execution control remains in the separate configured store.
 
 The issue picker reads Sudocode's configured JSONL source and joins it to the
 pipeline control records. It supports search and phase-oriented filters,
