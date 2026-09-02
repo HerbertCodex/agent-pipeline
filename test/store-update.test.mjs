@@ -36,6 +36,20 @@ function withIssue(overrides = {}) {
 }
 
 describe("store-update: optimistic lock", () => {
+  test("refuses an unknown request key without rewriting the record", () => {
+    const { root, id, hash } = withIssue();
+    const before = readRecord(root, "issues", id);
+    const request = writeJson(root, "r.json", {
+      target: { kind: "issue", id },
+      expected_record_hash: hash,
+      issue_fields: { depends_on: ["i-other"] },
+    });
+    const result = run(root, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /unknown request field.*issue_fields/i);
+    assert.deepEqual(readRecord(root, "issues", id), before);
+  });
+
   test("refuses a concurrent writer before reading and leaves the store untouched", () => {
     const { root, id, hash } = withIssue();
     const before = readRecord(root, "issues", id);

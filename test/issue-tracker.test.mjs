@@ -146,6 +146,32 @@ describe("Sudocode issue tracker adapter", () => {
     assert.equal(invocation.options.shell, false);
   });
 
+  test("recovers an aborted status update only after export proves the persisted status", () => {
+    const { root, config, issues } = project();
+    const calls = [];
+    const result = updateTrackerStatus("ISSUE-002", "in_progress", config, {
+      cwd: root,
+      run(command, args, options) {
+        calls.push({ command, args, options });
+        if (args.includes("update")) {
+          issues[1].status = "in_progress";
+          writeFileSync(
+            join(root, ".sudocode", "issues.jsonl"),
+            `${issues.map((issue) => JSON.stringify(issue)).join("\n")}\n`,
+          );
+          return { status: 1, stdout: "", stderr: "aborted after write" };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    assert.equal(result.recovered_after_write, true);
+    assert.deepEqual(calls.map((call) => call.args), [
+      ["--json", "issue", "update", "ISSUE-002", "--status", "in_progress"],
+      ["export"],
+    ]);
+  });
+
   test("refuses projection until managed work is bound and then exposes only status drift", () => {
     const { root, config } = project();
     config.issue_tracker.managed_tag = "pipeline";

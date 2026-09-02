@@ -118,7 +118,7 @@ describe("an exemption is a claim about the diff, and the diff can be read", () 
  * @returns validate-handoff's result
  */
 function plan(reservations, mockup) {
-    const approved = join(sandbox, "approved.md");
+    const approved = join(sandbox, "docs", "decisions", "approved.md");
     const body = "# scope\n";
     writeFileSync(approved, body);
     return run(sandbox, "validate-handoff.mjs", [
@@ -135,7 +135,7 @@ function plan(reservations, mockup) {
           digest_sha256: createHash("sha256").update(body).digest("hex"),
           approved_at: "2026-08-21",
           round: 1,
-          path: "approved.md",
+          path: "docs/decisions/approved.md",
         },
         ...(mockup === undefined ? {} : { mockup }),
         issues: [

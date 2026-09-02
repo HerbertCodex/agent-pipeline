@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { loadConfig, loadRules, readJsonl, pathAllowed, sha256, generatedPaths, fail } from "./lib.mjs";
 import { reviewDigest } from "./render-proposal.mjs";
 import { dependencyDigest } from "./render-dependency.mjs";
@@ -573,6 +573,7 @@ function main() {
   const handoffPath = process.argv[2];
   if (!handoffPath) fail("usage : validate-handoff.mjs <handoff.json>");
   const handoff = JSON.parse(readFileSync(handoffPath, "utf8"));
+  const config = loadConfig();
   const rules = loadRules();
   const errors = [];
 
@@ -1008,13 +1009,27 @@ function main() {
       }
       const path = approved.path;
       if (path == null) errors.push("approved_proposal.path missing");
-      else if (!existsSync(path)) errors.push(`approved_proposal.path not found: ${path}`);
-      else {
-        const actual = sha256(readFileSync(path, "utf8"));
-        if (actual !== approved.digest_sha256) {
+      else if (typeof config.decisions_dir !== "string" || config.decisions_dir.length === 0) {
+        errors.push("decisions_dir missing: an approved proposal must survive outside handoffs_dir");
+      } else {
+        const journal = resolve(config.decisions_dir);
+        const candidate = resolve(path);
+        const fromJournal = relative(journal, candidate);
+        const outsideJournal = fromJournal.length === 0 || fromJournal.startsWith(`..${sep}`) || isAbsolute(fromJournal);
+        if (outsideJournal) {
           errors.push(
-            `approved_proposal.digest_sha256 does not match the content of ${path}: declared ${approved.digest_sha256}, computed ${actual}`,
+            `approved_proposal.path must live under decisions_dir (${config.decisions_dir}), not ${path}: ` +
+              "handoffs are transient and git-ignored, while an approved scope must remain reviewable.",
           );
+        } else if (!existsSync(candidate)) {
+          errors.push(`approved_proposal.path not found: ${path}`);
+        } else {
+          const actual = sha256(readFileSync(candidate, "utf8"));
+          if (actual !== approved.digest_sha256) {
+            errors.push(
+              `approved_proposal.digest_sha256 does not match the content of ${path}: declared ${approved.digest_sha256}, computed ${actual}`,
+            );
+          }
         }
       }
     }
@@ -1023,7 +1038,7 @@ function main() {
   // An issue that reserves a generated path holds a file no agent writes,
   // and holds it against every other issue that adds an export. One line in
   // a plan, and the whole wave runs in series.
-  const generated = new Set(generatedPaths(loadConfig()));
+  const generated = new Set(generatedPaths(config));
   for (const item of handoff.issues ?? []) {
     for (const path of item?.file_reservations ?? []) {
       if (!generated.has(path)) continue;
@@ -1035,13 +1050,12 @@ function main() {
   }
 
   if (handoff.mode === "spec_plan") {
-    const planned = loadConfig();
-    checkCriteria(handoff, planned, errors);
+    checkCriteria(handoff, config, errors);
     // Asking the implementer is asking too late. Product is the one who can
     // still have a mockup drawn, and the operator is the one who should see it
     // before the screens exist — which is the order the design-system page
     // teaches and nothing enforced.
-    if (["frontend", "mobile", "fullstack"].includes(planned.architecture?.project_type)) {
+    if (["frontend", "mobile", "fullstack"].includes(config.architecture?.project_type)) {
       const screens = (handoff.issues ?? []).flatMap((item) =>
         screensAmong(item?.file_reservations).map((path) => ({ id: item.id ?? "issue", path })),
       );

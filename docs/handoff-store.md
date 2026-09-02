@@ -46,7 +46,7 @@ An empty `decisions_for_operator` is refused **unless** the proposal declares `s
 
 Until 2026-08-18 the framework produced these pages and nothing required them: the review happened on the days someone remembered. That is the failure this document warns about everywhere else — a mechanism no command checks does not happen — and it was sitting in the framework's own review step.
 
-`spec_plan` carries `approved_proposal { path, digest_sha256, approved_at, round }`: a precise round is approved, not a conversation. The validator re-reads the file and recomputes its digest, so a plan derived from a proposal that does not exist, from an invented digest, or **from a proposal modified after approval** is refused. That last case is the one that matters — without it, one could have a fourteen-day loan approved and plan thirty.
+`spec_plan` carries `approved_proposal { path, digest_sha256, approved_at, round }`: a precise round is approved, not a conversation. Its `path` lives under the configured `decisions_dir`, never under `handoffs_dir`: handoffs are transient and git-ignored, while an approved scope must remain reviewable on a fresh checkout and in CI. The validator re-reads the file and recomputes its digest, so a plan derived from a proposal that does not exist, from an invented digest, or **from a proposal modified after approval** is refused. That last case is the one that matters — without it, one could have a fourteen-day loan approved and plan thirty.
 
 Nothing in the plan contradicts the approved scope. If the decomposition reveals that the scope does not hold, Product does not quietly adjust it: it returns to phase 1 with one more round saying what it found.
 
