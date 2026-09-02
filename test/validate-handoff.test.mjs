@@ -317,6 +317,43 @@ describe("validate-handoff: transitions and red proof", () => {
     assert.match(result.output, /test_commit_sha must name/);
   });
 
+  test("accepts a characterization proof when no red phase exists", () => {
+    sandbox ??= createSandbox();
+    const path = writeJson(sandbox, "h-characterization.json", {
+      ...ISSUE_BASE,
+      requested_transition: { from: "in_progress", to: "ready_for_qa" },
+      evidence: {
+        ...ISSUE_BASE.evidence,
+        commands: [{ key: "check", cmd: "true", exit: 0 }],
+        proof_kind: "characterization",
+        characterization_proof: {
+          cmd: "node --test test/smoke.test.mjs",
+          exit: 0,
+          observed_against_commit_sha: "abc",
+          behaviour: "the existing HTTP journey returns the documented response",
+        },
+      },
+    });
+    const result = run(sandbox, "validate-handoff.mjs", [path]);
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("refuses a characterization proof that does not name what it observed", () => {
+    sandbox ??= createSandbox();
+    const path = writeJson(sandbox, "h-incomplete-characterization.json", {
+      ...ISSUE_BASE,
+      requested_transition: { from: "in_progress", to: "ready_for_qa" },
+      evidence: {
+        ...ISSUE_BASE.evidence,
+        proof_kind: "characterization",
+        characterization_proof: { cmd: "node --test", exit: 0, observed_against_commit_sha: "abc" },
+      },
+    });
+    const result = run(sandbox, "validate-handoff.mjs", [path]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /behaviour missing/);
+  });
+
   test("refuses a path outside the role policy", () => {
     sandbox ??= createSandbox();
     const path = writeJson(sandbox, "h.json", {
@@ -349,6 +386,22 @@ describe("validate-handoff: transitions and red proof", () => {
     const result = run(sandbox, "validate-handoff.mjs", [path]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /rationale missing/);
+  });
+
+  test("requires replayable proof for a discovery asserting an absence", () => {
+    sandbox ??= createSandbox();
+    const path = writeJson(sandbox, "h-absence.json", {
+      ...ISSUE_BASE,
+      requested_transition: { from: "in_progress", to: "ready_for_qa" },
+      evidence: {
+        ...ISSUE_BASE.evidence,
+        red_proof: { cmd: "jest", exit: 1, observed_before_implementation: true, test_commit_sha: "abc" },
+      },
+      discoveries: [{ title: "no audit trail", rationale: "the route emits nothing", assertion: "absence" }],
+    });
+    const result = run(sandbox, "validate-handoff.mjs", [path]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /proof\.cmd missing/);
   });
 });
 

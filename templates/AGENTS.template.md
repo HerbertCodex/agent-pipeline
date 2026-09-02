@@ -46,7 +46,7 @@ Implementer and QA never write to the control store or mutate Sudocode. Product 
 
 ## 5. State machine
 
-Nominal flow: `planned -> in_progress -> ready_for_qa -> qa_in_progress -> closed`. Blocks: `blocked_product`, `blocked_dependency`, `blocked_infrastructure`, `operator_escalation`. The Implementer writes both its tests and its code; what the Test Writer / Coder boundary used to guarantee is replaced by `evidence.red_proof`, its replay by the orchestrator against the `test:` commit, and two separate commits that QA diffs. **A code fault found by QA returns to the Implementer, who pins it with a red test before fixing it.** Three QA code rejections on the same issue: operator escalation.
+Nominal flow: `planned -> in_progress -> ready_for_qa -> qa_in_progress -> closed`. Blocks: `blocked_product`, `blocked_dependency`, `blocked_infrastructure`, `operator_escalation`. The Implementer writes both its tests and its code; what the Test Writer / Coder boundary used to guarantee is replaced by `evidence.red_proof`, its replay by the orchestrator against the `test:` commit, and two separate commits that QA diffs. A test-only characterization issue declares `evidence.proof_kind: "characterization"` and a passing observation instead: it must never invent a red phase. **A code fault found by QA returns to the Implementer, who pins it with a red test before fixing it.** Three QA code rejections on the same issue: operator escalation.
 
 ## 6. Parallel work
 

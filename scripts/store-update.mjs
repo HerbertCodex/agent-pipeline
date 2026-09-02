@@ -340,6 +340,11 @@ function applyRequest(request, config, rules) {
     }
     const from = previous?.phase ?? null;
     const to = request.pipeline_state.phase;
+    if (from !== "closed" && to === "closed" && !Object.hasOwn(request, "discoveries_declared")) {
+      fail(
+        "closed requires discoveries_declared in the same write, even when it is empty. Nothing written.",
+      );
+    }
     try {
       validateRejectionBudget(previous, request.pipeline_state, request.transition_reason, rules);
     } catch (error) {
@@ -571,6 +576,21 @@ function applyRequest(request, config, rules) {
     for (const [index, item] of request.discoveries_declared.entries()) {
       if (!item?.title || !item?.rationale) {
         fail(`discoveries_declared[${index}] requires title and rationale. Nothing written.`);
+      }
+      if (!["observed", "absence"].includes(item.assertion)) {
+        fail(`discoveries_declared[${index}].assertion must be observed or absence. Nothing written.`);
+      }
+      if (item.assertion === "absence") {
+        const proof = item.proof;
+        if (
+          typeof proof?.cmd !== "string" || proof.cmd.trim().length === 0 ||
+          proof.exit !== 0 ||
+          typeof proof?.observation !== "string" || proof.observation.trim().length === 0
+        ) {
+          fail(
+            `discoveries_declared[${index}].proof requires cmd, exit 0 and observation for an absence. Nothing written.`,
+          );
+        }
       }
     }
     const merged = new Map(

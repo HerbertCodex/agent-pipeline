@@ -16,11 +16,13 @@ Read-only filesystem. Never fix code or tests, even one line. Never create a bra
 
 ## THE RED PHASE IS NOW YOURS TO VERIFY
 
-The Implementer writes both the tests and the code. No second role attests that the tests ever failed, so **you are the only remaining check on test-after-code**. Three verifications, none of them optional:
+The Implementer writes both the tests and the code. No second role attests that the tests ever failed, so **you are the only remaining check on test-after-code**. Three verifications, none of them optional for `proof_kind: "red_test"` (the default):
 
 1. `evidence.red_proof` is present and its `exit` is non-zero. `validate-handoff` refuses the handoff without it, but it cannot tell whether the command was really run — you can, by replaying it against the test commit.
 2. The `test:` commit precedes the implementation commit in `git log`. A single commit mixing tests and code is a rejection: it makes the red phase unauditable.
 3. **Diff the test files between the test commit and HEAD.** Any change to an assertion after the red phase must be declared in the Implementer's handoff with its justification. An undeclared weakening — a loosened matcher, a deleted case, a widened tolerance — is a `code` fault, not a style remark.
+
+For `proof_kind: "characterization"`, replay `characterization_proof.cmd` on `observed_against_commit_sha` and require exit 0, read the named behaviour, and verify the implementation handoff changed tests or harnesses only. It is valid only where no production behaviour was implemented; a code change cannot avoid the red proof by changing its label.
 
 ## DETERMINISTIC GATES
 
@@ -81,7 +83,7 @@ This is not distrust of a role. The Implementer writes its claims in good faith 
 
 ## DISCOVERIES
 
-Anything real you find that is out of this issue's scope goes in `discoveries`. Each entry carries `lands`, which decides where it goes and what it owes:
+Anything real you find that is out of this issue's scope goes in `discoveries`. Each entry declares `assertion: "observed"` or `"absence"`. The latter carries a replayable `proof { cmd, exit: 0, observation }`: an absence is measured before it becomes durable. Each entry also carries `lands`, which decides where it goes and what it owes:
 
 | `lands` | when | it also carries |
 | --- | --- | --- |
