@@ -35,13 +35,24 @@ Use [Knip](https://knip.dev/) as the primary implementation of the bundle's
 and covers unused files, exports and dependencies more accurately than the
 framework's dependency-free shape matcher.
 
-Knip is not installed by this bundle. It is a new development dependency, so
-the bootstrap agent first assesses it and obtains operator approval. After that
-approval, an npm project may install it with:
+Knip is the pre-authorized dead-code dependency for this stack, so its
+installation does not require an operator interruption. Resolve and inspect
+the registry's current release at installation time, then install and verify it
+with:
 
 ```bash
-npm install --save-dev knip
+npm view knip@latest version engines deprecated dist.integrity
+npm install --save-dev knip@latest
+npm ls knip --depth=0
+npm audit
 ```
+
+Refuse deprecated or runtime-incompatible releases. The installed version must
+equal the registry's `latest` resolution, and the audit must include development
+dependencies. An audit proves only the absence of published advisories at that
+time. If Knip or its transitive graph has a known vulnerability with no safe
+release, undo only its installation, record the blocker and use the generic
+fallback; never suppress the advisory.
 
 Start from Knip's detected defaults and the actual framework plugins. Inspect
 the project's manifests, entry points, tests, generated files and workspaces

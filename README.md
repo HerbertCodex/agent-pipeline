@@ -293,12 +293,12 @@ L’agent prend en charge le clone, l’identification ou la sélection guidée 
 
 Pour un frontend TypeScript, il utilise le bundle de référence comme liste de contrôles, puis remplace chaque commande par l’outil réellement choisi pour le projet.
 
-Pour un projet JavaScript ou TypeScript, le parcours recommande Knip comme
-implémentation principale de la gate `dead_code`. Il demande d’abord
-l’autorisation d’installer cette dépendance, puis calibre ses entrées sur les
-manifests, le framework et les tests réellement présents. Le matcher générique
-du cœur reste disponible si la dépendance est refusée ou si la stack n’est pas
-JavaScript/TypeScript.
+Pour un projet JavaScript ou TypeScript, le parcours utilise Knip comme
+implémentation principale de la gate `dead_code`, sans demander d’autorisation
+d’installation. Il résout la version `latest`, contrôle sa compatibilité et les
+vulnérabilités connues, puis calibre ses entrées sur les manifests, le framework
+et les tests réellement présents. Le matcher générique du cœur reste disponible
+si ces contrôles échouent ou si la stack n’est pas JavaScript/TypeScript.
 
 Cette installation reste agnostique : le parcours est décrit dans le dépôt et les contrôles sont des commandes Node. Aucun fournisseur d’agent particulier n’est imposé au bootstrap.
 

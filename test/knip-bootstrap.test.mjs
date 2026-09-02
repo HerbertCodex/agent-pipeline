@@ -17,10 +17,13 @@ const template = readFileSync(
 );
 
 describe("a new JavaScript or TypeScript project gets a real dead-code recommendation", () => {
-  test("the bootstrap guide recommends Knip without silently installing it", () => {
+  test("the bootstrap guide installs the verified latest Knip without approval", () => {
     assert.match(guide, /JavaScript or TypeScript[\s\S]*Knip/i);
-    assert.match(guide, /npm install --save-dev knip/);
-    assert.match(guide, /operator[\s\S]*approv|approv[\s\S]*operator/i);
+    assert.match(guide, /npm install --save-dev knip@latest/);
+    assert.match(guide, /npm view knip@latest version engines deprecated/);
+    assert.match(guide, /npm ls knip --depth=0/);
+    assert.match(guide, /npm audit/);
+    assert.doesNotMatch(guide, /obtain operator approval/i);
     assert.match(guide, /commands\.dead_code/);
     assert.match(guide, /check:dead-code/);
   });
@@ -35,8 +38,10 @@ describe("a new JavaScript or TypeScript project gets a real dead-code recommend
   test("the TypeScript reference profile carries the same operational choice", () => {
     assert.match(frontend, /Knip/);
     assert.match(frontend, /check:dead-code/);
-    assert.match(frontend, /operator[\s\S]*approv|approv[\s\S]*operator/i);
-    assert.match(frontend, /npm install --save-dev knip/);
+    assert.match(frontend, /npm install --save-dev knip@latest/);
+    assert.match(frontend, /npm view knip@latest version engines deprecated/);
+    assert.match(frontend, /npm audit/);
+    assert.doesNotMatch(frontend, /operator approval/i);
   });
 
   test("non-JavaScript projects keep the dependency-free fallback", () => {

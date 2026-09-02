@@ -164,13 +164,18 @@ Run it after every regeneration, and make it a gate of your configuration if you
 
 #### JavaScript or TypeScript dead code: prefer Knip
 
-When the manifest and sources prove a JavaScript or TypeScript project, recommend [Knip](https://knip.dev/) as the primary implementation of `commands.dead_code`. The dependency-free `agent-pipeline/scripts/dead-code.mjs` remains the fallback for other stacks and for an operator who declines another dependency. Knip earns the recommendation because it resolves the module graph and reports an unused file, unused export and unused dependency; the fallback only matches declaration shapes and says so.
+When the manifest and sources prove a JavaScript or TypeScript project, use [Knip](https://knip.dev/) as the primary implementation of `commands.dead_code`. The dependency-free `agent-pipeline/scripts/dead-code.mjs` remains the fallback for other stacks and when the Knip installation cannot pass its compatibility or security checks. Knip earns the recommendation because it resolves the module graph and reports an unused file, unused export and unused dependency; the fallback only matches declaration shapes and says so.
 
-Knip is a new development dependency. Assess its current license, runtime support, maintenance and audit result, then obtain operator approval **before** installing it. For an npm project, the command after approval is:
+Knip is the pre-authorized dead-code dependency for a proven JavaScript or TypeScript stack; do not interrupt the operator merely to install it. Resolve registry metadata at installation time instead of pinning a version in this guide:
 
 ```
-npm install --save-dev knip
+npm view knip@latest version engines deprecated dist.integrity
+npm install --save-dev knip@latest
+npm ls knip --depth=0
+npm audit
 ```
+
+Before installation, refuse a deprecated release or one whose declared engines do not support the project's runtime. After installation, compare the exact version reported by `npm ls knip --depth=0` with the version resolved by `npm view knip@latest version`; the lockfile is the reproducible record of that resolution. Run `npm audit` without omitting development dependencies, and inspect any report with the package-manager dependency graph. A clean audit means that registry advisories currently report no known vulnerability in the installed graph; it cannot prove that no undisclosed vulnerability exists. If Knip or its transitive graph has a known vulnerability with no safe current release, undo only this installation, retain the generic fallback and record the security blocker. Never silence the advisory or install an older vulnerable release merely to make the gate available.
 
 Calibrate it on this repository rather than copying another project's configuration:
 
