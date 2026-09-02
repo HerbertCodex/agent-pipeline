@@ -27,3 +27,26 @@ that flag, the bootstrap agent must:
 7. run `preflight.mjs` and the final installation checkpoint.
 
 A green script name with no effective checker behind it is not a gate.
+
+## Dead code with Knip
+
+Use [Knip](https://knip.dev/) as the primary implementation of the bundle's
+`check:dead-code` script. It follows the JavaScript and TypeScript module graph
+and covers unused files, exports and dependencies more accurately than the
+framework's dependency-free shape matcher.
+
+Knip is not installed by this bundle. It is a new development dependency, so
+the bootstrap agent first assesses it and obtains operator approval. After that
+approval, an npm project may install it with:
+
+```bash
+npm install --save-dev knip
+```
+
+Start from Knip's detected defaults and the actual framework plugins. Inspect
+the project's manifests, entry points, tests, generated files and workspaces
+before writing `entry` or `project`; never copy another project's patterns.
+Expose `"check:dead-code": "knip"` in `package.json`, keep
+`commands.dead_code` pointed at `npm run check:dead-code`, and prove non-zero
+exits with an unused file, an unused export and an unused dependency. Every
+false-positive exclusion stays narrow and carries a reviewable reason.

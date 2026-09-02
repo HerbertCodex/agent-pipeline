@@ -162,6 +162,27 @@ Run it after every regeneration, and make it a gate of your configuration if you
 
 **The comment policy** forbids narration and accepts only contracts on exports. Comment syntax changes with the language; so do the scanned roots.
 
+#### JavaScript or TypeScript dead code: prefer Knip
+
+When the manifest and sources prove a JavaScript or TypeScript project, recommend [Knip](https://knip.dev/) as the primary implementation of `commands.dead_code`. The dependency-free `agent-pipeline/scripts/dead-code.mjs` remains the fallback for other stacks and for an operator who declines another dependency. Knip earns the recommendation because it resolves the module graph and reports an unused file, unused export and unused dependency; the fallback only matches declaration shapes and says so.
+
+Knip is a new development dependency. Assess its current license, runtime support, maintenance and audit result, then obtain operator approval **before** installing it. For an npm project, the command after approval is:
+
+```
+npm install --save-dev knip
+```
+
+Calibrate it on this repository rather than copying another project's configuration:
+
+1. Inspect the manifest, compiler configuration, framework configuration and sources. Identify the real entry points, test runners, workspaces and generated directories. Never copy `entry` or `project` patterns from another project.
+2. Run `npm exec -- knip` with its detected defaults first. Framework plugins may already contribute the right entries; an override replaces plugin defaults instead of merging with them.
+3. Add a stable package script, `"check:dead-code": "knip"`, and point `commands.dead_code` at `npm run check:dead-code`. The package script and the pipeline key are both part of the proof.
+4. Define `entry` and `project` only where the observed graph requires it. Exclude vendored framework code, build output and generated material through project boundaries. Do not turn a real report green with a broad ignore.
+5. Investigate every false positive caused by convention, decorators or runtime loading. Keep an exclusion only with a narrow pattern and a written reason that QA can review.
+6. Prove three independent failures: add an unused file, an unused export and an unused dependency, one at a time; each run must exit non-zero, and each deliberate defect must then be restored.
+
+A clean first run is not calibration. The three deliberate failures distinguish a working graph from a command that scanned the wrong tree, ignored entry exports or never inspected the manifest.
+
 ### 4. Render, then check that the render is real
 
 `apply-profile` refuses to render without the `project_context` file and gives you the missing path. Write its three blocks — `<!-- claude:summary -->`, `<!-- claude:commands -->`, `<!-- claude:context -->` — before running the command; an empty block is refused like a missing file.
