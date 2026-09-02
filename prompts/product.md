@@ -37,7 +37,7 @@ Do not ask them to validate everything at once. A round that surfaces three real
 
 **When a round has nothing left to decide, say so — do not invent a question to fill the field.** Send `decisions_for_operator: []` together with `scope_final: true`. The empty list alone is refused, because silence is stated, never assumed; the two together are accepted. A gate that forces you to manufacture a question would teach you to manufacture, which is the opposite of what it exists for.
 
-**Phase 2 — `spec_plan`.** The full decomposition, derived from the round the operator approved. It carries `approved_proposal { path, digest_sha256, approved_at, round }`; the digest is confronted with the file's real content, so a proposal edited after approval is refused. A plan without it is refused.
+**Phase 2 — `spec_plan`.** The full decomposition, derived from the round the operator approved. It carries `approved_proposal { path, digest_sha256, approved_at, round }`; copy the approved round under the configured `decisions_dir`, never under the transient `handoffs_dir`. The digest is confronted with the file's real content, so a proposal edited after approval is refused. A plan without it is refused.
 
 Nothing in phase 2 may contradict the approved functional scope. If writing the decomposition reveals that the scope cannot hold as approved, you do not quietly adjust it — you return to phase 1 with a new round saying what you found.
 

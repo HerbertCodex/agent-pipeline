@@ -166,7 +166,7 @@ describe("validate-handoff: a plan derived from an approved proposal", () => {
    */
   function approved(body = { perimetre: "approuve" }) {
     sandbox ??= createSandbox();
-    const path = join(sandbox, "proposition.json");
+    const path = join(sandbox, "docs", "decisions", "proposition.json");
     writeFileSync(path, JSON.stringify(body));
     return { path, digest: createHash("sha256").update(readFileSync(path, "utf8"), "utf8").digest("hex") };
   }
@@ -186,6 +186,19 @@ describe("validate-handoff: a plan derived from an approved proposal", () => {
     assert.equal(result.status, 0, result.output);
   });
 
+  test("refuses an approved proposal outside the versioned decisions journal", () => {
+    sandbox ??= createSandbox();
+    const path = join(sandbox, "proposition.json");
+    writeFileSync(path, JSON.stringify({ perimetre: "approuve" }));
+    const digest = createHash("sha256").update(readFileSync(path, "utf8"), "utf8").digest("hex");
+    const result = validate({
+      mode: "spec_plan",
+      approved_proposal: { path, digest_sha256: digest, approved_at: "2026-08-17", round: 5 },
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /decisions_dir/);
+  });
+
   test("refuses an invented digest", () => {
     const { path } = approved();
     const result = validate({
@@ -197,9 +210,15 @@ describe("validate-handoff: a plan derived from an approved proposal", () => {
   });
 
   test("refuses a proposal that does not exist", () => {
+    sandbox ??= createSandbox();
     const result = validate({
       mode: "spec_plan",
-      approved_proposal: { path: "/absent.json", digest_sha256: "0".repeat(64), approved_at: "x", round: 1 },
+      approved_proposal: {
+        path: join(sandbox, "docs", "decisions", "absent.json"),
+        digest_sha256: "0".repeat(64),
+        approved_at: "x",
+        round: 1,
+      },
     });
     assert.notEqual(result.status, 0);
     assert.match(result.output, /not found/);

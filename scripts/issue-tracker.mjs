@@ -209,9 +209,27 @@ export function updateTrackerStatus(id, status, config, { cwd = ".", run = spawn
     [...adapter.args, "--json", "issue", "update", id, "--status", status],
     { cwd, shell: false, encoding: "utf8" },
   );
-  if (result.error != null || result.status !== 0) {
-    const detail = result.error?.message ?? result.stderr?.trim() ?? `exit ${result.status}`;
-    throw new Error(`Sudocode status update failed for ${id}: ${detail}`);
+  if (result.error == null && result.status === 0) return result;
+
+  // Sudocode has been observed to abort while tearing down after its database
+  // write. Retrying would be a blind second mutation. Export first, then read
+  // the exact JSONL snapshot the pipeline consumes: only that postcondition
+  // can distinguish a failed command from a completed write with a bad exit.
+  const exported = run(adapter.command, [...adapter.args, "export"], {
+    cwd,
+    shell: false,
+    encoding: "utf8",
+  });
+  if (exported.error == null && exported.status === 0) {
+    try {
+      const snapshot = readIssueTracker(config, cwd);
+      const entry = snapshot?.issues.find((candidate) => candidate.record.id === id);
+      if (entry?.record.status === status) return { ...result, recovered_after_write: true };
+    } catch {
+      // The original command error remains the useful diagnosis below. A
+      // broken export or unreadable snapshot never becomes a false success.
+    }
   }
-  return result;
+  const detail = result.error?.message ?? result.stderr?.trim() ?? `exit ${result.status}`;
+  throw new Error(`Sudocode status update failed for ${id}: ${detail}; status was not confirmed after export`);
 }

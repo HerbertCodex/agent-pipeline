@@ -101,7 +101,7 @@ Running the page with no analysis at all asks the eight questions in full. That 
 
 `project_map` needs three values, not one: `out` (where the map lives), `regenerate` (the command that WRITES it) and `commands.project_map` (the one that verifies it). Declaring only the verification is the state every project started in, and it leaves the map with no writer but the agents themselves — which is what serialised whole waves. `apply-profile` refuses a `project_map.out` with no `regenerate` beside it, and refuses a `file_policy.orchestrator` forbidding the path the Orchestrator is the only role allowed to write.
 
-`closure_gates` names the gates run once on the pull request rather than on every push — what is too slow to replay per commit. The map's gate is deferred whether or not it appears there: it is stale on the branch by construction, and that is not the operator's call to make.
+`closure_gates` names the gates QA replays once at spec closure rather than on every issue. It does **not** defer CI: a machine reruns the declared checks on every push so that a failure is reported early. Only the map gates are deferred in CI, whether or not they appear in `closure_gates`, because the map is stale on the branch by construction and that is not the operator's call to make.
 
 `language` decides which language the rendered pages are written in. `en` and `fr` ship; anything else is refused at configuration time rather than at the first page, hours later, where a typo looks like a broken script. Omit the key and the pages are English.
 

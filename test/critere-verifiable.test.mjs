@@ -39,7 +39,7 @@ function plan(criteria, { reservations = ["src/route.ts"], tokens = ["--font-dis
   mkdirSync(dirname(sheet), { recursive: true });
   writeFileSync(sheet, `:root {\n${tokens.map((t) => `  ${t}: 0;`).join("\n")}\n}\n`);
 
-  const approved = join(sandbox, "approved.md");
+  const approved = join(sandbox, "docs", "decisions", "approved.md");
   const body = "# scope\n";
   writeFileSync(approved, body);
   const digest = createHash("sha256").update(body).digest("hex");
@@ -47,7 +47,12 @@ function plan(criteria, { reservations = ["src/route.ts"], tokens = ["--font-dis
   return run(sandbox, "validate-handoff.mjs", [
     writeJson(sandbox, "h.json", {
       ...PLAN,
-      approved_proposal: { digest_sha256: digest, approved_at: "2026-08-21", round: 1, path: "approved.md" },
+      approved_proposal: {
+        digest_sha256: digest,
+        approved_at: "2026-08-21",
+        round: 1,
+        path: "docs/decisions/approved.md",
+      },
       issues: [{ id: "i-0001", title: "une issue", acceptance_criteria: criteria, file_reservations: reservations }],
     }),
   ]);
@@ -88,7 +93,12 @@ describe("a criterion naming a token names it exactly", () => {
     const result = run(sandbox, "validate-handoff.mjs", [
       writeJson(sandbox, "h.json", {
         ...PLAN,
-        approved_proposal: { digest_sha256: "a".repeat(64), approved_at: "2026-08-21", round: 1, path: "approved.md" },
+        approved_proposal: {
+          digest_sha256: "a".repeat(64),
+          approved_at: "2026-08-21",
+          round: 1,
+          path: "docs/decisions/approved.md",
+        },
         issues: [
           {
             id: "i-0001",

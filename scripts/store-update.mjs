@@ -16,6 +16,50 @@ import {
   trackerMatch,
 } from "./issue-tracker.mjs";
 
+const REQUEST_FIELDS = new Set([
+  "target",
+  "expected_record_hash",
+  "pipeline_state",
+  "acceptance_criteria",
+  "escaped_from",
+  "prevention",
+  "untested_surface",
+  "claims_to_replay",
+  "claims_verdict",
+  "criteria_ledger",
+  "spec_state",
+  "spec_fields",
+  "discoveries_declared",
+  "set_status",
+  "append_context",
+  "create_record",
+  "refresh_tracker",
+  "scope_change",
+  "transition_reason",
+  "started_at",
+  "ended_at",
+]);
+
+/**
+ * Refuses a request field the store-update API does not implement.
+ *
+ * An ignored field is worse than a refusal: the record is rewritten and the
+ * caller hears "written" while believing a change landed. This boundary is
+ * intentionally closed so a spelling error or an invented API cannot become
+ * a durable silent no-op.
+ *
+ * @param request - parsed JSON request
+ * @returns nothing
+ */
+function validateRequestFields(request) {
+  if (request == null || typeof request !== "object" || Array.isArray(request)) {
+    fail("request must be a JSON object. Nothing written.");
+  }
+  for (const field of Object.keys(request)) {
+    if (!REQUEST_FIELDS.has(field)) fail(`unknown request field: ${field}. Nothing written.`);
+  }
+}
+
 /**
  * Validates a state block against the machine source of the rules.
  *
@@ -240,6 +284,7 @@ function main() {
   const requestPath = process.argv[2];
   if (!requestPath) fail("usage : store-update.mjs <requete.json>");
   const request = JSON.parse(readFileSync(requestPath, "utf8"));
+  validateRequestFields(request);
   const config = loadConfig();
   const rules = loadRules();
 
