@@ -126,6 +126,56 @@ describe("store-update: transitions confronted with rules.json", () => {
     assert.equal(readRecord(root, "issues", id).pipeline_state.phase, "in_progress");
   });
 
+  test("refuses closure unless discoveries travel in the same atomic write", () => {
+    const { root, id, hash } = withIssue({
+      pipeline_state: state({ phase: "qa_in_progress", owner: "qa", version: 4 }),
+    });
+    const request = writeJson(root, "close-without-discoveries.json", {
+      target: { kind: "issue", id },
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
+      expected_record_hash: hash,
+      pipeline_state: state({ phase: "closed", owner: "none", version: 5 }),
+    });
+    const result = run(root, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /closed requires discoveries_declared/);
+  });
+
+  test("persists an observed discovery atomically with closure", () => {
+    const { root, id, hash } = withIssue({
+      pipeline_state: state({ phase: "qa_in_progress", owner: "qa", version: 4 }),
+    });
+    const request = writeJson(root, "close-with-discovery.json", {
+      target: { kind: "issue", id },
+      started_at: "2026-08-20T08:00:00.000Z",
+      ended_at: "2026-08-20T08:30:00.000Z",
+      expected_record_hash: hash,
+      pipeline_state: state({ phase: "closed", owner: "none", version: 5 }),
+      discoveries_declared: [
+        { title: "old response mismatch", rationale: "the existing route differs", assertion: "observed" },
+      ],
+    });
+    assert.equal(run(root, "store-update.mjs", [request]).status, 0);
+    const record = readRecord(root, "issues", id);
+    assert.equal(record.pipeline_state.phase, "closed");
+    assert.equal(record.discoveries_declared[0].assertion, "observed");
+  });
+
+  test("refuses an unproved discovery asserting an absence", () => {
+    const { root, id, hash } = withIssue();
+    const request = writeJson(root, "absence-without-proof.json", {
+      target: { kind: "issue", id },
+      expected_record_hash: hash,
+      discoveries_declared: [
+        { title: "no audit trail", rationale: "the route emits nothing", assertion: "absence" },
+      ],
+    });
+    const result = run(root, "store-update.mjs", [request]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /proof requires cmd, exit 0 and observation/);
+  });
+
   test("refuses a transition absent from rules.json despite a coherent owner", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "r.json", {

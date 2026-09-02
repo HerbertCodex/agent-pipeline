@@ -39,34 +39,34 @@ function declare(discoveries) {
 describe("a finding is parked by default and blocks only for a delivery reason", () => {
   test("accepts a finding with no destination as parked work", () => {
     sandbox = createSandbox();
-    const result = declare([{ title: "bits-ui leaks two attributes", rationale: "they reach the markup" }]);
+    const result = declare([{ title: "bits-ui leaks two attributes", rationale: "they reach the markup", assertion: "observed" }]);
     assert.equal(result.status, 0, result.output);
   });
 
   test("refuses a destination nobody implements", () => {
     sandbox = createSandbox();
-    const result = declare([{ title: "x", rationale: "y", lands: "somewhere" }]);
+    const result = declare([{ title: "x", rationale: "y", assertion: "observed", lands: "somewhere" }]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /somewhere/);
   });
 
   test("a regression must name what is defective", () => {
     sandbox = createSandbox();
-    const result = declare([{ title: "the wiring is proven by nothing", rationale: "no constraint", lands: "regression" }]);
+    const result = declare([{ title: "the wiring is proven by nothing", rationale: "no constraint", assertion: "observed", lands: "regression" }]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /breaks/);
   });
 
   test("a criterion finding names the criterion it contradicts", () => {
     sandbox = createSandbox();
-    const result = declare([{ title: "criteria 8 and 6 pull apart", rationale: "one refuses the other", lands: "criterion" }]);
+    const result = declare([{ title: "criteria 8 and 6 pull apart", rationale: "one refuses the other", assertion: "observed", lands: "criterion" }]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /criterion/);
   });
 
   test("a delivery blocker says why shipping is impossible", () => {
     sandbox = createSandbox();
-    const result = declare([{ title: "unsafe migration", rationale: "data can be lost", lands: "delivery_blocker" }]);
+    const result = declare([{ title: "unsafe migration", rationale: "data can be lost", assertion: "observed", lands: "delivery_blocker" }]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /blocked_because/);
   });
@@ -74,8 +74,8 @@ describe("a finding is parked by default and blocks only for a delivery reason",
   test("a closure can carry parked and framework findings", () => {
     sandbox = createSandbox();
     const result = declare([
-      { title: "later improvement", rationale: "r", lands: "parking" },
-      { title: "the store drops claims_to_replay", rationale: "r", lands: "framework" },
+      { title: "later improvement", rationale: "r", assertion: "observed", lands: "parking" },
+      { title: "the store drops claims_to_replay", rationale: "r", assertion: "observed", lands: "framework" },
     ]);
     assert.equal(result.status, 0, result.output);
   });
@@ -83,7 +83,7 @@ describe("a finding is parked by default and blocks only for a delivery reason",
   test("a criterion contradiction cannot hide inside a closure", () => {
     sandbox = createSandbox();
     const result = declare([
-      { title: "criteria pull apart", rationale: "r", lands: "criterion", criterion: "8" },
+      { title: "criteria pull apart", rationale: "r", assertion: "observed", lands: "criterion", criterion: "8" },
     ]);
     assert.notEqual(result.status, 0);
     assert.match(result.output, /cannot accompany closure/i);

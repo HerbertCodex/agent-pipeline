@@ -707,11 +707,14 @@ function main() {
           "Put the restore first, use `&&`, or replay in a detached worktree.",
       );
     }
-    const redCommand = handoff.evidence?.red_proof?.cmd;
-    if (typeof redCommand === "string" && masksItsExit(redCommand)) {
+    const proofKind = handoff.evidence?.proof_kind ?? "red_test";
+    const proofCommand = proofKind === "characterization"
+      ? handoff.evidence?.characterization_proof?.cmd
+      : handoff.evidence?.red_proof?.cmd;
+    if (typeof proofCommand === "string" && masksItsExit(proofCommand)) {
       errors.push(
-        "evidence.red_proof.cmd hands its exit code to something other than the test run: a red proof whose " +
-          "status comes from a restore proves the restore.",
+        `evidence.${proofKind === "characterization" ? "characterization_proof" : "red_proof"}.cmd hands its exit code ` +
+          "to something other than the measurement: a proof whose status comes from a restore proves the restore.",
       );
     }
 
@@ -802,23 +805,48 @@ function main() {
 
     const redRule = rules.red_proof;
     if (redRule != null && agent === redRule.agent && transition?.to === redRule.outcome) {
-      const proof = handoff.evidence?.red_proof;
-      if (proof == null) {
-        errors.push(
-          "evidence.red_proof missing: a role writing both its tests and its code must prove the red phase it observed",
-        );
+      const proofKind = handoff.evidence?.proof_kind ?? "red_test";
+      if (proofKind === "characterization") {
+        const proof = handoff.evidence?.characterization_proof;
+        if (proof == null) {
+          errors.push(
+            "evidence.characterization_proof missing: a test-only issue proves the behaviour it observed instead of inventing a red phase",
+          );
+        } else {
+          for (const field of ["cmd", "exit", "observed_against_commit_sha", "behaviour"]) {
+            if (proof[field] == null) errors.push(`evidence.characterization_proof.${field} missing`);
+          }
+          if (proof.exit !== 0) {
+            errors.push("evidence.characterization_proof.exit must be 0: a characterization proof records a passing observation");
+          }
+          if (typeof proof.observed_against_commit_sha !== "string" || proof.observed_against_commit_sha.trim().length === 0) {
+            errors.push("evidence.characterization_proof.observed_against_commit_sha must name the observed commit");
+          }
+          if (typeof proof.behaviour !== "string" || proof.behaviour.trim().length === 0) {
+            errors.push("evidence.characterization_proof.behaviour must name the behaviour observed");
+          }
+        }
+      } else if (proofKind !== "red_test") {
+        errors.push("evidence.proof_kind must be red_test or characterization");
       } else {
-        for (const field of redRule.fields) {
-          if (proof[field] == null) errors.push(`evidence.red_proof.${field} missing`);
-        }
-        if (proof.observed_before_implementation !== true) {
-          errors.push("evidence.red_proof.observed_before_implementation must be true");
-        }
-        if (typeof proof.test_commit_sha !== "string" || proof.test_commit_sha.trim().length === 0) {
-          errors.push("evidence.red_proof.test_commit_sha must name the test commit");
-        }
-        if (proof.exit === 0) {
-          errors.push("evidence.red_proof.exit is 0: the test was never red");
+        const proof = handoff.evidence?.red_proof;
+        if (proof == null) {
+          errors.push(
+            "evidence.red_proof missing: a role writing both its tests and its code must prove the red phase it observed",
+          );
+        } else {
+          for (const field of redRule.fields) {
+            if (proof[field] == null) errors.push(`evidence.red_proof.${field} missing`);
+          }
+          if (proof.observed_before_implementation !== true) {
+            errors.push("evidence.red_proof.observed_before_implementation must be true");
+          }
+          if (typeof proof.test_commit_sha !== "string" || proof.test_commit_sha.trim().length === 0) {
+            errors.push("evidence.red_proof.test_commit_sha must name the test commit");
+          }
+          if (proof.exit === 0) {
+            errors.push("evidence.red_proof.exit is 0: the test was never red");
+          }
         }
       }
     }
@@ -839,6 +867,20 @@ function main() {
           errors.push(
             `discoveries[${index}].rationale missing: a finding with no rationale is not actionable`,
           );
+        }
+        if (!['observed', 'absence'].includes(item?.assertion)) {
+          errors.push(`discoveries[${index}].assertion must be observed or absence`);
+        } else if (item.assertion === "absence") {
+          const proof = item.proof;
+          if (typeof proof?.cmd !== "string" || proof.cmd.trim().length === 0) {
+            errors.push(`discoveries[${index}].proof.cmd missing: an absence is measured, not inferred`);
+          }
+          if (proof?.exit !== 0) {
+            errors.push(`discoveries[${index}].proof.exit must be 0: the absence check must itself complete`);
+          }
+          if (typeof proof?.observation !== "string" || proof.observation.trim().length === 0) {
+            errors.push(`discoveries[${index}].proof.observation missing: say what the completed check found`);
+          }
         }
         const lands = item?.lands ?? "parking";
         if (!DISCOVERY_ROUTES.includes(lands)) {

@@ -132,8 +132,8 @@ describe("findings remain queryable data rather than scheduled work", () => {
       target: { kind: "issue", id: source.id },
       expected_record_hash: recordHash(sandbox, "issues", source.id),
       discoveries_declared: [
-        { title: "later cleanup", rationale: "not required by the approved criteria" },
-        { title: "driver concern", rationale: "belongs to the runtime", lands: "framework", severity: "medium" },
+        { title: "later cleanup", rationale: "not required by the approved criteria", assertion: "observed" },
+        { title: "driver concern", rationale: "belongs to the runtime", assertion: "observed", lands: "framework", severity: "medium" },
       ],
     });
     assert.equal(run(sandbox, "store-update.mjs", [request]).status, 0);

@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, test } from "node:test";
 import {
+  createTrackerIssue,
+  createTrackerSpec,
+  ensureTrackerLink,
   projectedStatus,
   readIssueTracker,
   trackerBinding,
@@ -50,9 +53,10 @@ function project() {
     join(root, ".sudocode", "issues.jsonl"),
     `${issues.map((issue) => JSON.stringify(issue)).join("\n")}\n`,
   );
+  const specs = [{ id: "SPEC-001", uuid: "spec-uuid", title: "Feature spec", content: "Scope", priority: 1, relationships: [], tags: [] }];
   writeFileSync(
     join(root, ".sudocode", "specs.jsonl"),
-    `${JSON.stringify({ id: "SPEC-001", uuid: "spec-uuid", title: "Feature spec", content: "Scope", priority: 1, relationships: [], tags: [] })}\n`,
+    `${specs.map((spec) => JSON.stringify(spec)).join("\n")}\n`,
   );
   const config = {
     store_dir: "pipeline/store",
@@ -72,7 +76,7 @@ function project() {
       },
     },
   };
-  return { root, config, issues };
+  return { root, config, issues, specs };
 }
 
 describe("Sudocode issue tracker adapter", () => {
@@ -130,20 +134,28 @@ describe("Sudocode issue tracker adapter", () => {
   });
 
   test("updates through an argument vector with no shell", () => {
-    const { root, config } = project();
-    let invocation = null;
+    const { root, config, issues } = project();
+    const calls = [];
     const result = updateTrackerStatus("ISSUE-002", "in_progress", config, {
       cwd: root,
       run(command, args, options) {
-        invocation = { command, args, options };
+        calls.push({ command, args, options });
+        if (args.includes("update")) {
+          issues[1].status = "in_progress";
+          writeFileSync(
+            join(root, ".sudocode", "issues.jsonl"),
+            `${issues.map((issue) => JSON.stringify(issue)).join("\n")}\n`,
+          );
+        }
         return { status: 0, stdout: "{}", stderr: "" };
       },
     });
 
     assert.equal(result.status, 0);
-    assert.equal(invocation.command, "sudocode");
-    assert.deepEqual(invocation.args, ["--json", "issue", "update", "ISSUE-002", "--status", "in_progress"]);
-    assert.equal(invocation.options.shell, false);
+    assert.equal(calls[0].command, "sudocode");
+    assert.deepEqual(calls[0].args, ["--json", "issue", "update", "ISSUE-002", "--status", "in_progress"]);
+    assert.equal(calls[0].options.shell, false);
+    assert.deepEqual(calls[1].args, ["export"]);
   });
 
   test("recovers an aborted status update only after export proves the persisted status", () => {
@@ -170,6 +182,109 @@ describe("Sudocode issue tracker adapter", () => {
       ["--json", "issue", "update", "ISSUE-002", "--status", "in_progress"],
       ["export"],
     ]);
+  });
+
+  test("does not create a duplicate relationship when an aborted write is confirmed after export", () => {
+    const { root, config, issues } = project();
+    const calls = [];
+    const result = ensureTrackerLink({ from: "ISSUE-002", to: "ISSUE-001", type: "depends-on" }, config, {
+      cwd: root,
+      run(command, args, options) {
+        calls.push({ command, args, options });
+        if (args[0] === "link") {
+          issues[1].relationships.push({
+            from: "ISSUE-002",
+            from_type: "issue",
+            to: "ISSUE-001",
+            to_type: "issue",
+            type: "depends-on",
+          });
+          writeFileSync(
+            join(root, ".sudocode", "issues.jsonl"),
+            `${issues.map((issue) => JSON.stringify(issue)).join("\n")}\n`,
+          );
+          return { status: 1, stdout: "", stderr: "aborted after write" };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    assert.equal(result.recovered_after_write, true);
+    assert.deepEqual(calls.map((call) => call.args), [
+      ["export"],
+      ["link", "ISSUE-002", "ISSUE-001", "--type", "depends-on"],
+      ["export"],
+    ]);
+  });
+
+  test("reuses the marker-bound issue instead of issuing a second create", () => {
+    const { root, config, issues } = project();
+    const calls = [];
+    const request = {
+      idempotency_key: "spec-a-issue-01",
+      title: "Persist loans",
+      description: "Store the loan record",
+      priority: 1,
+      tags: ["backend"],
+    };
+    const run = (command, args, options) => {
+      calls.push({ command, args, options });
+      if (args[0] === "issue" && args[1] === "create") {
+        issues.push({
+          id: "ISSUE-003",
+          uuid: "uuid-3",
+          title: request.title,
+          content: request.description,
+          status: "open",
+          priority: request.priority,
+          updated_at: "2026-08-03T00:00:00.000Z",
+          relationships: [],
+          tags: ["backend", "pipeline", "pipeline:mutation:spec-a-issue-01"],
+        });
+        writeFileSync(
+          join(root, ".sudocode", "issues.jsonl"),
+          `${issues.map((issue) => JSON.stringify(issue)).join("\n")}\n`,
+        );
+        return { status: 1, stdout: "", stderr: "aborted after write" };
+      }
+      return { status: 0, stdout: "", stderr: "" };
+    };
+
+    const created = createTrackerIssue(request, config, { cwd: root, run });
+    const repeated = createTrackerIssue(request, config, { cwd: root, run });
+
+    assert.equal(created.entry.record.id, "ISSUE-003");
+    assert.equal(created.recovered_after_write, true);
+    assert.equal(repeated.skipped, true);
+    assert.equal(calls.filter((call) => call.args[0] === "issue").length, 1);
+  });
+
+  test("creates a specification through the same idempotent export boundary", () => {
+    const { root, config, specs } = project();
+    const request = { idempotency_key: "spec-b-record-01", title: "Circulation", description: "Loan rules", priority: 1 };
+    const result = createTrackerSpec(request, config, {
+      cwd: root,
+      run(command, args) {
+        if (args[0] === "spec" && args[1] === "create") {
+          specs.push({
+            id: "SPEC-002",
+            uuid: "spec-uuid-2",
+            title: request.title,
+            content: request.description,
+            priority: request.priority,
+            relationships: [],
+            tags: ["pipeline:mutation:spec-b-record-01"],
+          });
+          writeFileSync(
+            join(root, ".sudocode", "specs.jsonl"),
+            `${specs.map((spec) => JSON.stringify(spec)).join("\n")}\n`,
+          );
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    assert.equal(result.entry.record.id, "SPEC-002");
   });
 
   test("refuses projection until managed work is bound and then exposes only status drift", () => {

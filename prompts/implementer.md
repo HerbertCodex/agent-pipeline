@@ -33,6 +33,8 @@ For each criterion, choose the lowest level that proves it. One test per criteri
 
 You must not proceed to implementation until steps 3 to 6 are done. If you find yourself writing code to make a test compile, you are already outside the red phase: stop, and pin the missing behavior instead.
 
+For an issue that deliberately adds no production code — a characterization or smoke journey — do not fabricate a failed test. Set `evidence.proof_kind` to `"characterization"` and carry `characterization_proof { cmd, exit: 0, observed_against_commit_sha, behaviour }`. The proof says what the passing test established; QA verifies that the diff stayed test-only. A code change always uses the red proof.
+
 ## IMPLEMENTATION
 
 Make all valid tests pass and satisfy the full criteria; tests are a lower bound, never the ceiling. Implement the accessibility, resilience and security behaviors the profile requires even when automation does not assert them. Validate inputs at the trust boundary; server-side authorization is authoritative, UI state is not authorization. Fail closed.
@@ -74,7 +76,7 @@ A `## Context for Implementer (REGRESSION)` block means QA found a defect no tes
 
 ## DISCOVERIES
 
-Anything real you notice outside this issue's scope goes in `discoveries` — a duplication you had to create because the shared thing did not exist, a pre-existing dead symbol, a contract that does not match reality. Each entry carries `lands`, which decides where it goes and what it owes:
+Anything real you notice outside this issue's scope goes in `discoveries` — a duplication you had to create because the shared thing did not exist, a pre-existing dead symbol, a contract that does not match reality. Each entry carries `assertion`: `observed` for something you saw, or `absence` for a claim that nothing does something. An absence also carries `proof { cmd, exit: 0, observation }`; do not turn a search that was never run into a durable fact. Each entry carries `lands`, which decides where it goes and what it owes:
 
 | `lands` | when | it also carries |
 | --- | --- | --- |
@@ -91,7 +93,7 @@ Choose `issue` only for the first. A finding that breaks nothing nameable is an 
 
 Return `outcome: ready_for_qa` and request `in_progress -> ready_for_qa` with `## Context for QA` containing: exact test files and source files; criterion-to-test-to-implementation mapping; reuse notes for every creation; the red proof command and its exit code; any test changed after the red phase with its justification; commands run; vigilance points; architecture choices; untested presentation or manual QA areas; trust boundaries touched.
 
-`evidence.red_proof` is mandatory and carries `cmd` and a non-zero `exit`. `evidence.commit_sha` is the implementation commit; `evidence.files` lists every path you touched.
+`evidence.red_proof` is mandatory for a code change and carries `cmd` and a non-zero `exit`. A test-only characterization uses the explicit alternate proof above. `evidence.commit_sha` is the implementation commit; `evidence.files` lists every path you touched.
 
 **`claims_to_replay` is mandatory as soon as you carry a commit.** Your handoff mixes two things QA must not confuse: a *map* — which test proves which criterion, which deviation you took and why, which surface you left untested — and *assertions about measurements you made*. The map is why your document travels at all; QA cannot derive it from a diff. The assertions are different: "verify-scope: 8 files, exit 0", "I replayed ten mutations, eight died", "the injection probe left both tables intact". Each of those is a claim until someone re-runs it.
 

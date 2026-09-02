@@ -21,7 +21,7 @@ The Implementer owns both. That is deliberate: the Test Writer / Coder boundary 
 
 What the boundary used to guarantee is replaced by three things that do not depend on anyone's good faith:
 
-- **`evidence.red_proof`** — the exact command, its non-zero exit code, and the test commit it was observed against;
+- **`evidence.red_proof`** — the exact command, its non-zero exit code, and the test commit it was observed against. A test-only characterization declares `proof_kind: "characterization"` instead, with a passing command, the observed commit and the behaviour it establishes; it is a different proof, not a red phase invented to satisfy a field;
 - **the orchestrator replays it** against that commit, in a detached worktree. Red is observed, never declared;
 - **two separate commits**, `test:` then `feat:`, which QA diffs.
 
