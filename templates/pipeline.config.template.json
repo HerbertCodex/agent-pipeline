@@ -9,6 +9,9 @@
     "project_map": "node agent-pipeline/scripts/project-map.mjs --check",
     "map_coverage": "node agent-pipeline/scripts/map-coverage.mjs"
   },
+  "test_suites": {
+    "unit": { "gate": "test_unit", "replay": "per_issue" }
+  },
   "project_map": {
     "out": "docs/project-map.md",
     "roots": [

@@ -108,9 +108,28 @@ export function orphanGates(text, config) {
  * @returns the keys of `commands` a single issue must replay
  */
 export function perIssueGates(config) {
-  const closure = new Set(Array.isArray(config?.closure_gates) ? config.closure_gates : []);
+  const closure = new Set(closureDeclared(config));
   const mapGates = deferredGates(config);
   return Object.keys(config?.commands ?? {}).filter((key) => !closure.has(key) && !mapGates.has(key));
+}
+
+/**
+ * Returns the gates declared as test suites for a given replay point.
+ *
+ * Suites are descriptive metadata over commands: a project may name any
+ * suite, while the core only decides when its gate is replayed.
+ */
+export function testSuites(config, replay = null) {
+  return Object.entries(config?.test_suites ?? {})
+    .filter(([, suite]) => replay == null || suite.replay === replay)
+    .map(([name, suite]) => ({ name, ...suite }));
+}
+
+function closureDeclared(config) {
+  return [
+    ...(Array.isArray(config?.closure_gates) ? config.closure_gates : []),
+    ...testSuites(config, "closure").map((suite) => suite.gate),
+  ];
 }
 
 /**

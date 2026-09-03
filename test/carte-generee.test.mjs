@@ -229,6 +229,19 @@ describe("a closure gate does not run on every push, or the branch stays red", (
     assert.match(result.output, /mutation/);
   });
 
+  test("apply-profile validates test suites against real commands and replay points", () => {
+    sandbox = withMap({ test_suites: { contract: { gate: "missing", replay: "closure" } } });
+    let result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /test_suites\.contract\.gate/);
+
+    destroySandbox(sandbox);
+    sandbox = withMap({ test_suites: { contract: { gate: "smoke", replay: "later" } } });
+    result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /test_suites\.contract\.replay/);
+  });
+
   test("apply-profile requires a way to regenerate what it forbids editing", () => {
     sandbox = withMap({ project_map: { out: "docs/project-map.md", roots: ["src"] } });
     const result = run(sandbox, "apply-profile.mjs", ["--check"]);

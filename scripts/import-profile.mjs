@@ -6,7 +6,7 @@ import { fail } from "./lib.mjs";
 /**
  * Keys the bundle brings, in the order they are read.
  */
-const STACK_KEYS = ["commands", "project_map", "doc_policy", "comment_policy", "secrets_scan", "file_policy"];
+const STACK_KEYS = ["commands", "test_suites", "project_map", "doc_policy", "comment_policy", "secrets_scan", "file_policy"];
 
 /**
  * Template of the values the bundle cannot know.
