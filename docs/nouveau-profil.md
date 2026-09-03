@@ -153,6 +153,14 @@ Do not add a database block because a template has one. When the project owns re
 
 `migrations` is a declared command that exercises the real upgrade, not a placeholder; `integration` is a `test_suites` entry replayed per issue. A change to the schema or migrations forces both proofs even if the normal risk lane is otherwise smaller. The migration proof starts on an empty database; integration evidence covers foreign keys, unique/check/not-null constraints, expected indexes and the timestamp journey: insert sets both timestamps, update preserves `created_at` and advances `updated_at` in UTC. Review every migration for accidental repeated facts and dependencies, targeting 3NF. Deliberate denormalization, immutable event tables, pure joins and static reference data are documented exceptions, not invisible deviations.
 
+For a human-readable UML view, keep a small projection beside the model rather than trying to make the pipeline parse every SQL dialect. It names entities, fields and relations, for example `docs/data-model.diagram.json`; render it with:
+
+```sh
+node agent-pipeline/scripts/render-data-model.mjs docs/data-model.diagram.json data-model.html
+```
+
+The generated HTML is self-contained. It draws foreign-key arrows from the referencing table to the referenced one and lists cardinalities; it is a review surface, while the physical schema remains authoritative.
+
 ### 3. Write the project tools
 
 Two scripts live in `scripts/` and are specific to the stack.
