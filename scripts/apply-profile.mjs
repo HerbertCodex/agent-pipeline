@@ -607,6 +607,91 @@ function checkTestSuites(config) {
 }
 
 /**
+ * Validates the optional contract for a project that owns relational data.
+ *
+ * A relational model is deliberately opt-in: a pipeline cannot invent a
+ * database for a project. Once selected, however, paths and proof commands
+ * are not documentation-only — a schema change must replay the project's
+ * migration and integration checks before it can move on.
+ */
+function checkDataModel(config) {
+  const model = config.data_model;
+  if (model == null) return;
+  if (typeof model !== "object" || Array.isArray(model)) fail("data_model must be an object");
+
+  const fileKeys = ["decision", "model", "schema"];
+  for (const key of fileKeys) {
+    if (typeof model[key] !== "string" || model[key].trim().length === 0) {
+      fail(`data_model.${key} must name a committed file`);
+    }
+    if (!existsSync(model[key]) || !statSync(model[key]).isFile()) {
+      fail(`data_model.${key} not found as a file: ${model[key]}`);
+    }
+  }
+  if (typeof model.migrations !== "string" || model.migrations.trim().length === 0) {
+    fail("data_model.migrations must name the committed migrations directory");
+  }
+  if (!existsSync(model.migrations) || !statSync(model.migrations).isDirectory()) {
+    fail(`data_model.migrations not found as a directory: ${model.migrations}`);
+  }
+  if (!readdirSync(model.migrations).some((entry) => statSync(join(model.migrations, entry)).isFile())) {
+    fail(`data_model.migrations has no migration file: ${model.migrations}`);
+  }
+  if (typeof config.commands?.[model.migration_gate] !== "string") {
+    fail("data_model.migration_gate must name a declared command that exercises real migrations");
+  }
+  const suite = config.test_suites?.[model.integration_suite];
+  if (suite == null || suite.replay !== "per_issue") {
+    fail("data_model.integration_suite must name a test_suites entry replayed per_issue");
+  }
+  const regular = new Set(perIssueGates(config));
+  if (!regular.has(model.migration_gate) || !regular.has(suite.gate)) {
+    fail(
+      "data_model migration and integration proof cannot be deferred to final closure: remove either gate from closure_gates",
+    );
+  }
+
+  const normalization = model.normalization;
+  if (normalization == null || typeof normalization !== "object" || Array.isArray(normalization)) {
+    fail("data_model.normalization must declare the normal form and its exception decision");
+  }
+  if (normalization.target !== "3NF") {
+    fail('data_model.normalization.target must be "3NF"; a deliberate denormalization belongs in its exception decision');
+  }
+  if (
+    typeof normalization.exceptions !== "string" ||
+    !existsSync(normalization.exceptions) ||
+    !statSync(normalization.exceptions).isFile()
+  ) {
+    fail("data_model.normalization.exceptions must name the committed decision recording exceptions");
+  }
+
+  const timestamps = model.timestamps;
+  if (timestamps == null || typeof timestamps !== "object" || Array.isArray(timestamps)) {
+    fail("data_model.timestamps must declare the temporal policy");
+  }
+  if (!["database", "application"].includes(timestamps.authority)) {
+    fail('data_model.timestamps.authority must be "database" or "application"');
+  }
+  if (timestamps.timezone !== "UTC") fail('data_model.timestamps.timezone must be "UTC"');
+  for (const key of ["created_at", "updated_at"]) {
+    if (typeof timestamps[key] !== "string" || !/^[a-z][a-z0-9_]*$/.test(timestamps[key])) {
+      fail(`data_model.timestamps.${key} must be a lower_snake_case column name`);
+    }
+  }
+  if (timestamps.created_at === timestamps.updated_at) {
+    fail("data_model.timestamps.created_at and updated_at must be different columns");
+  }
+  if (
+    typeof timestamps.exceptions !== "string" ||
+    !existsSync(timestamps.exceptions) ||
+    !statSync(timestamps.exceptions).isFile()
+  ) {
+    fail("data_model.timestamps.exceptions must name the committed decision recording exceptions");
+  }
+}
+
+/**
  * Refuses a configuration that does not declare how the code is laid out.
  *
  * `render-architecture` explains the options and the operator decides, but a
@@ -688,6 +773,7 @@ function main() {
     );
   }
   checkTestSuites(config);
+  checkDataModel(config);
   // A finding routed to the framework needs somewhere outside this project
   // to land, or it is lost at closure — which is how a product backlog ends
   // up carrying the pipeline's own defects.

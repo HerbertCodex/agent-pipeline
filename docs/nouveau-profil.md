@@ -128,6 +128,31 @@ Also adapt:
 - `project_map.roots` and `project_map.skip` — the roots to map and the test-file pattern;
 - `ci.provider` — `"none"` if you install no CI, and know then that QA will actually run every gate instead of reading a run.
 
+### Relational data, only when the project owns it
+
+Do not add a database block because a template has one. When the project owns relational data, add `data_model` only after recording the persistence decision and creating the first model, schema and migrations directory. It makes the source of truth inspectable without imposing an ORM:
+
+```json
+"data_model": {
+  "decision": "docs/decisions/0001-persistence.md",
+  "model": "docs/data-model.md",
+  "schema": "db/schema.sql",
+  "migrations": "db/migrations",
+  "migration_gate": "migrations",
+  "integration_suite": "integration",
+  "normalization": { "target": "3NF", "exceptions": "docs/decisions/0001-persistence.md" },
+  "timestamps": {
+    "authority": "database",
+    "timezone": "UTC",
+    "created_at": "created_at",
+    "updated_at": "updated_at",
+    "exceptions": "docs/decisions/0001-persistence.md"
+  }
+}
+```
+
+`migrations` is a declared command that exercises the real upgrade, not a placeholder; `integration` is a `test_suites` entry replayed per issue. A change to the schema or migrations forces both proofs even if the normal risk lane is otherwise smaller. The migration proof starts on an empty database; integration evidence covers foreign keys, unique/check/not-null constraints, expected indexes and the timestamp journey: insert sets both timestamps, update preserves `created_at` and advances `updated_at` in UTC. Review every migration for accidental repeated facts and dependencies, targeting 3NF. Deliberate denormalization, immutable event tables, pure joins and static reference data are documented exceptions, not invisible deviations.
+
 ### 3. Write the project tools
 
 Two scripts live in `scripts/` and are specific to the stack.
