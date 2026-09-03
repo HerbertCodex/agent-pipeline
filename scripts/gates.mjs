@@ -125,6 +125,23 @@ export function testSuites(config, replay = null) {
     .map(([name, suite]) => ({ name, ...suite }));
 }
 
+/**
+ * Returns the checks that a relational schema change cannot defer.
+ *
+ * The core cannot inspect every ORM or SQL dialect honestly.  The project
+ * therefore names its migration proof and integration suite, while this
+ * function makes both owed whenever the physical schema or a migration is
+ * touched.  Ordinary source work does not pay a database round-trip.
+ */
+export function dataModelGates(paths, config) {
+  const model = config?.data_model;
+  if (model == null || !Array.isArray(paths)) return [];
+  const touches = (target) => paths.some((path) => path === target || path.startsWith(`${target}/`));
+  if (!touches(model.schema) && !touches(model.migrations)) return [];
+  const suiteGate = config.test_suites?.[model.integration_suite]?.gate;
+  return [...new Set([model.migration_gate, suiteGate].filter(Boolean))];
+}
+
 function closureDeclared(config) {
   return [
     ...(Array.isArray(config?.closure_gates) ? config.closure_gates : []),
@@ -145,12 +162,13 @@ function closureDeclared(config) {
  */
 export function gatesForIssue(paths, config) {
   const baseline = perIssueGates(config);
+  const mandatory = dataModelGates(paths, config).filter((key) => baseline.includes(key));
   const lane = laneOf(paths, config?.risk);
   const configured = config?.workflow?.gates?.[lane];
   if (configured == null || configured === "all") return baseline;
   if (!Array.isArray(configured)) return baseline;
   const allowed = new Set(baseline);
-  return configured.filter((key) => allowed.has(key));
+  return [...new Set([...configured.filter((key) => allowed.has(key)), ...mandatory])];
 }
 
 /**
