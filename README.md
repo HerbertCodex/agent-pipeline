@@ -17,6 +17,8 @@ Le projet transforme un développement multi-agent en workflow observable et bor
 
 Le principe central est simple : une règle importante doit pouvoir échouer dans une commande. Une consigne présente uniquement dans un prompt reste un conseil.
 
+> **Vous voulez l’essayer dans un projet ?** Copiez l’instruction prête pour un agent dans la section [Installation par un agent](#installation-par-un-agent--recommandée). Pour comprendre ce que la pipeline fait avant de l’installer, lisez [Architecture](#architecture) puis [Ce que le projet ne garantit pas](#ce-que-le-projet-ne-garantit-pas).
+
 ## Pourquoi
 
 Une orchestration d’agents devient vite lente et interminable lorsque :
@@ -233,6 +235,21 @@ Ce bundle ne prétend pas deviner la toolchain. Il déclare des noms de scripts 
 
 La cohérence visuelle suit l’ordre `tokens → primitives → composants produit → mockup validé → écrans`. Cela refuse une interface incohérente ; cela ne garantit pas qu’elle soit belle ou distinctive, ce qui reste une décision produit et humaine.
 
+## Données relationnelles, sans ORM imposé
+
+Un projet qui possède une base relationnelle peut déclarer un contrat `data_model`. La pipeline rend alors vérifiables les artefacts que le projet a réellement choisis : décision de persistance, modèle conceptuel/logique, schéma physique, migrations, commande de migration et suite d’intégration.
+
+Le contrat impose une cible 3NF par défaut, documente toute dénormalisation, et exige une politique explicite pour `created_at` et `updated_at` en UTC. Lorsqu’un schéma ou une migration change, la commande qui exerce les migrations réelles et la suite d’intégration sont ajoutées aux preuves dues ; elles ne peuvent pas être reportées à la clôture.
+
+La pipeline ne prétend pas analyser universellement SQL, Prisma, TypeORM ou un autre ORM. Le schéma physique reste donc la source technique de vérité. Pour une revue humaine, un petit fichier JSON décrit la projection tables/champs/relations et produit une page UML autonome :
+
+~~~bash
+node agent-pipeline/scripts/render-data-model.mjs \
+  docs/data-model.diagram.json data-model.html
+~~~
+
+Le diagramme affiche les clés primaires, les contraintes `UNIQUE` / `NOT NULL`, les cardinalités et les flèches allant de la clé étrangère vers la clé référencée. Le format JSON et un exemple complet sont dans [docs/nouveau-profil.md](docs/nouveau-profil.md#relational-data-only-when-the-project-owns-it).
+
 ## Installation
 
 ### Quick start avec Sudocode
@@ -316,7 +333,7 @@ Si aucun agent ne peut préparer le dépôt, commencez par intégrer le framewor
 ~~~bash
 git clone https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
 rm -rf agent-pipeline/.git
-node --test agent-pipeline/test
+node --test agent-pipeline/test/*.test.mjs
 ~~~
 
 La suppression du `.git` imbriqué fait de `agent-pipeline/` une partie versionnée du projet hôte. Un submodule reste possible si vous préférez gérer ses mises à jour séparément.
