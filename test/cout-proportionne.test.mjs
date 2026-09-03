@@ -116,6 +116,20 @@ describe("the cost is proportionate to what the issue touches", () => {
     assert.ok(closureGates(config).includes("duplication"), "normal-lane omissions move to final closure");
   });
 
+  test("a closure gate remains owed when a normal lane names it by mistake", () => {
+    const config = {
+      commands: GATES,
+      closure_gates: ["coverage"],
+      workflow: { gates: { normal: ["check", "coverage"] } },
+    };
+
+    assert.deepEqual(gatesForIssue(["src/catalog/service.ts"], config), ["check"]);
+    assert.ok(
+      closureGates(config).includes("coverage"),
+      "a gate deferred from each issue must remain in the final closure battery",
+    );
+  });
+
   test("a low-lane closure owes no replayed claim", () => {
     sandbox = project({ risk: RISK });
     const body = closure(battery(), { files: ["src/styles/tokens.css"] });

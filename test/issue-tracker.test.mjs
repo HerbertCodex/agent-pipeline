@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, test } from "node:test";
@@ -318,4 +318,10 @@ describe("Sudocode issue tracker adapter", () => {
       { id: "ISSUE-002", current: "open", desired: "in_progress" },
     ]);
   });
+});
+
+test("the operator guide names the missing Sudocode unlink capability without authorizing JSONL edits", () => {
+  const guide = readFileSync(new URL("../docs/operateur.md", import.meta.url), "utf8");
+  assert.match(guide, /cannot remove a relation/i);
+  assert.match(guide, /Do not edit.*JSONL/i);
 });

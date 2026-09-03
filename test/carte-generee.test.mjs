@@ -269,6 +269,18 @@ describe("a closure gate does not run on every push, or the branch stays red", (
       "the map is stale on the branch by design: checking it at push blocks every issue",
     );
   });
+
+  test("the hooks leave the red-test commit possible before the implementation", () => {
+    sandbox = withMap();
+    execFileSync("git", ["init", "-q"], { cwd: sandbox });
+    const result = run(sandbox, "install-hooks.mjs", []);
+    assert.equal(result.status, 0, result.output);
+
+    for (const name of ["pre-commit", "pre-push"]) {
+      const hook = readFileSync(join(sandbox, ".git", "hooks", name), "utf8");
+      assert.doesNotMatch(hook, /test_unit|test_e2e/);
+    }
+  });
 });
 
 describe("something rewrites the map, or the closure gate is red at the pull request", () => {
