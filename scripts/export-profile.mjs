@@ -10,7 +10,7 @@ import { loadConfig, fail } from "./lib.mjs";
  * where THIS project keeps its state and which forge it lives on. Carrying
  * the second kind would install decisions the next project never took.
  */
-const STACK_KEYS = ["commands", "project_map", "doc_policy", "comment_policy", "secrets_scan", "file_policy"];
+const STACK_KEYS = ["commands", "test_suites", "project_map", "doc_policy", "comment_policy", "secrets_scan", "file_policy"];
 
 /**
  * Spots the tool files a command names as arguments.

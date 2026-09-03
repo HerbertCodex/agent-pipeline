@@ -130,6 +130,19 @@ describe("the cost is proportionate to what the issue touches", () => {
     );
   });
 
+  test("a declarative suite moves only its own gate to closure", () => {
+    const config = {
+      commands: GATES,
+      test_suites: {
+        unit: { gate: "test_unit", replay: "per_issue" },
+        journey: { gate: "smoke", replay: "closure" },
+      },
+    };
+    assert.ok(perIssueGates(config).includes("test_unit"));
+    assert.ok(!perIssueGates(config).includes("smoke"));
+    assert.ok(closureGates(config).includes("smoke"));
+  });
+
   test("a low-lane closure owes no replayed claim", () => {
     sandbox = project({ risk: RISK });
     const body = closure(battery(), { files: ["src/styles/tokens.css"] });

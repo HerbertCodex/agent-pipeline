@@ -585,6 +585,27 @@ function checkGeneratedTargets(config) {
   }
 }
 
+function checkTestSuites(config) {
+  if (config.test_suites == null) return;
+  if (typeof config.test_suites !== "object" || Array.isArray(config.test_suites)) {
+    fail("test_suites must be an object keyed by suite name");
+  }
+  const gates = new Set();
+  for (const [name, suite] of Object.entries(config.test_suites)) {
+    if (!/^[a-z][a-z0-9_]{1,31}$/.test(name) || suite == null || typeof suite !== "object" || Array.isArray(suite)) {
+      fail(`test_suites.${name} must be a named object`);
+    }
+    if (typeof config.commands?.[suite.gate] !== "string") {
+      fail(`test_suites.${name}.gate must name a declared command`);
+    }
+    if (!["per_issue", "closure"].includes(suite.replay)) {
+      fail(`test_suites.${name}.replay must be per_issue or closure`);
+    }
+    if (gates.has(suite.gate)) fail(`test_suites reuses ${suite.gate}: one gate has one replay point`);
+    gates.add(suite.gate);
+  }
+}
+
 /**
  * Refuses a configuration that does not declare how the code is laid out.
  *
@@ -666,6 +687,7 @@ function main() {
         "with no gate they apply to nothing, and the code is only as good as the model.",
     );
   }
+  checkTestSuites(config);
   // A finding routed to the framework needs somewhere outside this project
   // to land, or it is lost at closure — which is how a product backlog ends
   // up carrying the pipeline's own defects.

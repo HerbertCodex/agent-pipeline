@@ -89,6 +89,8 @@ Two things now scale with the issue rather than with nothing.
 
 **The per-issue battery is computed, not recited.** It begins with every declared gate minus `closure_gates` and the map gates. `workflow.gates` may select a smaller declared subset for low and normal risk; high risk defaults to all. QA cites the battery selected from the issue's observed files as `{ key, cmd, exit }`. Anything omitted from the normal lane joins the final closure battery, so reducing feedback latency does not delete proof.
 
+**Test suites are metadata, not a stack contract.** `test_suites` optionally maps any suite name to a declared command gate and a replay point: `per_issue` or `closure`. A library may declare only unit; another project may add integration, contract, journey, performance or mutation. The core does not prescribe those names or their tools. Regression, acceptance and security are purposes recorded in criteria and evidence: they can apply to any execution level and are not mutually exclusive suites.
+
 CI is deliberately not on that diet: a machine re-running `audit` on every push costs nothing and reports early, while an agent replaying it per issue costs the run. Only the map gates are deferred there.
 
 **The risk lane follows the files.** `risk.high` and `risk.low` name path patterns; everything else is normal. A low-lane closure owes the gates and the ledger, and no replayed claims — proving a stylesheet twice proves nothing. A high lane owes everything.
