@@ -170,8 +170,9 @@ export function laneOf(paths, risk) {
  */
 export function closureGates(config) {
   const normal = config?.workflow?.gates?.normal;
+  const eligiblePerIssue = new Set(perIssueGates(config));
   const perIssue = new Set(
-    Array.isArray(normal) ? normal.filter((key) => typeof config?.commands?.[key] === "string") : perIssueGates(config),
+    Array.isArray(normal) ? normal.filter((key) => eligiblePerIssue.has(key)) : eligiblePerIssue,
   );
   return Object.keys(config?.commands ?? {}).filter((key) => !perIssue.has(key));
 }

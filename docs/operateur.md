@@ -215,6 +215,8 @@ Tag work intended for this pipeline with `issue_tracker.managed_tag` (`agent-pip
 
 Every control record stores a binding to the Sudocode id, uuid and scope revision. Status and `updated_at` are excluded from that revision, so routine progress does not look like a scope change. Title, content, priority, parent, relationships and tags are included. If any of those changes, task packaging and dashboard dispatch stop. Refresh deliberately through `store-update` with `refresh_tracker: true`; once the issue is active, also provide an operator-approved `scope_change`. The approval is appended to `tracker_scope_changes`. A changed uuid is never refreshable: a replacement entity cannot inherit another issue's execution history.
 
+`tracker-mutate` can create entities and add a relation through the Sudocode CLI. It cannot remove a relation: Sudocode currently exposes `link` but no inverse CLI operation. Do not edit its JSONL as a workaround; record the dependency as blocked until the provider supplies an official mutation.
+
 After every persisted phase transition:
 
 ```bash

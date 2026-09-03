@@ -14,6 +14,8 @@ The branch is not pushed while it is identical to its base: a CI run on a commit
 `test:` carries the tests alone and **replays red**. `feat:` carries the implementation. QA diffs the two, which is what makes the red proof checkable after the fact rather than merely reported.
 
 Nothing else belongs in either commit. A generated target regenerated in the same commit is expected; a drive-by fix is not, and it will show up in `verify-scope` as a file nobody declared.
+
+The hooks deliberately do not run the unit or e2e suite: they must accept the local `test:` commit while its assertion is still red. Make the paired `feat:` commit before pushing the branch; CI then receives the complete pair and requires its green battery.
 <!-- /brief -->
 
 <!-- brief:implementer,orchestrator -->
