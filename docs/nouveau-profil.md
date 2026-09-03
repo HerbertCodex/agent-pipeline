@@ -161,6 +161,35 @@ node agent-pipeline/scripts/render-data-model.mjs docs/data-model.diagram.json d
 
 The generated HTML is self-contained. It draws foreign-key arrows from the referencing table to the referenced one and lists cardinalities; it is a review surface, while the physical schema remains authoritative.
 
+```json
+{
+  "title": "Library data model",
+  "entities": [
+    {
+      "name": "books",
+      "fields": [
+        { "name": "id", "type": "uuid", "primary_key": true, "nullable": false },
+        { "name": "title", "type": "text", "nullable": false }
+      ]
+    },
+    {
+      "name": "loans",
+      "fields": [
+        { "name": "id", "type": "uuid", "primary_key": true, "nullable": false },
+        { "name": "book_id", "type": "uuid", "nullable": false }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": { "entity": "loans", "field": "book_id" },
+      "to": { "entity": "books", "field": "id" },
+      "cardinality": "many-to-one"
+    }
+  ]
+}
+```
+
 ### 3. Write the project tools
 
 Two scripts live in `scripts/` and are specific to the stack.
