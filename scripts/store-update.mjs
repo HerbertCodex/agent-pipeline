@@ -359,7 +359,7 @@ function applyRequest(request, config, rules) {
     const projected = projectedStatus(request.pipeline_state.phase, config);
     if (projected != null) {
       record.tracker_sync = {
-        provider: "sudocode",
+        provider: config.issue_tracker.provider,
         desired_status: projected,
         requested_at: at,
       };
@@ -712,7 +712,7 @@ function create(request, config, rules) {
     const projected = projectedStatus(record.pipeline_state.phase, config);
     if (projected != null) {
       record.tracker_sync = {
-        provider: "sudocode",
+        provider: config.issue_tracker.provider,
         desired_status: projected,
         requested_at: new Date().toISOString(),
       };

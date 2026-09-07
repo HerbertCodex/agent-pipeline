@@ -6,6 +6,12 @@ It is not an introduction to the pipeline. For what it does and why, read `AGENT
 
 Throughout this document, **a gate** means a command that either passes or fails. If it fails, the work does not move on. Gates are named by key — `check`, `lint`, `test_unit` — in `pipeline.config.json`; the key stays the same across projects, the command behind it changes with the stack. That is what lets these documents point at a gate without knowing your tools.
 
+## 0. Record what cannot be inferred
+
+Run `node agent-pipeline/scripts/init.mjs` before asking an agent to configure the stack. The interactive command records the product, constraints, imposed-stack answer and approved architecture in `pipeline.bootstrap.json`, `docs/decisions/0000-bootstrap.md` and a deliberately incomplete `pipeline.config.json`. For automation, pass `--answers <json>`.
+
+The incomplete configuration is intentional: it makes the human decisions durable while `apply-profile` still refuses to run until manifests and sources justify real commands and a calibrated profile. The installation prompt is now an adapter around this executable bootstrap, not the source of those decisions.
+
 ## Starting from a profile that already exists
 
 If a project of the same stack already runs this pipeline, do not rewrite its gates. Export them there:
@@ -303,9 +309,9 @@ The `project_map` line is of another nature, and the distinction matters to you.
 
 Check they are **installed**, not merely written: a `.git/hooks/` containing only `.sample` files means no hook runs.
 
-### 7. Initialize Sudocode and seed the control store
+### 7. Configure the tracker and seed the control store
 
-Sudocode is the issue/spec source. Initialize it at `issue_tracker.root` through its CLI; do not fabricate its files:
+Choose the tracker adapter explicitly. Sudocode provides the full issue/spec and relationship workflow. Initialize it at `issue_tracker.root` through its CLI; do not fabricate its files:
 
 ```
 sudocode init
@@ -321,6 +327,33 @@ node agent-pipeline/scripts/next-step.mjs
 
 The tracker check and store invariants must pass; `next-step` must report that there is no step to run. The pipeline is ready.
 
+For a minimal GitHub Issues integration, authenticate `gh` before the checkpoint and use an explicit adapter block:
+
+```json
+{
+  "issue_tracker": {
+    "provider": "github",
+    "repository": "owner/name",
+    "command": "gh",
+    "args": [],
+    "managed_tag": "agent-pipeline",
+    "spec_tag": "agent-pipeline:spec",
+    "status_label_prefix": "pipeline:",
+    "status_map": {
+      "planned": "open",
+      "in_progress": "in_progress",
+      "ready_for_qa": "needs_review",
+      "qa_in_progress": "needs_review",
+      "closed": "closed",
+      "blocked_*": "blocked",
+      "operator_escalation": "blocked"
+    }
+  }
+}
+```
+
+Only issues carrying `managed_tag` and specs carrying `spec_tag` enter the pipeline view. The adapter reads those entities and projects statuses; it refuses creation and relationships because GitHub Issues has no equivalent portable relationship contract in this core. More than one `pipeline:` status label on an issue is a conflict and blocks synchronization instead of depending on label order.
+
 ## The final checkpoint
 
 Before handing back, answer these questions with a command, never with a reading:
@@ -330,7 +363,7 @@ Before handing back, answer these questions with a command, never with a reading
 3. Has every gate in `commands` failed at least once, on a deliberate break?
 4. Does `preflight` confirm that **every declared gate is executable**? An unrunnable gate fails instead of protecting.
 5. Are the hooks installed and do they fire?
-6. Are `tracker-sync` and `store-verify` green against the real Sudocode files?
+6. Are `tracker-sync` and `store-verify` green against the real configured provider—not a fabricated fixture—and is its storage separate from the pipeline store where applicable?
 7. Does every profile invariant have a gate that makes it fail?
 
 **An "I think so" to any of these seven questions is a no.**

@@ -103,7 +103,7 @@ Reading: `store-read <issue|spec> <id>` returns the record, its SHA-256 hash and
 1. Re-read the record; refuse if its hash differs from `basis.record_hash`.
 2. Build a JSON request file: `target`, `expected_record_hash`, the complete `pipeline_state` (version = previous + 1), and `append_context`. When Sudocode is configured, never use `set_status`: the projection owns it.
 3. `store-update <request.json>`. The script refuses a stale hash, an unknown phase or owner, a non-consecutive version, and a transition absent from `rules.json`. It rewrites only the targeted line, byte for byte for the others.
-4. `tracker-sync --apply`, then `tracker-sync` with no flag. Status changes go through the configured Sudocode CLI; scope drift is never applied automatically.
+4. `tracker-sync --apply`, then `tracker-sync` with no flag. Status changes go through the configured tracker adapter; scope drift is never applied automatically.
 5. `store-verify`.
 6. Read the full `git diff -- <store_dir>/ .sudocode/`: only the targeted control and Sudocode's own projection changed, no context block disappeared.
 7. If the handoff carried a `commit_sha`, push the spec branch so that SHA gets its CI run.

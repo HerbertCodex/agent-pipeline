@@ -3,13 +3,23 @@ import { resolve, sep } from "node:path";
 import { readJsonl, sha256 } from "./lib.mjs";
 
 const PROVIDER = "sudocode";
+const GITHUB = "github";
 const STATUSES = new Set(["open", "in_progress", "blocked", "needs_review", "closed"]);
 
 function configuredTracker(config) {
   const tracker = config.issue_tracker;
   if (tracker == null || tracker.enabled === false) return null;
-  if (tracker.provider !== PROVIDER) {
+  if (![PROVIDER, GITHUB].includes(tracker.provider)) {
     throw new Error(`unsupported issue_tracker.provider: ${tracker.provider ?? "missing"}`);
+  }
+  if (tracker.provider === GITHUB) {
+    if (typeof tracker.repository !== "string" || !/^[^/\s]+\/[^/\s]+$/.test(tracker.repository)) {
+      throw new Error("issue_tracker.repository must be owner/name for the GitHub adapter");
+    }
+    if (typeof tracker.managed_tag !== "string" || tracker.managed_tag.length === 0) {
+      throw new Error("issue_tracker.managed_tag must be a non-empty string");
+    }
+    return tracker;
   }
   if (typeof tracker.root !== "string" || tracker.root.length === 0) {
     throw new Error("issue_tracker.root must name the Sudocode directory");
@@ -53,19 +63,19 @@ function scopeShape(record) {
 
 function validateEntity(record, kind) {
   if (typeof record.id !== "string" || record.id.length === 0) {
-    throw new Error(`Sudocode ${kind} has no id`);
+    throw new Error(`tracker ${kind} has no id`);
   }
   if (typeof record.title !== "string" || record.title.length === 0) {
-    throw new Error(`Sudocode ${kind} ${record.id} has no title`);
+    throw new Error(`tracker ${kind} ${record.id} has no title`);
   }
   if (typeof record.uuid !== "string" || record.uuid.length === 0) {
-    throw new Error(`Sudocode ${kind} ${record.id} has no uuid`);
+    throw new Error(`tracker ${kind} ${record.id} has no uuid`);
   }
   if (!Array.isArray(record.relationships) || !Array.isArray(record.tags)) {
-    throw new Error(`Sudocode ${kind} ${record.id} must carry relationship and tag lists`);
+    throw new Error(`tracker ${kind} ${record.id} must carry relationship and tag lists`);
   }
   if (kind === "issue" && !STATUSES.has(record.status)) {
-    throw new Error(`Sudocode issue ${record.id} has unsupported status ${record.status}`);
+    throw new Error(`tracker issue ${record.id} has unsupported status ${record.status}`);
   }
 }
 
@@ -73,13 +83,60 @@ function entriesFor(path, kind) {
   const seen = new Set();
   return readJsonl(path).map((entry) => {
     validateEntity(entry.record, kind);
-    if (seen.has(entry.record.id)) throw new Error(`duplicate Sudocode ${kind} id: ${entry.record.id}`);
+    if (seen.has(entry.record.id)) throw new Error(`duplicate tracker ${kind} id: ${entry.record.id}`);
     seen.add(entry.record.id);
     return {
       ...entry,
       revision: sha256(JSON.stringify(scopeShape(entry.record))),
     };
   });
+}
+
+function githubSnapshot(config, cwd, run = spawnSync) {
+  const tracker = configuredTracker(config);
+  const command = tracker.command ?? "gh";
+  const args = [...(tracker.args ?? []), "issue", "list", "--repo", tracker.repository, "--state", "all", "--limit", String(tracker.limit ?? 1000), "--json", "number,id,title,body,labels,state,updatedAt"];
+  const result = run(command, args, { cwd, shell: false, encoding: "utf8" });
+  if (result.error != null || result.status !== 0) throw new Error(`GitHub issue list failed: ${commandFailure(result)}`);
+  let rows;
+  try { rows = JSON.parse(result.stdout); } catch (error) { throw new Error(`GitHub issue list returned invalid JSON: ${error.message}`); }
+  if (!Array.isArray(rows)) throw new Error("GitHub issue list did not return a list");
+  const prefix = tracker.status_label_prefix ?? "pipeline:";
+  const specTag = tracker.spec_tag ?? `${tracker.managed_tag}:spec`;
+  const entries = rows.filter((row) => {
+    const labels = (row.labels ?? []).map((label) => typeof label === "string" ? label : label.name).filter(Boolean);
+    return labels.includes(tracker.managed_tag) || labels.includes(specTag);
+  }).map((row) => {
+    const labels = (row.labels ?? []).map((label) => typeof label === "string" ? label : label.name).filter(Boolean);
+    const statusLabels = labels.filter((label) => {
+      const value = label.startsWith(prefix) ? label.slice(prefix.length) : null;
+      return STATUSES.has(value);
+    });
+    if (statusLabels.length > 1) {
+      throw new Error(`GitHub issue ${row.number} has conflicting pipeline status labels: ${statusLabels.join(", ")}`);
+    }
+    const statusLabel = statusLabels[0] ?? null;
+    const record = {
+      id: String(row.number), uuid: row.id, title: row.title, content: row.body ?? "", priority: null,
+      status: statusLabel?.slice(prefix.length) ?? (String(row.state).toUpperCase() === "CLOSED" ? "closed" : "open"),
+      updated_at: row.updatedAt ?? null, relationships: [],
+      tags: labels.filter((label) => {
+        const value = label.startsWith(prefix) ? label.slice(prefix.length) : null;
+        return !STATUSES.has(value);
+      }),
+    };
+    validateEntity(record, "issue");
+    return {
+      record,
+      raw: JSON.stringify(row),
+      revision: sha256(JSON.stringify(scopeShape(record))),
+      provider: GITHUB,
+      status_label: statusLabel,
+    };
+  });
+  const specs = entries.filter((entry) => entry.record.tags.includes(specTag));
+  const issues = entries.filter((entry) => !entry.record.tags.includes(specTag));
+  return { provider: GITHUB, root: tracker.repository, issues, specs, dependencies: new Map(issues.map((entry) => [entry.record.id, []])) };
 }
 
 function issueDependencies(issues) {
@@ -105,9 +162,10 @@ function issueDependencies(issues) {
  * @param {string} [cwd] - Host project root.
  * @returns {object|null} Validated tracker snapshot, or null when disabled.
  */
-export function readIssueTracker(config, cwd = ".") {
+export function readIssueTracker(config, cwd = ".", { run = spawnSync } = {}) {
   const tracker = configuredTracker(config);
   if (tracker == null) return null;
+  if (tracker.provider === GITHUB) return githubSnapshot(config, cwd, run);
   const root = resolve(cwd, tracker.root);
   const store = resolve(cwd, config.store_dir);
   if (root === store || root.startsWith(`${store}${sep}`) || store.startsWith(`${root}${sep}`)) {
@@ -150,7 +208,7 @@ export function projectedStatus(phase, config) {
  */
 export function trackerBinding(entry) {
   return {
-    provider: PROVIDER,
+    provider: entry.provider ?? PROVIDER,
     id: entry.record.id,
     uuid: entry.record.uuid ?? null,
     revision: entry.revision,
@@ -208,6 +266,7 @@ function commandFailure(result) {
  * @returns {object} Current authoritative pipeline snapshot.
  */
 export function exportTrackerSnapshot(config, { cwd = ".", run = spawnSync } = {}) {
+  if (configuredTracker(config)?.provider === GITHUB) return readIssueTracker(config, cwd, { run });
   const adapter = adapterCommand(config);
   let last = null;
   for (let attempt = 1; attempt <= 2; attempt += 1) {
@@ -241,6 +300,9 @@ function findRelationship(snapshot, from, to, type) {
  * @returns {object} The confirmed relationship outcome.
  */
 export function ensureTrackerLink({ from, to, type }, config, { cwd = ".", run = spawnSync } = {}) {
+  if (configuredTracker(config)?.provider === GITHUB) {
+    throw new Error("GitHub Issues has no portable relation mutation: record the dependency in the issue body or use Sudocode");
+  }
   if (![from, to, type].every((value) => typeof value === "string" && value.trim().length > 0)) {
     throw new Error("Sudocode link requires non-empty from, to and type");
   }
@@ -340,6 +402,9 @@ function createTrackerEntity(request, kind, config, { cwd = ".", run = spawnSync
  * @returns {object} Confirmed issue entry and mutation outcome.
  */
 export function createTrackerIssue(request, config, options = {}) {
+  if (configuredTracker(config)?.provider === GITHUB) {
+    throw new Error("GitHub issue creation is intentionally not automated yet: create it in GitHub, then import and bind it");
+  }
   return createTrackerEntity(request, "issue", config, options);
 }
 
@@ -353,20 +418,50 @@ export function createTrackerIssue(request, config, options = {}) {
  * @returns {object} Confirmed specification entry and mutation outcome.
  */
 export function createTrackerSpec(request, config, options = {}) {
+  if (configuredTracker(config)?.provider === GITHUB) {
+    throw new Error("GitHub specs are ordinary labelled issues and are not created by tracker-mutate yet");
+  }
   return createTrackerEntity(request, "spec", config, options);
 }
 
 /**
- * Updates one issue through Sudocode's CLI, never by rewriting its JSONL.
+ * Updates one issue through the configured tracker CLI, never by rewriting
+ * tracker-owned storage.
  *
- * @param {string} id - Sudocode issue id.
- * @param {string} status - Valid Sudocode status.
+ * @param {string} id - Tracker issue id.
+ * @param {string} status - Valid projected tracker status.
  * @param {object} config - Pipeline configuration.
  * @param {object} [options] - Host cwd and injectable process runner.
  * @returns {object} Child-process result.
  */
 export function updateTrackerStatus(id, status, config, { cwd = ".", run = spawnSync } = {}) {
-  if (!STATUSES.has(status)) throw new Error(`unsupported Sudocode status: ${status}`);
+  if (!STATUSES.has(status)) throw new Error(`unsupported tracker status: ${status}`);
+  if (configuredTracker(config)?.provider === GITHUB) {
+    const tracker = configuredTracker(config);
+    const prefix = tracker.status_label_prefix ?? "pipeline:";
+    const label = `${prefix}${status}`;
+    const before = readIssueTracker(config, cwd, { run });
+    const current = before.issues.find((candidate) => candidate.record.id === id);
+    if (current == null) throw new Error(`GitHub issue ${id} was not found before status update`);
+    const labelResult = run(
+      tracker.command ?? "gh",
+      [...(tracker.args ?? []), "label", "create", label, "--repo", tracker.repository, "--color", "5b3fa8", "--force"],
+      { cwd, shell: false, encoding: "utf8" },
+    );
+    if (labelResult.error != null || labelResult.status !== 0) {
+      throw new Error(`GitHub status label ${label} could not be ensured: ${commandFailure(labelResult)}`);
+    }
+    const args = [...(tracker.args ?? []), "issue", "edit", id, "--repo", tracker.repository];
+    if (current.status_label != null && current.status_label !== label) {
+      args.push("--remove-label", current.status_label);
+    }
+    args.push("--add-label", label);
+    const result = run(tracker.command ?? "gh", args, { cwd, shell: false, encoding: "utf8" });
+    const snapshot = readIssueTracker(config, cwd, { run });
+    const entry = snapshot.issues.find((candidate) => candidate.record.id === id);
+    if (entry?.record.status === status) return { ...result, recovered_after_write: result.error != null || result.status !== 0 };
+    throw new Error(`GitHub status update failed for ${id}: ${commandFailure(result)}; status was not confirmed after reading GitHub`);
+  }
   const adapter = adapterCommand(config);
   const result = run(
     adapter.command,

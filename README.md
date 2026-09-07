@@ -1,155 +1,145 @@
 # agent-pipeline
 
-Une pipeline vérifiable pour faire travailler des agents de développement sur un dépôt, sans dépendre d’un fournisseur d’agent.
+A verifiable development workflow for coding agents, independent of any agent vendor.
+
+[Lire en français](README.fr.md)
 
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![Core dependencies](https://img.shields.io/badge/core_dependencies-0-blue)](#prérequis)
+[![Core dependencies](https://img.shields.io/badge/core_dependencies-0-blue)](#requirements)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Elle transforme un développement multi-agent en workflow observable et borné : des rôles séparés, un état durable, des critères gelés, des commandes de qualité exécutables et des preuves attachées aux commits.
+agent-pipeline turns multi-agent development into a bounded, observable workflow: separate roles, durable state, frozen criteria, executable quality gates, and evidence tied to commits.
 
-> Une règle importante doit pouvoir échouer dans une commande. Une consigne présente uniquement dans un prompt reste un conseil.
+> If an important rule cannot fail in a command, it is advice.
 
-## Ce que le projet apporte
+![The live agent-pipeline dashboard showing project issues and dispatch state](docs/assets/dashboard.png)
 
-| Risque habituel | Réponse de la pipeline |
+## What it addresses
+
+| Common risk | Pipeline response |
 | --- | --- |
-| Agents qui se marchent dessus | réservations de fichiers et détection d’intersection |
-| Périmètre qui grandit pendant le travail | critères figés, découvertes garées, expansion approuvée seulement |
-| « terminé » subjectif | transitions contrôlées, gates et preuves par SHA |
-| État modifié par plusieurs rôles | store durable à écrivain unique et verrou optimiste |
-| Agents silencieux ou bloqués | événements NDJSON, heartbeat, dashboard local et interruption |
-| Validation trop coûteuse | voies de risque et gates de clôture explicites |
+| Agents overwrite each other's work | file reservations and overlap detection |
+| Scope grows during implementation | frozen criteria, parked findings, approved expansion only |
+| “Done” is subjective | controlled transitions, gates, and SHA-bound evidence |
+| Multiple roles mutate shared state | single-writer control store with optimistic locking |
+| Agents run silently | NDJSON events, heartbeat, local dashboard, interruption |
+| Validation costs too much | risk lanes and explicit closure gates |
 
-~~~mermaid
+```mermaid
 flowchart LR
-    U[Opérateur] --> O[Orchestrator]
-    U --> S[Sudocode]
-    S --> O
+    U[Operator] --> O[Orchestrator]
+    U --> T[Issue tracker]
+    T --> O
     O --> P[Product]
     O --> I[Implementer]
     O --> Q[QA]
-    P -->|handoff JSON| O
-    I -->|handoff JSON| O
-    Q -->|handoff JSON| O
+    P -->|JSON handoff| O
+    I -->|JSON handoff| O
+    Q -->|JSON handoff| O
     O --> C[(Control store)]
-    O --> R[CLI d’agent]
-~~~
+    O --> R[Agent CLI]
+```
 
-Les rôles restent volontairement étroits : Product définit le travail, Implementer écrit les tests et le code, QA valide sans écrire, Orchestrator contrôle les transitions et le store. Les permissions doivent être imposées par la plateforme : un prompt n’est pas une frontière de sécurité.
+Product defines the contract, Implementer writes tests and code, QA validates without writing, and Orchestrator owns transitions and persistence.
 
-## Démarrer dans un projet
+## Install
 
-### Avec un agent — recommandé
+### 1. Pin a release
 
-Dans le dépôt cible, donnez cette instruction à Codex, Claude Code, Kilo Code ou toute CLI capable de modifier le projet :
+An updatable installation keeps provenance through a Git submodule pinned to a release tag:
 
-~~~text
-Installe et configure complètement agent-pipeline dans ce dépôt depuis
-https://github.com/HerbertCodex/agent-pipeline.git.
+```sh
+git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
+git -C agent-pipeline checkout v0.1.0
+git add .gitmodules agent-pipeline
+```
 
-Lis intégralement agent-pipeline/docs/nouveau-profil.md et suis son parcours.
-Ne modifie pas le cœur dans agent-pipeline/. Commence par inspecter manifests,
-configuration et sources : utilise la stack prouvée. Si le dépôt est vide ou
-ambigu, demande quel produit construire, ses contraintes et si la stack est
-imposée ; recommande une option et attends la validation de l’architecture.
+See [release and update policy](docs/releases.md). Removing the nested `.git` without recording a version is not recommended.
 
-Persiste les décisions dans la configuration et le journal de décisions.
-Initialise Sudocode si nécessaire, configure issue_tracker avec un store de
-contrôle distinct, puis ne termine qu’après les contrôles du checkpoint final.
-~~~
+### 2. Record bootstrap decisions
 
-Le guide de bootstrap couvre l’identification de la stack, la calibration des gates, les profils, les hooks, la CI éventuelle et les preuves finales : [docs/nouveau-profil.md](docs/nouveau-profil.md).
+```sh
+node agent-pipeline/scripts/init.mjs
+```
 
-### Prérequis
+The command asks only what source inspection cannot prove: product, constraints, whether the stack is imposed, project type, and approved architecture. It writes an auditable bootstrap record, decision entry, and intentionally incomplete configuration. The stack-specific installer then inspects real manifests and source before completing and calibrating the profile.
 
-- Node.js 20 ou supérieur ;
-- Git ;
-- un dépôt hôte ;
-- [Sudocode](https://github.com/sudocode-ai/sudocode) pour gérer issues et specs ;
-- une CLI d’agent seulement si vous utilisez le dispatch automatique.
+For non-interactive automation, use `--answers <answers.json>`. Continue with the complete [new-project installation guide](docs/nouveau-profil.md).
 
-Le cœur n’a aucune dépendance npm de production.
+### Requirements
 
-### Installation manuelle
+- Node.js 20 or later;
+- Git;
+- a host repository;
+- [Sudocode](https://github.com/sudocode-ai/sudocode) for the complete tracker workflow, or authenticated `gh` for the minimal GitHub Issues adapter;
+- an agent CLI only when automatic dispatch is used.
 
-~~~bash
-git clone https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-rm -rf agent-pipeline/.git
-node --test agent-pipeline/test/*.test.mjs
-~~~
+The core has no production npm dependency.
 
-Intégrez ensuite un profil et ses commandes adaptées à votre stack ; ne copiez pas le template de configuration tel quel. Le [guide de nouveau profil](docs/nouveau-profil.md) est la procédure de référence.
+## Daily use
 
-## Utilisation quotidienne
-
-Sudocode est la source de vérité pour les issues et les specs. La pipeline garde séparément les phases fines, réservations, critères, preuves et transitions : elle ne modifie jamais directement les JSONL de Sudocode.
-
-~~~bash
-# Voir la prochaine action et les issues sans conflit
+```sh
+# Inspect runnable work
 node agent-pipeline/scripts/next-step.mjs
 node agent-pipeline/scripts/next-issues.mjs
 
-# Lancer un rôle
+# Dispatch a role
 node agent-pipeline/scripts/dispatch.mjs <issue-id> product
 node agent-pipeline/scripts/dispatch.mjs <issue-id> implementer
 node agent-pipeline/scripts/dispatch.mjs <issue-id> qa
 
-# Synchroniser et vérifier le tracker après une transition
+# Project and verify tracker status
 node agent-pipeline/scripts/tracker-sync.mjs --apply
 node agent-pipeline/scripts/tracker-sync.mjs
-~~~
+```
 
-Le dashboard local rend ces mêmes données visibles en direct :
+Run the local dashboard with `node agent-pipeline/dashboard/server.mjs`, then open `http://127.0.0.1:4399`. It consumes the same scheduler state and does not create another source of truth. Docker and security details are in [dashboard/README.md](dashboard/README.md).
 
-~~~bash
-node agent-pipeline/dashboard/server.mjs
-~~~
+## Tracker adapters
 
-Ouvrez `http://127.0.0.1:4399`. Il reste sur la boucle locale et ne crée pas une seconde source de vérité. Consultez [dashboard/README.md](dashboard/README.md) pour Docker et les détails de sécurité.
+Sudocode is the complete adapter: issues, specs, relationships, idempotent creation, local UI, and status projection. Its files remain separate from the pipeline control store.
 
-## Adaptable à la stack et au runtime
+The minimal GitHub Issues adapter reads labelled work through `gh`, distinguishes specs by a configured label, and projects pipeline phases through status labels. It intentionally refuses automated creation and relationships: GitHub Issues does not expose the same portable relationship contract, and the core does not emulate one silently. Its exact configuration is in the [installation guide](docs/nouveau-profil.md#7-configure-the-tracker-and-seed-the-control-store).
 
-Le cœur ne connaît ni Codex, ni Claude Code, ni un framework applicatif. `pipeline.config.json` déclare les commandes de qualité, le profil de stack, le tracker, le store et éventuellement la CLI d’agent. Les adaptateurs de prompt fournis sont `portable` et `claude-code`; une autre CLI se branche sans modifier le moteur.
+## Security boundary
 
-Les profils font des règles des commandes concrètes : typage, lint, tests, audit, secrets, architecture, duplication, carte générée du projet et limites de conception. Le bundle [frontend-typescript](profile-bundles/frontend-typescript) est un exemple à recalibrer, pas une stack imposée.
+`file_policy` is enforced only when the agent platform applies per-role filesystem permissions. Without that platform boundary, agent-pipeline provides **detection, not prevention**: `verify-scope` compares the committed diff with reservations and policy after a role returns, then refuses the transition.
 
-### Données relationnelles et diagramme UML
+`permissions.mjs` derives globally enforceable denials and can check a platform settings file. True per-role prevention requires separate platform identities or sandboxes. A prompt prohibition is never presented as a security boundary.
 
-Un projet propriétaire d’une base relationnelle peut déclarer `data_model` : décision de persistance, modèle, schéma physique, migrations, tests d’intégration, 3NF par défaut et politique UTC pour `created_at` / `updated_at`. Les exceptions restent explicites et documentées.
+## Stack-neutral quality
 
-La pipeline ne prétend pas parser chaque dialecte SQL ou ORM ; le schéma physique reste la source technique de vérité. Pour une revue humaine, rendez la projection tables/champs/relations dans une page HTML UML autonome :
+Profiles bind stable gate names to real tools for the host stack: types, lint, tests, audit, secrets, architecture, duplication, design limits, and a generated project map. The [frontend TypeScript bundle](profile-bundles/frontend-typescript) is an example to recalibrate, not an imposed stack.
 
-~~~bash
-node agent-pipeline/scripts/render-data-model.mjs \
-  docs/data-model.diagram.json data-model.html
-~~~
+Relational projects may declare `data_model`: persistence decision, physical schema, migrations, per-issue integration proof, 3NF by default, and an explicit UTC policy for `created_at` and `updated_at`. An offline UML review page can be generated with:
 
-Le format JSON complet est documenté dans [docs/nouveau-profil.md](docs/nouveau-profil.md#relational-data-only-when-the-project-owns-it).
+```sh
+node agent-pipeline/scripts/render-data-model.mjs docs/data-model.diagram.json data-model.html
+```
 
-## Ce que la pipeline garantit — et non
+## Guarantees and limits
 
-Elle rend visibles et contrôlables les décisions, preuves, transitions et exceptions. Elle ne choisit pas le produit, l’architecture ou les dépendances à votre place ; ne remplace pas la revue humaine ; ne transforme pas un prompt en permission ; et ne rend pas interactive une CLI qui ne l’est pas.
+The pipeline makes decisions, evidence, transitions, and exceptions visible and testable. It does not choose the product, architecture, or dependencies; replace human review; turn prompts into permissions; or make a non-interactive CLI interactive.
 
 ## Documentation
 
-| Guide | Contenu |
+| Guide | Purpose |
 | --- | --- |
-| [Nouveau profil](docs/nouveau-profil.md) | installation et adaptation à une stack |
-| [Manuel opérateur](docs/operateur.md) | décisions humaines et exploitation |
-| [Machine d’état](docs/state-machine.md) | phases, rôles et transitions |
-| [Handoffs et store](docs/handoff-store.md) | protocole de persistance et preuves |
-| [Gates de qualité](docs/quality-gates.md) | règles qui deviennent des commandes |
-| [Étalonnage](docs/etalonnage.md) | évaluation comparative de la pipeline |
+| [New project](docs/nouveau-profil.md) | installation and stack adaptation |
+| [Operator manual](docs/operateur.md) | operation and human decisions |
+| [State machine](docs/state-machine.md) | phases, roles, transitions |
+| [Handoffs and store](docs/handoff-store.md) | persistence and evidence protocol |
+| [Quality gates](docs/quality-gates.md) | executable rules |
+| [Releases](docs/releases.md) | versioning and updates |
 
-## Développement
+## Development
 
-~~~bash
+```sh
 node --test test/*.test.mjs
-~~~
+```
 
-Le dépôt est volontairement sans dépendance de production. Les contributions qui touchent prompts, scripts, configuration, règles ou profils passent par revue humaine.
+Changes to prompts, scripts, configuration, rules, or profiles require human review.
 
-## Licence
+## License
 
 [MIT](LICENSE)

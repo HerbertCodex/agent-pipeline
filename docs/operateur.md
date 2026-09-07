@@ -188,6 +188,8 @@ This is the section that counts. The pipeline **describes** more mechanisms than
 
 **A prohibition written in a prompt is not a security boundary.** It is stated plainly in `AGENTS.md` §3, and it holds for this one: if your agent platform does not enforce those refusals itself, they rest on the model's goodwill.
 
+Without platform enforcement, the pipeline provides **detection, not prevention**. `verify-scope` confronts the committed diff with reservations and `file_policy` after the role returns, and refuses the transition; it cannot stop the write at the instant it happens. Run `permissions.mjs` to derive what can be enforced globally and to prove whether a platform settings file carries those refusals. Per-role isolation still requires separate platform identities or sandboxes.
+
 Check that your platform carries a real refusal policy on the `file_policy` paths, and not merely the list of tools granted to each role. Granting the write tool and hoping the prompt limits the target is not a permission, it is a suggestion.
 
 ### Git hooks
@@ -200,9 +202,11 @@ ls .git/hooks/ | grep -v sample
 
 If that command returns nothing, **no hook runs** — whatever the documents say. A generated target can then desynchronise, be pushed and merged with nothing reporting it.
 
-## Sudocode is the issue source, not the control store
+## The issue tracker is not the control store
 
-Sudocode owns issue/spec identity, title, content, priority, tags and relationships. The pipeline owns fine-grained phases, file reservations, criteria ledgers, proofs and transition history in the separate `store_dir`. Never point `store_dir` into `.sudocode`: Sudocode exports its SQLite state back to JSONL and does not promise to retain arbitrary fields such as `pipeline_state`.
+The configured provider owns issue/spec identity, title, content and the metadata it supports. The pipeline owns fine-grained phases, file reservations, criteria ledgers, proofs and transition history in the separate `store_dir`.
+
+Sudocode is the complete adapter: local UI, issues, specs, relationships, idempotent creation and status projection. Never point `store_dir` into `.sudocode`: its export does not promise to retain arbitrary fields such as `pipeline_state`.
 
 Initialize and open Sudocode with its own CLI:
 
@@ -217,6 +221,8 @@ Every control record stores a binding to the Sudocode id, uuid and scope revisio
 
 `tracker-mutate` can create entities and add a relation through the Sudocode CLI. It cannot remove a relation: Sudocode currently exposes `link` but no inverse CLI operation. Do not edit its JSONL as a workaround; record the dependency as blocked until the provider supplies an official mutation.
 
+The GitHub Issues adapter is deliberately smaller. It reads issues through `gh`, treats the configured `spec_tag` as specs, and projects pipeline status through labels prefixed by `status_label_prefix`. GitHub Issues exposes no portable dependency model here, so creation and relation mutations are refused. Create those entities in GitHub, label them, then bind them through the normal control-store flow. This limitation is explicit capability, not a silent emulation.
+
 After every persisted phase transition:
 
 ```bash
@@ -225,7 +231,7 @@ node agent-pipeline/scripts/tracker-sync.mjs
 node agent-pipeline/scripts/store-verify.mjs
 ```
 
-The first command projects the coarse status through the configured Sudocode CLI, using an argument vector with no shell. The second refuses missing bindings on existing controls, scope drift and remaining status drift. Tagged issues without controls are reported as Product-ready backlog, but do not freeze unrelated active work. No pipeline role rewrites `.sudocode/*.jsonl` directly.
+The first command projects the coarse status through the configured adapter, using an argument vector with no shell. The second refuses missing bindings on existing controls, scope drift and remaining status drift. Tagged issues without controls are reported as Product-ready backlog, but do not freeze unrelated active work. No pipeline role rewrites a provider export directly.
 
 ## Putting the pipeline to work
 
@@ -276,7 +282,7 @@ node agent-pipeline/scripts/next-step.mjs        # the next step: an issue, an a
 node agent-pipeline/scripts/next-issues.mjs      # the issues dispatchable in parallel right now
 node agent-pipeline/scripts/metrics.mjs          # throughput and escaped defects
 node agent-pipeline/scripts/store-verify.mjs     # store invariants
-node agent-pipeline/scripts/tracker-sync.mjs     # Sudocode binding, scope and status projection
+node agent-pipeline/scripts/tracker-sync.mjs     # tracker binding, scope and status projection
 node agent-pipeline/scripts/render-proposal.mjs <proposal.json> <out.html>   # review a spec before approving
 node agent-pipeline/scripts/render-decisions.mjs <out.html> [proposal.json]  # what awaits your decision
 node agent-pipeline/scripts/render-architecture.mjs <out.html> <type> [analysis.json]  # choose how to lay out the code
