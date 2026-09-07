@@ -107,6 +107,76 @@ node agent-pipeline/scripts/init.mjs
 
 `init.mjs` enregistre le produit, les contraintes, la stack imposée ou non et l’architecture approuvée. Ces réponses deviennent un fichier de bootstrap, une décision et une configuration volontairement incomplète. L’installation de la stack inspecte ensuite les sources réelles et calibre les commandes. Consultez [le parcours complet](docs/nouveau-profil.md) et [la politique de versions](docs/releases.md).
 
+### Prompt pour configurer un nouveau projet
+
+Après avoir créé le dépôt ou le squelette de l’application, ajouté Agent Pipeline et exécuté `init.mjs`, lancez votre agent depuis la racine du projet avec ce prompt. Remplacez `<stack>` par la stack choisie.
+
+<details>
+<summary>Afficher le prompt à copier</summary>
+
+```text
+Ce nouveau projet contient Agent Pipeline dans agent-pipeline/. Le bootstrap du
+produit et de l’architecture a été enregistré avec init.mjs. La stack choisie est
+<stack>.
+
+Configure Agent Pipeline pour ce projet. Cette tâche installe le cadre de travail ;
+elle ne comprend ni la première fonctionnalité, ni la création d’une spec produit.
+
+Commence par lire intégralement :
+- pipeline.bootstrap.json et docs/decisions/0000-bootstrap.md ;
+- agent-pipeline/docs/nouveau-profil.md ;
+- agent-pipeline/docs/releases.md ;
+- les manifests, wrappers, sources et instructions déjà présents dans le projet.
+
+Respecte les décisions du bootstrap. Ne change pas la stack ou l’architecture sans
+me soumettre la décision. Ne suppose pas que le projet utilise NestJS. Un adaptateur
+compatible est un raccourci facultatif ; n’écris pas un adaptateur de framework
+complet pour cette seule installation.
+
+Si un profil compatible existe, importe-le puis calibre-le sur ce projet. Sinon,
+crée un profil propre au projet à partir des vrais outils de la stack. Privilégie
+les commandes fournies par les scripts, wrappers et manifests du projet. Ne modifie
+pas le cœur dans agent-pipeline/ pour contourner une incompatibilité.
+
+Configure au minimum les commandes, les invariants vérifiables, les permissions par
+rôle, les réservations, l’architecture, la carte du projet, le tracker, la CI,
+l’isolation des tentatives et la conservation des preuves. Génère AGENTS.md, les
+prompts, les briefs, les règles et les hooks avec les scripts de la pipeline ; ne
+modifie pas séparément une cible générée.
+
+Le générateur de carte du projet doit lire les extensions et exports réels de cette
+stack. Une carte vide ou un contrôle qui réussit sans avoir inspecté de source ne
+constitue pas une preuve.
+
+Pour chaque contrôle obligatoire :
+- exécute-le sur le projet réel et conserve sa durée et sa sortie ;
+- prouve qu’il peut échouer avec un cas négatif isolé et réversible ;
+- restaure ce cas, puis vérifie le résultat positif ;
+- ne réduis aucun seuil et ne remplace aucun contrôle par une commande factice.
+
+Si une dépendance, un outil externe ou une décision humaine manque, présente le
+besoin précis et arrête uniquement l’étape concernée. N’annonce pas l’installation
+comme terminée tant qu’un contrôle obligatoire reste absent ou non calibré.
+
+Avant de terminer, exécute les contrôles finaux décrits dans
+agent-pipeline/docs/nouveau-profil.md : cohérence des cibles générées, couverture
+réelle de la carte, preuves négatives des portes, hooks, store et correspondance
+entre chaque invariant et une commande qui peut le refuser.
+
+Termine par :
+1. Les fichiers créés ou modifiés et leur rôle.
+2. Les commandes exécutées, leurs durées et leurs résultats.
+3. Les preuves négatives réalisées.
+4. Les prérequis ou décisions encore nécessaires.
+5. Les commandes exactes pour créer la première spec et ouvrir le dashboard.
+
+Ne lance aucun agent de développement, n’implémente aucune fonctionnalité, ne crée
+pas de dette technique dans le backlog et ne fais aucun commit, merge ou push durant
+cette installation.
+```
+
+</details>
+
 Le cœur nécessite Node.js 20+, Git et aucune dépendance npm de production. Sudocode fournit le parcours tracker complet ; l’adaptateur minimal GitHub Issues nécessite une CLI `gh` authentifiée.
 
 L’installation initiale inclut la préparation et la calibration des outils de la stack. Pour réutiliser un profil existant, lancez `import-profile.mjs <bundle-dir>` après `init.mjs` : la configuration initiale est complétée automatiquement en conservant vos décisions. Le profil TypeScript fourni reste un contrat à adapter, pas une stack prête à lancer.

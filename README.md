@@ -86,6 +86,71 @@ The command asks only what source inspection cannot prove: product, constraints,
 
 For non-interactive automation, use `--answers <answers.json>`. Continue with the complete [new-project installation guide](docs/nouveau-profil.md).
 
+### 3. Configure the new project with an agent
+
+After creating the repository or application scaffold, pinning Agent Pipeline and running `init.mjs`, run your agent from the project root with the prompt below. Replace `<stack>` with the selected stack.
+
+<details>
+<summary>Show the copyable new-project prompt</summary>
+
+```text
+This new project contains Agent Pipeline at agent-pipeline/. The product and
+architecture bootstrap was recorded with init.mjs. The selected stack is <stack>.
+
+Configure Agent Pipeline for this project. This task installs the development
+workflow; it does not include the first feature or creation of a product spec.
+
+First read completely:
+- pipeline.bootstrap.json and docs/decisions/0000-bootstrap.md;
+- agent-pipeline/docs/nouveau-profil.md;
+- agent-pipeline/docs/releases.md;
+- the manifests, wrappers, source and instructions already present in the project.
+
+Preserve the bootstrap decisions. Do not change the stack or architecture without
+submitting the decision to me. Do not assume NestJS. A compatible adapter is an
+optional shortcut; do not build a complete framework adapter for this installation.
+
+If a compatible profile exists, import it and calibrate it on this project.
+Otherwise create a project-owned profile from the stack's actual tools. Prefer
+commands supplied by project scripts, wrappers and manifests. Do not modify the
+core under agent-pipeline/ to bypass an incompatibility.
+
+Configure at least the commands, enforceable invariants, role permissions, file
+reservations, architecture, project map, tracker, CI, attempt isolation and evidence
+retention. Generate AGENTS.md, prompts, briefs, rules and hooks with pipeline
+scripts; do not edit a generated target independently.
+
+The project-map generator must read the real extensions and exports of this stack.
+An empty map or a check that passes without inspecting source is not evidence.
+
+For every mandatory control:
+- run it on the real project and retain its duration and output;
+- prove it can fail with an isolated, reversible negative case;
+- restore that case, then verify the positive result;
+- do not lower thresholds or replace a control with a placeholder command.
+
+If a dependency, external tool or human decision is missing, identify the exact
+need and stop only the affected step. Do not report installation as complete while
+a mandatory control is absent or uncalibrated.
+
+Before finishing, execute the final checks in
+agent-pipeline/docs/nouveau-profil.md: generated-target consistency, actual map
+coverage, negative gate proofs, hooks, store verification and the mapping from each
+invariant to a command capable of refusing it.
+
+Finish with:
+1. Created or modified files and their purpose.
+2. Commands run, their durations and results.
+3. Negative proofs performed.
+4. Remaining prerequisites or decisions.
+5. Exact commands to create the first spec and open the dashboard.
+
+Do not launch development agents, implement features, add technical debt to the
+backlog, commit, merge or push during this installation.
+```
+
+</details>
+
 To reuse an existing stack profile, run `import-profile.mjs <bundle-dir>` after `init.mjs`: it completes the untouched bootstrap configuration while preserving your decisions. The shipped TypeScript profile is a contract to adapt, not a ready-to-run toolchain. First-time installation still includes tooling setup and calibration.
 
 For a Nest presentation, prepare the host project, its dependencies and Sudocode, then demonstrate `setup.mjs` itself. Diagnose checks in an existing installation with `preflight.mjs --timeout-seconds 60`, which reports progress and durations with a per-command timeout. See [installation cost and live demonstrations](docs/nouveau-profil.md#installation-cost-and-live-demonstrations).
