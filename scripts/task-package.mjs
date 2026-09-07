@@ -1,3 +1,6 @@
+import { ciEvidence } from "./ci-evidence.mjs";
+import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -48,7 +51,18 @@ export function writeTaskPackage(issueId, role, config = loadConfig()) {
     }
     trackerRecord = match.entry.record;
   }
+  const attemptId = randomUUID();
+  let baseSha = null;
+  try { baseSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch {}
   const body = {
+    attempt_id: attemptId,
+    base_sha: baseSha,
+    handoff_path: join(config.handoffs_dir, `${issueId}-${role}-${attemptId}.json`),
+    proofs: {
+      ci: role === "qa" ? ciEvidence(entry.record.pipeline_state?.last_commit_sha, config) : { status: "not_requested", covered_gates: [] },
+      scope: role === "qa" ? (entry.record.contexts ?? []).filter((block) => /^## verify-scope /.test(block.heading ?? "")) : [],
+      handoffs: entry.record.handoffs ?? [],
+    },
     schema_version: 1,
     generated_at: new Date().toISOString(),
     role,
@@ -59,7 +73,7 @@ export function writeTaskPackage(issueId, role, config = loadConfig()) {
     record,
     tracker_record: trackerRecord,
   };
-  const out = join(config.handoffs_dir, `${issueId}-${role}-package.json`);
+  const out = join(config.handoffs_dir, `${issueId}-${role}-${attemptId}-package.json`);
   atomicWrite(out, `${JSON.stringify(body, null, 2)}\n`);
   return out;
 }

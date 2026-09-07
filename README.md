@@ -163,3 +163,5 @@ Changes to prompts, scripts, configuration, rules, or profiles require human rev
 ## License
 
 [MIT](LICENSE)
+
+[Execution isolation, durable evidence and gate reuse](docs/execution-maintenance.md).

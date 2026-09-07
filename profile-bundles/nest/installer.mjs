@@ -51,6 +51,7 @@ export function plan(root, defaults) {
   const policy = json(new URL("./file-policy.json", import.meta.url));
   const config = {
     ...defaults, profile, commands, file_policy: policy,
+    agent_runtime: { ...defaults.agent_runtime, workspace_paths: ["node_modules"], dependency_inputs: ["package.json", manager === "npm" ? "package-lock.json" : manager === "pnpm" ? "pnpm-lock.yaml" : "yarn.lock"] },
     decisions_dir: "docs/decisions", default_mode: "pipeline",
     architecture: { id: "custom", project_type: "backend", note: "Preserve the existing Nest module layout. This installation does not redesign application boundaries; future architecture changes require a recorded decision." },
     setup: { adapter: "nest", adapter_version: compatibilityManifest.adapter_version, format: 1, package_manager: manager, test_runner: testRunner, linter, report: "pipeline/setup-report.json" },

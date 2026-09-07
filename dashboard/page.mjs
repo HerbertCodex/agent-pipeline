@@ -154,8 +154,13 @@ const PAGE = `<!doctype html>
   </div>
   <section class="panel" aria-labelledby="timing-title">
     <h2 id="timing-title">Time by task and agent role</h2>
-    <p>Accumulated execution time in this dashboard session, including preparation and retries. Parallel runs are added together.</p>
+    <p>Accumulated recorded execution time, including retries and previous sessions. Parallel runs are added together.</p>
     <table class="timing-table"><thead><tr><th scope="col">Task</th><th scope="col">Role</th><th scope="col">Runs</th><th scope="col">Total time</th></tr></thead><tbody id="task-times"></tbody></table>
+  </section>
+  <section class="panel" aria-labelledby="gates-title">
+    <h2 id="gates-title">Recorded gate costs</h2>
+    <p>Local gate time is included in agent time when the agent runs the checks. It is not an additional project total.</p>
+    <table class="timing-table"><thead><tr><th>Gate</th><th>Local runs</th><th>CI reuse</th><th>Failures</th><th>Local time</th></tr></thead><tbody id="gate-times"></tbody></table>
   </section>
   <section id="runs" aria-live="polite"><p class="empty">No agent has been dispatched from this dashboard.</p></section>
 </main>
@@ -323,7 +328,7 @@ const PAGE = `<!doctype html>
     }
     document.querySelector("#detail-scope").textContent = "Dependencies: " + (issue.depends_on.join(", ") || "none") +
       " · Reservations: " + (issue.reservations.join(", ") || "none");
-    document.querySelector("#detail-reason").textContent = issue.reason;
+    document.querySelector("#detail-reason").textContent = issue.reason + " · QA code rejections: " + (issue.qa_code_rejections ?? 0);
   }
 
   document.querySelector("#detail-close").addEventListener("click", () => details.close());
@@ -406,6 +411,23 @@ const PAGE = `<!doctype html>
   }
 
   function renderRuns(snapshot) {
+    const gateGroups = new Map();
+    for (const report of snapshot.gate_reports ?? []) for (const gate of report.gates) {
+      const row = gateGroups.get(gate.key) ?? { key: gate.key, local: 0, ci: 0, failures: 0, duration: 0 };
+      if (gate.source === "ci") row.ci += 1;
+      else { row.local += 1; row.duration += gate.duration_ms ?? 0; }
+      if (gate.code !== 0) row.failures += 1;
+      gateGroups.set(gate.key, row);
+    }
+    const gateBody = document.querySelector("#gate-times");
+    gateBody.replaceChildren();
+    for (const group of [...gateGroups.values()].sort((a, b) => b.duration - a.duration)) {
+      const row = document.createElement("tr");
+      for (const value of [group.key, group.local, group.ci, group.failures, durationText(group.duration)]) {
+        const cell = document.createElement("td"); cell.textContent = String(value); row.append(cell);
+      }
+      gateBody.append(row);
+    }
     timedRuns = snapshot.runs;
     snapshotClock = performance.now();
     runs.replaceChildren();

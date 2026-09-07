@@ -28,6 +28,7 @@ export function collectFindings(records, specId = null, includeTriaged = false) 
         severity: finding.severity ?? "unspecified",
         status: finding.status ?? "parked",
         observed_at: finding.at ?? null,
+        ...(finding.triage ? { triage: finding.triage } : {}),
       })),
     )
     .filter((finding) => includeTriaged || finding.status === "parked")
@@ -53,6 +54,15 @@ function main() {
   const records = readJsonl(join(config.store_dir, "issues.jsonl")).map((entry) => entry.record);
   const findings = collectFindings(records, specId, args.includes("--all"));
 
+  if (args.includes("--group")) {
+    const groups = {};
+    for (const finding of findings) {
+      const group = finding.triage?.group ?? "untriaged";
+      (groups[group] ??= []).push(finding);
+    }
+    console.log(JSON.stringify({ groups, count: findings.length }, null, 2));
+    return;
+  }
   if (args.includes("--json")) {
     console.log(JSON.stringify({ findings, count: findings.length }, null, 2));
     return;

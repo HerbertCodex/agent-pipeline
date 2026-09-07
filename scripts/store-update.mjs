@@ -1,3 +1,7 @@
+import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { archiveHandoff, readHandoff } from "./handoff-archive.mjs";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -32,6 +36,7 @@ const REQUEST_FIELDS = new Set([
   "discoveries_declared",
   "set_status",
   "append_context",
+  "handoff_path",
   "create_record",
   "refresh_tracker",
   "scope_change",
@@ -327,6 +332,27 @@ function applyRequest(request, config, rules) {
   }
 
   const record = entry.record;
+  let receipt = null;
+  if (request.handoff_path != null) {
+    let handoff;
+    try {
+      handoff = readHandoff(request.handoff_path, config.handoffs_dir);
+      if (handoff.basis?.record_hash !== currentHash || handoff.basis?.pipeline_version !== record.pipeline_state?.version) throw new Error("Handoff basis is stale");
+      if (handoff.scope?.issue_id !== id || kind !== "issue") throw new Error("Handoff issue does not match request target");
+      execFileSync(process.execPath, [fileURLToPath(new URL("./validate-handoff.mjs", import.meta.url)), request.handoff_path], { encoding: "utf8" });
+      if (handoff.requested_transition?.from !== record.pipeline_state?.phase) throw new Error("Handoff source phase does not match current state");
+      if (handoff.requested_transition?.to !== request.pipeline_state?.phase) throw new Error("Handoff transition does not match requested state");
+      if (handoff.evidence?.commit_sha && handoff.evidence.commit_sha !== request.pipeline_state?.last_commit_sha) throw new Error("Handoff commit does not match requested state");
+      receipt = { ...archiveHandoff(handoff, config.handoffs_dir), agent: handoff.agent, produced_at: handoff.produced_at,
+        commit_sha: handoff.evidence?.commit_sha ?? null, attempt_id: handoff.attempt_id ?? null, from: record.pipeline_state?.phase, to: request.pipeline_state?.phase };
+      if ((record.handoffs ?? []).some((item) => item.sha256 === receipt.sha256)) throw new Error("Handoff already consumed");
+      record.handoffs = [...(record.handoffs ?? []), receipt];
+      if (handoff.context?.heading && handoff.context?.body) {
+        record.contexts = [...(record.contexts ?? []), { ...handoff.context, id: randomUUID(), source_role: handoff.agent, at: new Date().toISOString() }];
+      }
+      request.discoveries_declared ??= handoff.discoveries ?? [];
+    } catch (error) { fail(`Handoff persistence refused: ${error.stderr || error.message}`); }
+  }
   refreshTracker(record, kind, config, request);
   if (request.pipeline_state != null) {
     try {
@@ -396,7 +422,7 @@ function applyRequest(request, config, rules) {
       }
       record.transitions = [
         ...(record.transitions ?? []),
-        { from, to, started_at: startedAt, ended_at: endedAt, at, version: request.pipeline_state.version },
+        { from, to, started_at: startedAt, ended_at: endedAt, at, version: request.pipeline_state.version, reason: request.transition_reason ?? null, ...(receipt ? { handoff_sha256: receipt.sha256 } : {}) },
       ];
     }
     if (to === "closed" && record.closed_at == null) record.closed_at = at;
@@ -620,7 +646,7 @@ function applyRequest(request, config, rules) {
     const { heading, body } = request.append_context;
     if (!heading || !body) fail("append_context requires heading and body");
     record.contexts = record.contexts ?? [];
-    record.contexts.push({ heading, body, at: new Date().toISOString() });
+    record.contexts.push({ heading, body, id: randomUUID(), source_role: request.append_context.source_role ?? "orchestrator", supersedes: request.append_context.supersedes ?? [], at: new Date().toISOString() });
   }
 
   const lines = readFileSync(path, "utf8").split("\n");

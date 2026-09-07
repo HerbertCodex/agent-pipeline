@@ -51,8 +51,11 @@ dispatch, includes preparation, advances even without runtime heartbeats and
 freezes on completion or process failure. An interruption request keeps counting
 until the process exits. A separate table adds attempts by task and role, with
 the longest totals first; concurrent durations are summed, not treated as project
-wall-clock duration. These dashboard totals cover the current server session
-and reset on restart; they do not measure model thinking time or token cost.
+wall-clock duration. These totals combine the current session with durable run records and survive server restarts.
+An interrupted historical run is marked incomplete; its clock does not keep ticking.
+Gate reports separate local execution time from gates reused from successful CI on the same commit.
+Gate time is already included in agent time: do not add those totals.
+These measurements do not identify model thinking time or token cost.
 
 The browser's selection is not authority. `/api/dispatch` reads the catalog
 again and refuses an unknown issue, a non-dispatchable phase, a role mismatch,

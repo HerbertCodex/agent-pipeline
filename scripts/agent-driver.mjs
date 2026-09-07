@@ -1,8 +1,9 @@
-import { spawn } from "node:child_process";
+import { archiveHandoff, extractHandoff } from "./handoff-archive.mjs";
+import { spawn, execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
-import { pathToFileURL } from "node:url";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
 import { atomicWrite, loadConfig, loadRules, sha256, fail } from "./lib.mjs";
 
 /**
@@ -45,7 +46,12 @@ function runRecord(config, runId, role, packagePath, startedAt) {
   const directory = config.agent_runtime?.runs_dir ?? join(config.store_dir, "runs");
   const path = join(directory, `${runId}.json`);
   const taskPackage = readFileSync(packagePath, "utf8");
+  const task = JSON.parse(taskPackage);
   const record = {
+    issue_id: task.record?.id ?? null,
+    attempt_id: task.attempt_id ?? runId,
+    base_sha: task.base_sha ?? null,
+    workspace: config.agent_runtime?.cwd ?? process.cwd(),
     schema_version: 1,
     run_id: runId,
     role,
@@ -116,7 +122,9 @@ export async function runAgent(role, packagePath, config, json = false) {
   });
   persistRun(run, { status: "running", process_id: child.pid ?? null });
 
+  let captured = "";
   child.stdout.on("data", (chunk) => {
+    captured = (captured + chunk.toString()).slice(-2_000_000);
     emit({ type: "output", run_id: runId, role, stream: "stdout", text: chunk.toString() }, json);
   });
   child.stderr.on("data", (chunk) => {
@@ -156,10 +164,32 @@ export async function runAgent(role, packagePath, config, json = false) {
     process.off("SIGTERM", interrupt);
   }
 
+  const gateDirectory = join(runtime.cwd ?? process.cwd(), config.agent_runtime?.runs_dir ?? join(config.store_dir, "runs"), "gates");
+  if (existsSync(gateDirectory)) for (const name of readdirSync(gateDirectory).filter((file) => /^[a-f0-9-]+\.json$/.test(file))) {
+    try {
+      const report = JSON.parse(readFileSync(join(gateDirectory, name), "utf8"));
+      if (report.attempt_id === run.record.attempt_id && report.issue_id === run.record.issue_id) {
+        atomicWrite(join(config.agent_runtime?.runs_dir ?? join(config.store_dir, "runs"), "gates", name), JSON.stringify(report, null, 2) + "\n");
+      }
+    } catch { /* An invalid report is not evidence and is never imported. */ }
+  }
   const endedAt = new Date().toISOString();
   const elapsedMs = Date.now() - started;
+  let handoff = null;
+  let handoffError = null;
+  try {
+    const document = extractHandoff(captured, config.handoffs_dir, runtime.cwd ?? process.cwd());
+    if (document != null) {
+      handoff = archiveHandoff(document, config.handoffs_dir);
+      if (runtime.require_handoff) {
+        if (document.attempt_id !== run.record.attempt_id || document.scope?.issue_id !== run.record.issue_id) throw new Error("Handoff does not match the dispatched attempt and issue");
+        execFileSync(process.execPath, [fileURLToPath(new URL("./validate-handoff.mjs", import.meta.url)), resolve(handoff.path)], { encoding: "utf8", cwd: runtime.cwd ?? process.cwd() });
+      }
+    }
+    else if (runtime.require_handoff && exitCode === 0 && !interrupted) throw new Error("Agent returned no complete handoff");
+  } catch (error) { handoffError = error.message; exitCode = 1; }
   const status = interrupted ? "interrupted" : exitCode === 0 ? "completed" : "failed";
-  persistRun(run, { status, ended_at: endedAt, elapsed_ms: elapsedMs, exit_code: exitCode });
+  persistRun(run, { status, ended_at: endedAt, elapsed_ms: elapsedMs, exit_code: exitCode, handoff, handoff_error: handoffError });
   if (interrupted) emit({ type: "interrupted", run_id: runId, role, at: endedAt }, json);
   emit({
     type: "completed",
@@ -168,6 +198,8 @@ export async function runAgent(role, packagePath, config, json = false) {
     exit_code: exitCode,
     elapsed_ms: elapsedMs,
     run_record: run.path,
+    handoff,
+    handoff_error: handoffError,
     at: endedAt,
   }, json);
   return exitCode;

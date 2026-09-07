@@ -1,0 +1,33 @@
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join, resolve, basename } from 'node:path';
+
+/** Reads durable lifecycle records; incomplete historical runs are never shown as live children. */
+export function executionHistory(root, config) {
+  const directory = resolve(root, config.agent_runtime?.runs_dir ?? join(config.store_dir, 'runs'));
+  if (!existsSync(directory)) return [];
+  const records = [];
+  for (const file of readdirSync(directory).filter((name) => name.endsWith('.json'))) {
+    try {
+      const run = JSON.parse(readFileSync(join(directory, file), 'utf8'));
+      if (!run.run_id || !run.role) continue;
+      const inferred = basename(run.package ?? '').match(/^(.*)-(?:implementer|qa|product|orchestrator)-(?:package|[a-f0-9-]+-package)\.json$/)?.[1];
+      records.push({ id: run.run_id, runtime_run_id: run.run_id, issue_id: run.issue_id ?? inferred ?? 'unknown',
+        issue_id_source: run.issue_id ? 'record' : inferred ? 'package_filename' : 'unknown', role: run.role,
+        status: run.ended_at ? run.status : 'incomplete', started_at: run.started_at, updated_at: run.ended_at ?? run.started_at,
+        finished_at: run.ended_at ?? run.started_at, elapsed_ms: run.elapsed_ms ?? 0, duration_ms: run.elapsed_ms ?? 0,
+        exit_code: run.exit_code, output: 'Historical execution. Live output is not retained.', interactive: false,
+        historical: true, run_record: join(directory, file), handoff: run.handoff ?? null });
+    } catch { /* One interrupted file does not hide the remaining history. */ }
+  }
+  return records.sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)));
+}
+
+/** Reads measured gate reports separately from agent durations to avoid double counting. */
+export function gateHistory(root, config) {
+  const directory = resolve(root, config.agent_runtime?.runs_dir ?? join(config.store_dir, 'runs'), 'gates');
+  if (!existsSync(directory)) return [];
+  return readdirSync(directory).filter((name) => name.endsWith('.json')).flatMap((name) => {
+    try { const report = JSON.parse(readFileSync(join(directory, name), 'utf8')); return Array.isArray(report.gates) ? [report] : []; }
+    catch { return []; }
+  });
+}

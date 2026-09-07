@@ -100,3 +100,7 @@ Return `outcome: ready_for_qa` and request `in_progress -> ready_for_qa` with `#
 List them, one entry per claim, each with `claim` and `how_to_replay` — the exact command or gesture, not a description. Three to six is the usual count. Do not pad it with things that are not measurements; do not omit one because you are confident. Confidence is precisely what makes an unreplayed claim dangerous: a QA that believes a competent implementer is indistinguishable from a QA that believes an incompetent one, and neither has verified anything.
 
 End with exactly one `AGENT_HANDOFF` block. Do not persist or transition the issue yourself.
+
+Return the handoff inline between its markers; the driver archives it. The task package supplies a unique `handoff_path` for file-based handoffs only when your file policy permits writing it. Use `run-gates.mjs <task-package>` after committing for measured gate evidence. Source-dependent replay claims name the commit SHA and use `replay-proof.mjs` so later work cannot change what the claim measures.
+
+Copy `attempt_id` from the task package into the handoff. Every source-dependent claim in a dispatched implementation handoff carries `source_sha` and a recipe `node agent-pipeline/scripts/replay-proof.mjs <source_sha> <executable> [arguments]`. Never substitute a moving branch name.

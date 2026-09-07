@@ -3,9 +3,9 @@
 <!-- brief:implementer,qa -->
 ## What is NEVER tested
 
-Styles, classes, colours, layout; static markup — labels, placeholders, containers; framework behaviour; third-party libraries (we test **our** use of them); trivial getters and re-exports; whole-object snapshots.
+Incidental styles and class names; static markup without an explicit product contract; framework behaviour; third-party libraries (we test **our** use of them); trivial getters and re-exports; whole-object snapshots.
 
-Presentation, responsiveness and accessibility are validated by QA in the real application according to the profile, never asserted in tests. The Implementer still has to implement them: **"no test covers it" is not a defence.**
+Presentation, responsiveness and accessibility are validated in the real application. When an approved criterion explicitly requires an observable property, automate that property in the browser: keyboard reachability, no overflow, readable contrast, or relative geometry. Prefer behavior and token-derived relations over copied CSS values or class names. Pure aesthetic preference remains visual review. The Implementer still has to implement them: **"no test covers it" is not a defence.**
 <!-- /brief -->
 
 <!-- brief:implementer,qa -->

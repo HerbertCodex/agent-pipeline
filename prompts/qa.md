@@ -55,7 +55,7 @@ Run every conditional review section of your brief addressed to QA. For pure log
 
 ## SECURITY AND SCOPE
 
-Check trust boundaries, server-side enforcement, error leakage, secret exposure, logging, fail-closed behavior, dependency decisions and out-of-scope code. The Orchestrator already ran `verify-scope` on this handoff; its timestamped output for this SHA is in your package. Read it; rerun only if it is missing or does not match the SHA. An undeclared file or an out-of-role path is a rejection, whatever the tests say.
+Check trust boundaries, server-side enforcement, error leakage, secret exposure, logging, fail-closed behavior, dependency decisions and out-of-scope code. The Orchestrator already ran `verify-scope` on this handoff; its timestamped output is in `proofs.scope` in your package; check its SHA before reuse. Read it; rerun only if it is missing or does not match the SHA. An undeclared file or an out-of-role path is a rejection, whatever the tests say.
 
 ## ROUTING
 
@@ -104,3 +104,7 @@ This is not hypothetical. Over nine issues, QA validated nine times and rejected
 ## OUTPUT
 
 Return a complete `issue_handoff` with commands, evidence including CI run ids and the requested transition. **You produce no commit: `evidence.commit_sha` is `null` and `evidence.files` is empty** — your file policy is `deny **`, and the validated SHA lives in `pipeline_state.last_commit_sha`. Declaring a SHA you did not author is refused by `validate-handoff`. A rejection block includes a rejection block includes summary, failed items, uncovered criteria, violations, required fixes and explicit actions the target must not take, under the only allowed heading for the target role. End with exactly one `AGENT_HANDOFF` block. Do not persist the result yourself.
+
+Use `run-gates.mjs <task-package>` for the owed checks: it records timings and reuses only verified CI steps on the exact commit. Historical claims must name a literal commit SHA and run through `replay-proof.mjs`; a recipe reading the moving integration tree is not a replay.
+
+Copy `attempt_id` from the task package into the handoff. Every source-dependent claim in a dispatched implementation handoff carries `source_sha` and a recipe `node agent-pipeline/scripts/replay-proof.mjs <source_sha> <executable> [arguments]`. Never substitute a moving branch name.

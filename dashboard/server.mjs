@@ -1,3 +1,4 @@
+import { executionHistory, gateHistory } from "../scripts/execution-metrics.mjs";
 import { randomBytes, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -168,6 +169,7 @@ function publicIssue(record, rules, ready, waiting) {
     reservations: Array.isArray(record.pipeline_state?.file_reservations)
       ? record.pipeline_state.file_reservations
       : [],
+    qa_code_rejections: record.pipeline_state?.qa_code_rejections ?? 0,
     criteria_count: Array.isArray(record.acceptance_criteria)
       ? record.acceptance_criteria.length
       : 0,
@@ -287,7 +289,9 @@ export function readIssueCatalog(cwd) {
 }
 
 class RunRegistry {
-  constructor(launchProcess, interactiveInput) {
+  constructor(launchProcess, interactiveInput, historySource = () => [], gateSource = () => []) {
+    this.gateSource = gateSource;
+    this.historySource = historySource;
     this.launchProcess = launchProcess;
     this.interactiveInput = interactiveInput;
     this.runs = new Map();
@@ -296,9 +300,12 @@ class RunRegistry {
   }
 
   snapshot() {
+    const live = [...this.runs.values()].reverse().map(publicRun);
+    const ids = new Set(live.map((run) => run.runtime_run_id));
     return {
       generated_at: new Date().toISOString(),
-      runs: [...this.runs.values()].reverse().map(publicRun),
+      runs: [...live, ...this.historySource().filter((run) => !ids.has(run.runtime_run_id))],
+      gate_reports: this.gateSource(),
     };
   }
 
@@ -640,7 +647,15 @@ export function createDashboard({
       acceptsInput = false;
     }
   }
-  const registry = new RunRegistry(launcher, acceptsInput === true);
+  const history = () => {
+    try { return executionHistory(cwd, readProjectJson(resolve(cwd, "pipeline.config.json"), "pipeline configuration")); }
+    catch { return []; }
+  };
+  const gates = () => {
+    try { return gateHistory(cwd, readProjectJson(resolve(cwd, "pipeline.config.json"), "pipeline configuration")); }
+    catch { return []; }
+  };
+  const registry = new RunRegistry(launcher, acceptsInput === true, history, gates);
   const source = issueSource ?? (() => readIssueCatalog(cwd));
   const server = createServer(requestHandler(registry, token, source));
   return lifecycle(server, registry, token);

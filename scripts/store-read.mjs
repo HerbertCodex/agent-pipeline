@@ -25,8 +25,8 @@ function addresseeOf(heading) {
  * Three cuts, in this order. Blocks addressed to another role do not travel:
  * they were never written for this one. Nor do unaddressed blocks, since a
  * closure proof is audit material rather than an instruction, and that was
- * half the weight on the heaviest issue measured. Finally, a repeated heading
- * replaces: only the last instruction is live, the earlier one is history.
+ * half the weight on the heaviest issue measured. Repeated headings do not erase another
+ * author. Only explicitly superseded block ids are removed from the live view.
  *
  * This is not summarising. A block that travels travels WHOLE: summarising
  * would make the reader fill the gaps, and filling is indistinguishable from
@@ -37,12 +37,9 @@ function addresseeOf(heading) {
  * @returns The live blocks addressed to that role.
  */
 export function contextsFor(contexts, role) {
-  const latest = new Map();
-  for (const block of contexts ?? []) {
-    if (addresseeOf(block.heading) !== role) continue;
-    latest.set(block.heading, block);
-  }
-  return [...latest.values()];
+  const addressed = (contexts ?? []).filter((block) => addresseeOf(block.heading) === role);
+  const superseded = new Set(addressed.flatMap((block) => block.supersedes ?? []));
+  return addressed.filter((block) => block.id == null || !superseded.has(block.id));
 }
 
 /**

@@ -7,7 +7,7 @@ Every sub-agent ends with a single JSON block between `AGENT_HANDOFF_START` and 
 
 It carries `produced_at`, an ISO 8601 date. That is for legibility, not for measurement: several handoffs sat side by side on a real run with no way to order them, and no way to tell a fresh one from a file left over from an earlier attempt. The durations come from the orchestrator's own stamps, because nothing here trusts an agent's account of its own clock.
 
-They are written under `handoffs_dir`, which git ignores, and `handoffs.mjs --prune` removes those whose issue has closed.
+They are written under `handoffs_dir`, which git ignores. Dispatch archives validated output by content digest under `archive/`; store transitions reference that receipt. `handoffs.mjs --prune` only removes transient top-level files for closed issues, never archived receipts.
 
 ```json
 {

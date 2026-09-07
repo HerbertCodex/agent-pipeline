@@ -1,6 +1,7 @@
+import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { loadConfig, loadRules, pathAllowed, isGenerated, fail } from "./lib.mjs";
+import { loadConfig, loadRules, pathAllowed, isGenerated, matchAny, readJsonl, sha256, fail } from "./lib.mjs";
 
 /**
  * Confronts a handoff's declared files with the real git diff.
@@ -18,7 +19,7 @@ import { loadConfig, loadRules, pathAllowed, isGenerated, fail } from "./lib.mjs
  * Usage: node verify-scope.mjs <handoff.json> <base-ref>
  */
 function main() {
-  const [handoffPath, baseRef] = process.argv.slice(2);
+  const [handoffPath, baseRef] = process.argv.slice(2).filter((arg) => arg !== "--json");
   if (!handoffPath || !baseRef) fail("usage : verify-scope.mjs <handoff.json> <base-ref>");
   const handoff = JSON.parse(readFileSync(handoffPath, "utf8"));
   const rules = loadRules();
@@ -28,14 +29,20 @@ function main() {
 
   let diff;
   try {
-    diff = execFileSync("git", ["diff", "--name-only", `${baseRef}..${sha}`], { encoding: "utf8" });
+    diff = execFileSync("git", ["diff", "--name-only", "-z", "--no-renames", `${baseRef}..${sha}`, "--"], { encoding: "utf8" });
   } catch (error) {
     fail(`git diff a echoue : ${error.message}`);
   }
-  const changed = diff.split("\n").filter((line) => line.length > 0);
+  const changed = diff.split("\0").filter((line) => line.length > 0);
   const declared = new Set(handoff.evidence.files ?? []);
   const policy = rules.file_policy?.[handoff.agent];
   const errors = [];
+  const issueId = handoff.scope?.issue_id;
+  const entry = handoff.agent === "orchestrator" ? null : readJsonl(join(config.store_dir, "issues.jsonl")).find((item) => item.record.id === issueId);
+  const reservations = entry?.record.pipeline_state?.file_reservations ?? [];
+  if (handoff.agent !== "orchestrator" && entry == null) errors.push("Issue record missing: scope.issue_id must name the reservation owner");
+  const reserved = (file) => reservations.some((pattern) => matchAny(file, [pattern]) ||
+    (!/[*?]/.test(pattern) && file.startsWith(pattern.replace(/\/$/, "") + "/")));
 
   const generated = (file) => isGenerated(file, config);
   const writesGenerated = handoff.agent === "orchestrator";
@@ -50,6 +57,7 @@ function main() {
       }
       continue;
     }
+    if (handoff.agent !== "orchestrator" && !reserved(file)) errors.push(`outside issue reservations: ${file}`);
     if (!declared.has(file)) errors.push(`modified but undeclared: ${file}`);
     if (!pathAllowed(file, policy)) errors.push(`hors role ${handoff.agent} : ${file}`);
   }
@@ -61,6 +69,11 @@ function main() {
   if (errors.length > 0) {
     for (const error of errors) console.error(`scope : ${error}`);
     process.exit(1);
+  }
+  if (process.argv.includes("--json")) {
+    console.log(JSON.stringify({ issue_id: issueId ?? null, agent: handoff.agent, base_ref: baseRef, commit_sha: sha,
+      record_hash: entry ? sha256(entry.raw) : null, files: changed, reservations, checked_at: new Date().toISOString(), status: "passed" }));
+    return;
   }
   console.log(
     `scope verified: ${changed.length} file(s), ${baseRef}..${sha}, role ${handoff.agent}, ${new Date().toISOString()}`

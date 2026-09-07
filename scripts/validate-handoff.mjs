@@ -1,3 +1,4 @@
+import { reservationFaults } from "./dispatch-preflight.mjs";
 import { readFileSync, existsSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { loadConfig, loadRules, readJsonl, pathAllowed, sha256, generatedPaths, fail } from "./lib.mjs";
@@ -698,6 +699,14 @@ function main() {
       }
     }
 
+    if (handoff.attempt_id && agent === "implementer") {
+      for (const [index, claim] of (handoff.claims_to_replay ?? []).entries()) {
+        if (!/^[a-f0-9]{7,40}$/i.test(claim.source_sha ?? "") ||
+            !String(claim.how_to_replay).includes(`replay-proof.mjs ${claim.source_sha} `)) {
+          errors.push(`claims_to_replay[${index}] must name source_sha and replay it with replay-proof.mjs on that literal SHA`);
+        }
+      }
+    }
     // A replay whose status belongs to a later command measures that command.
     for (const [index, item] of (handoff.claims_to_replay ?? []).entries()) {
       if (typeof item?.how_to_replay !== "string" || !masksItsExit(item.how_to_replay)) continue;
@@ -1082,6 +1091,7 @@ function main() {
   // a plan, and the whole wave runs in series.
   const generated = new Set(generatedPaths(config));
   for (const item of handoff.issues ?? []) {
+    errors.push(...reservationFaults(item?.file_reservations, config.file_policy?.implementer).map((message) => `${item.id ?? "issue"}: ${message}`));
     for (const path of item?.file_reservations ?? []) {
       if (!generated.has(path)) continue;
       errors.push(

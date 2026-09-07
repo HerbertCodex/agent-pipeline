@@ -91,3 +91,5 @@ La pipeline rend décisions, preuves, transitions et exceptions contrôlables. E
 ## Licence
 
 [MIT](LICENSE)
+
+[Isolation des exécutions, preuves conservées et réutilisation de la CI](docs/execution-maintenance.md).

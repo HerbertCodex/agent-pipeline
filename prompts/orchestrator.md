@@ -55,7 +55,7 @@ If the environment cannot spawn a sub-agent directly, output the exact role and 
 ## HANDOFF VALIDATION
 
 1. Extract exactly one block between `AGENT_HANDOFF_START` and `AGENT_HANDOFF_END`.
-2. Save it under `handoffs_dir`, named `<issue>-<role>.json`. That directory is git-ignored: a handoff inside the diff is a file `verify-scope` flags and a reviewer reads as work. « Somewhere outside the repository » was the old instruction, and a file with no home is a file nobody cleans up — one real run left `i-0002-implementer.json` sitting in the tree.
+2. Save it under `handoffs_dir`, using the unique `handoff_path` from the task package; the driver also archives each returned document by content digest. That directory is git-ignored: a handoff inside the diff is a file `verify-scope` flags and a reviewer reads as work. « Somewhere outside the repository » was the old instruction, and a file with no home is a file nobody cleans up — one real run left `i-0002-implementer.json` sitting in the tree.
 3. Run `validate-handoff.mjs <handoff.json>`.
 4. For any handoff carrying a commit SHA, run `verify-scope.mjs <handoff.json> <base-ref>` with the phase's starting commit, once. Save the timestamped output for the next role's package, and **persist it with the transition** as an `append_context` block headed `## verify-scope <issue> <base>..<sha>`. An artefact that lives only in your conversation dies with you: it already happened, and the next QA had to reconstruct an Implementer handoff to replay a scope check that had been run correctly an hour earlier. Reconstruction is indistinguishable from fabrication until it is checked — persist the measurement instead of making someone redo it.
 5. For a `ready_for_qa` handoff with default `proof_kind: "red_test"`, replay `evidence.red_proof.cmd` against the Implementer's `test:` commit and require a non-zero exit: **red must be observed, not declared**. With `proof_kind: "characterization"`, replay `characterization_proof.cmd` against `observed_against_commit_sha` and require exit 0 instead; it names a test-only observation, not code made green. Never accept either recorded exit code as proof of itself.
@@ -151,3 +151,14 @@ A spec handoff carries `mode: "spec_handoff"` and no `basis.pipeline_version` �
 Report the persisted transition, evidence, next owner and any human gate. Do not claim success unless the store update, verification and diff review all passed.
 
 State the issue id and the `pipeline_state.version` you read **before** your step, on their own line, so the driver can run `next-step.mjs --assert-advanced <issue> <version-before>` without parsing prose. Report the version you read, not the one you expect: a value written to make the gate pass measures nothing.
+
+
+## Execution receipts and integration
+
+Dispatch checks generated policy and known file permissions before launching. Each attempt runs on its own branch and worktree; file-disjoint agents still must not share an index or build directory. Dependencies are copied only from configured `agent_runtime.workspace_paths`. Keep dependency lock inputs in `agent_runtime.dependency_inputs`.
+
+Persist every returned issue handoff through `store-update` with `handoff_path`, in the same request as the transition. This validates and archives the document, persists its addressed context and links the transition to its digest. A previous unconsumed runtime handoff blocks redispatch. Never repair a rejected attempt off-store and overwrite its receipt.
+
+After review, integrate the attempt branch with `git merge --no-ff <attempt-branch>` from a clean integration tree, then run the owed gates on the resulting SHA. Keep the worktree until its changes and receipts are accounted for. Never infer a successful integration from an agent's exit code.
+
+The task package exposes addressed context separately from `proofs.scope` and `proofs.ci`. Use `run-gates.mjs <package>` to replay the issue battery, or add `--closure` for the full battery. It reuses only successful named CI steps on the exact SHA. For a historical source-dependent claim, use `replay-proof.mjs <literal-sha> <executable> [arguments]`.
