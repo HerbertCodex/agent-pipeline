@@ -320,6 +320,69 @@ describe("Sudocode issue tracker adapter", () => {
   });
 });
 
+describe("GitHub Issues adapter", () => {
+  test("reads labelled issues through gh-compatible JSON without a local tracker store", () => {
+    const root = mkdtempSync(join(tmpdir(), "pipeline-github-"));
+    roots.push(root);
+    const config = {
+      store_dir: "pipeline/store",
+      issue_tracker: {
+        provider: "github", repository: "HerbertCodex/agent-pipeline", command: "gh", args: [],
+        managed_tag: "pipeline", spec_tag: "pipeline:spec", status_label_prefix: "pipeline:",
+        status_map: { planned: "open", in_progress: "in_progress", ready_for_qa: "needs_review", qa_in_progress: "needs_review", closed: "closed", "blocked_*": "blocked", operator_escalation: "blocked" },
+      },
+    };
+    const rows = [{ number: 12, id: "node-12", title: "Ship", body: "Scope", state: "OPEN", updatedAt: "2026-09-03T00:00:00Z", labels: [{ name: "pipeline" }, { name: "pipeline:in_progress" }] }, { number: 13, id: "node-13", title: "Plan", body: "Spec", state: "OPEN", updatedAt: "2026-09-03T00:00:00Z", labels: [{ name: "pipeline:spec" }] }, { number: 14, id: "node-14", title: "Unmanaged", body: "Ignored", state: "OPEN", updatedAt: "2026-09-03T00:00:00Z", labels: [] }];
+    const snapshot = readIssueTracker(config, root, { run: () => ({ status: 0, stdout: JSON.stringify(rows), stderr: "" }) });
+    assert.equal(snapshot.provider, "github");
+    assert.equal(snapshot.issues[0].record.id, "12");
+    assert.equal(snapshot.issues[0].record.status, "in_progress");
+    assert.equal(snapshot.specs[0].record.id, "13");
+    assert.equal(snapshot.issues.length, 1);
+  });
+
+  test("refuses ambiguous status labels instead of choosing one by ordering", () => {
+    const root = mkdtempSync(join(tmpdir(), "pipeline-github-"));
+    roots.push(root);
+    const config = {
+      store_dir: "pipeline/store",
+      issue_tracker: { provider: "github", repository: "owner/repo", managed_tag: "pipeline" },
+    };
+    const rows = [{ number: 12, id: "node-12", title: "Ship", body: "", state: "OPEN", labels: [{ name: "pipeline" }, { name: "pipeline:open" }, { name: "pipeline:blocked" }] }];
+    assert.throws(
+      () => readIssueTracker(config, root, { run: () => ({ status: 0, stdout: JSON.stringify(rows), stderr: "" }) }),
+      /conflicting pipeline status labels/,
+    );
+  });
+
+  test("projects status through labels and confirms it from a fresh GitHub read", () => {
+    const root = mkdtempSync(join(tmpdir(), "pipeline-github-"));
+    roots.push(root);
+    let status = "open";
+    const calls = [];
+    const config = {
+      store_dir: "pipeline/store",
+      issue_tracker: {
+        provider: "github", repository: "owner/repo", command: "gh", args: [], managed_tag: "pipeline",
+        status_label_prefix: "pipeline:",
+        status_map: { planned: "open", in_progress: "in_progress", ready_for_qa: "needs_review", qa_in_progress: "needs_review", closed: "closed", "blocked_*": "blocked", operator_escalation: "blocked" },
+      },
+    };
+    const run = (command, args, options) => {
+      calls.push({ command, args, options });
+      if (args.includes("edit")) status = "in_progress";
+      const rows = [{ number: 12, id: "node-12", title: "Ship", body: "Scope", state: "OPEN", updatedAt: "2026-09-03T00:00:00Z", labels: [{ name: "pipeline" }, { name: `pipeline:${status}` }] }];
+      return { status: 0, stdout: args.includes("list") ? JSON.stringify(rows) : "", stderr: "" };
+    };
+    const result = updateTrackerStatus("12", "in_progress", config, { cwd: root, run });
+    assert.equal(result.status, 0);
+    assert.deepEqual(calls.map((call) => call.args[0]), ["issue", "label", "issue", "issue"]);
+    const edit = calls.find((call) => call.args.includes("edit"));
+    assert.deepEqual(edit.args.slice(-4), ["--remove-label", "pipeline:open", "--add-label", "pipeline:in_progress"]);
+    assert.ok(calls.every((call) => call.options.shell === false));
+  });
+});
+
 test("the operator guide names the missing Sudocode unlink capability without authorizing JSONL edits", () => {
   const guide = readFileSync(new URL("../docs/operateur.md", import.meta.url), "utf8");
   assert.match(guide, /cannot remove a relation/i);

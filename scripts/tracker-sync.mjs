@@ -72,8 +72,14 @@ function report(projection, json) {
     console.log(`SYNC ${item.id}: ${item.current} -> ${item.desired}`);
   }
   if (projection.errors.length + projection.pending.length === 0) {
-    console.log("Sudocode and pipeline control state are synchronized.");
+    console.log(`${snapshotProvider(projection)} and pipeline control state are synchronized.`);
   }
+}
+
+function snapshotProvider(projection) {
+  if (projection.provider === "github") return "GitHub Issues";
+  if (projection.provider === "sudocode") return "Sudocode";
+  return "Issue tracker";
 }
 
 function main() {
@@ -84,11 +90,12 @@ function main() {
   const snapshot = readIssueTracker(config);
   if (snapshot == null) fail("issue tracker is disabled");
   const records = readJsonl(join(config.store_dir, "issues.jsonl")).map((entry) => entry.record);
-  let projection = trackerProjection(records, snapshot, config);
+  let projection = { ...trackerProjection(records, snapshot, config), provider: snapshot.provider };
   if (apply) {
     try {
       applyTrackerProjection(projection, config);
-      projection = trackerProjection(records, readIssueTracker(config), config);
+      const refreshed = readIssueTracker(config);
+      projection = { ...trackerProjection(records, refreshed, config), provider: refreshed.provider };
     } catch (error) {
       fail(error.message);
     }

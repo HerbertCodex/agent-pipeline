@@ -843,47 +843,54 @@ function main() {
   }
   if (config.issue_tracker != null && config.issue_tracker.enabled !== false) {
     const tracker = config.issue_tracker;
-    if (tracker.provider !== "sudocode") fail("issue_tracker.provider must be sudocode");
-    for (const key of ["root", "issues_file", "specs_file", "command", "managed_tag"]) {
-      if (typeof tracker[key] !== "string" || tracker[key].trim().length === 0) {
-        fail(`issue_tracker.${key} must be a non-empty string`);
+    if (!["sudocode", "github"].includes(tracker.provider)) fail("issue_tracker.provider must be sudocode or github");
+    if (tracker.provider === "github") {
+      if (typeof tracker.repository !== "string" || !/^[^/\s]+\/[^/\s]+$/.test(tracker.repository)) {
+        fail("issue_tracker.repository must be owner/name for the GitHub adapter");
       }
-    }
-    if (!Array.isArray(tracker.args) || tracker.args.some((arg) => typeof arg !== "string")) {
-      fail("issue_tracker.args must be a list of strings");
+      if (typeof tracker.command !== "string" || tracker.command.trim().length === 0) {
+        fail("issue_tracker.command must name the GitHub CLI command");
+      }
+      if (!Array.isArray(tracker.args) || tracker.args.some((arg) => typeof arg !== "string")) {
+        fail("issue_tracker.args must be a list of strings");
+      }
+      if (typeof tracker.managed_tag !== "string" || tracker.managed_tag.trim().length === 0) {
+        fail("issue_tracker.managed_tag must be a non-empty GitHub label");
+      }
+    } else {
+      for (const key of ["root", "issues_file", "specs_file", "command", "managed_tag"]) {
+        if (typeof tracker[key] !== "string" || tracker[key].trim().length === 0) {
+          fail(`issue_tracker.${key} must be a non-empty string`);
+        }
+      }
+      if (!Array.isArray(tracker.args) || tracker.args.some((arg) => typeof arg !== "string")) {
+        fail("issue_tracker.args must be a list of strings");
+      }
+      const trackerRoot = resolve(tracker.root);
+      const controlRoot = resolve(config.store_dir);
+      if (
+        trackerRoot === controlRoot ||
+        trackerRoot.startsWith(`${controlRoot}${sep}`) ||
+        controlRoot.startsWith(`${trackerRoot}${sep}`)
+      ) {
+        fail("issue_tracker.root and store_dir must be separate directories");
+      }
+      const trackerProbe = join(tracker.root, tracker.issues_file).replaceAll("\\", "/");
+      for (const role of ["product", "orchestrator"]) {
+        if (!pathAllowed(trackerProbe, config.file_policy?.[role])) {
+          fail(
+            `file_policy.${role} forbids ${trackerProbe}, but ${role} must mutate Sudocode through its CLI`,
+          );
+        }
+      }
     }
     if (typeof config.commands.tracker_sync !== "string") {
       fail("commands.tracker_sync missing: a configured issue tracker needs a gate that refuses drift");
     }
-    const trackerRoot = resolve(tracker.root);
-    const controlRoot = resolve(config.store_dir);
-    if (
-      trackerRoot === controlRoot ||
-      trackerRoot.startsWith(`${controlRoot}${sep}`) ||
-      controlRoot.startsWith(`${trackerRoot}${sep}`)
-    ) {
-      fail("issue_tracker.root and store_dir must be separate directories");
-    }
     const statuses = new Set(["open", "in_progress", "blocked", "needs_review", "closed"]);
-    for (const phase of [
-      "planned",
-      "in_progress",
-      "ready_for_qa",
-      "qa_in_progress",
-      "closed",
-      "blocked_*",
-      "operator_escalation",
-    ]) {
+    for (const phase of ["planned", "in_progress", "ready_for_qa", "qa_in_progress", "closed", "blocked_*", "operator_escalation"]) {
       if (!statuses.has(tracker.status_map?.[phase])) {
-        fail(`issue_tracker.status_map.${phase} must be a valid Sudocode status`);
-      }
-    }
-    const trackerProbe = join(tracker.root, tracker.issues_file).replaceAll("\\", "/");
-    for (const role of ["product", "orchestrator"]) {
-      if (!pathAllowed(trackerProbe, config.file_policy?.[role])) {
-        fail(
-          `file_policy.${role} forbids ${trackerProbe}, but ${role} must mutate Sudocode through its CLI`,
-        );
+        fail(`issue_tracker.status_map.${phase} must be a valid pipeline status`);
       }
     }
   }
