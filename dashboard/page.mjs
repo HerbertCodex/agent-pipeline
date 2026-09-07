@@ -62,6 +62,11 @@ const PAGE = `<!doctype html>
     .issue-reason.blocked { color: var(--warning); }
     .badge { flex: none; padding: 4px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: .66rem; font-weight: 800; text-transform: uppercase; }
     .badge.blocked { background: transparent; color: var(--warning); border: 1px solid currentColor; }
+    dialog { width: min(760px, calc(100% - 32px)); max-height: 85vh; overflow: auto; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
+    dialog::backdrop { background: rgb(0 0 0 / 45%); }
+    dialog h2, dialog p, dialog li { overflow-wrap: anywhere; }
+    dialog p, dialog li { white-space: pre-wrap; line-height: 1.5; }
+    dialog .panel-head { align-items: start; }
     .empty-issues { grid-column: 1 / -1; margin: 0; padding: 28px 16px; color: var(--muted); text-align: center; }
     form { display: grid; grid-template-columns: minmax(220px, 1fr) 190px auto; gap: 10px; margin-top: 14px; padding: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
     .selection { min-width: 0; align-self: center; }
@@ -69,6 +74,9 @@ const PAGE = `<!doctype html>
     .selection span { display: block; margin-top: 5px; color: var(--muted); font-size: .78rem; }
     form button { align-self: end; }
     #notice { min-height: 24px; margin: 10px 2px; color: var(--muted); font-size: .88rem; }
+    .timing-table { width: 100%; margin: 16px 0; border-collapse: collapse; text-align: left; }
+    .timing-table th, .timing-table td { padding: 8px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+    [data-duration] { font-variant-numeric: tabular-nums; }
     .summary { display: flex; gap: 24px; margin: 24px 0 16px; color: var(--muted); font-size: .9rem; }
     .summary strong { color: var(--ink); font-size: 1.2rem; }
     #runs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 16px; }
@@ -144,8 +152,27 @@ const PAGE = `<!doctype html>
     <span><strong id="active">0</strong> active</span>
     <span><strong id="total">0</strong> runs</span>
   </div>
+  <section class="panel" aria-labelledby="timing-title">
+    <h2 id="timing-title">Time by task and agent role</h2>
+    <p>Accumulated execution time in this dashboard session, including preparation and retries. Parallel runs are added together.</p>
+    <table class="timing-table"><thead><tr><th scope="col">Task</th><th scope="col">Role</th><th scope="col">Runs</th><th scope="col">Total time</th></tr></thead><tbody id="task-times"></tbody></table>
+  </section>
   <section id="runs" aria-live="polite"><p class="empty">No agent has been dispatched from this dashboard.</p></section>
 </main>
+<dialog id="issue-details" aria-labelledby="detail-title">
+  <div class="panel-head">
+    <h2 id="detail-title"></h2>
+    <button id="detail-close" type="button" autofocus>Close</button>
+  </div>
+  <p id="detail-meta"></p>
+  <h3>Description</h3>
+  <p id="detail-description"></p>
+  <h3>Acceptance criteria</h3>
+  <ul id="detail-criteria"></ul>
+  <h3>Dependencies and reservations</h3>
+  <p id="detail-scope"></p>
+  <p id="detail-reason"></p>
+</dialog>
 <script>
   const token = __DASHBOARD_TOKEN__;
   const runs = document.querySelector("#runs");
@@ -165,6 +192,10 @@ const PAGE = `<!doctype html>
   const total = document.querySelector("#total");
   const dot = document.querySelector("#dot");
   const connection = document.querySelector("#connection");
+  const details = document.querySelector("#issue-details");
+  let detailId = null;
+  let timedRuns = [];
+  let snapshotClock = performance.now();
   let catalog = [];
   let selectedId = null;
 
@@ -273,10 +304,42 @@ const PAGE = `<!doctype html>
     notice.textContent = issue.dispatchable ? "Ready to dispatch as " + issue.role + "." : issue.reason;
   }
 
+  function renderDetails() {
+    const issue = catalog.find((candidate) => candidate.id === detailId);
+    if (issue == null) {
+      details.close();
+      return;
+    }
+    document.querySelector("#detail-title").textContent = issue.id + " · " + issue.title;
+    document.querySelector("#detail-meta").textContent = [issue.phase, issue.tracker_status,
+      issue.spec_id, issue.owner, issue.priority == null ? null : "Priority: " + issue.priority].filter(Boolean).join(" · ");
+    document.querySelector("#detail-description").textContent = issue.description || "No description provided.";
+    const criteria = document.querySelector("#detail-criteria");
+    criteria.replaceChildren();
+    for (const criterion of issue.acceptance_criteria?.length ? issue.acceptance_criteria : ["No acceptance criteria provided."]) {
+      const item = document.createElement("li");
+      item.textContent = typeof criterion === "string" ? criterion : JSON.stringify(criterion, null, 2);
+      criteria.append(item);
+    }
+    document.querySelector("#detail-scope").textContent = "Dependencies: " + (issue.depends_on.join(", ") || "none") +
+      " · Reservations: " + (issue.reservations.join(", ") || "none");
+    document.querySelector("#detail-reason").textContent = issue.reason;
+  }
+
+  document.querySelector("#detail-close").addEventListener("click", () => details.close());
+  details.addEventListener("close", () => {
+    detailId = null;
+    const option = [...issues.querySelectorAll("[data-issue]")].find((item) => item.dataset.issue === selectedId);
+    option?.focus();
+  });
+
   function selectIssue(id) {
     selectedId = id;
     showSelection();
     renderIssues();
+    detailId = id;
+    renderDetails();
+    details.showModal();
   }
 
   async function loadIssues() {
@@ -290,8 +353,10 @@ const PAGE = `<!doctype html>
       }
       showSelection();
       renderIssues();
+      if (details.open) renderDetails();
     } catch (error) {
       catalog = [];
+      details.close();
       selectedId = null;
       showSelection();
       issues.replaceChildren();
@@ -303,7 +368,46 @@ const PAGE = `<!doctype html>
     }
   }
 
+  function durationText(milliseconds) {
+    const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor(seconds / 60) % 60;
+    return (hours ? hours + " h " : "") + minutes + " min " + String(seconds % 60).padStart(2, "0") + " s";
+  }
+
+  function durationOf(run) {
+    return (run.duration_ms ?? run.elapsed_ms ?? 0) + (run.finished_at == null ? performance.now() - snapshotClock : 0);
+  }
+
+  function renderTiming() {
+    for (const field of runs.querySelectorAll("[data-duration]")) {
+      const run = timedRuns.find((item) => item.id === field.dataset.duration);
+      if (run) field.textContent = durationText(durationOf(run));
+    }
+    const groups = new Map();
+    for (const run of timedRuns) {
+      const key = JSON.stringify([run.issue_id, run.role]);
+      const group = groups.get(key) ?? { issue: run.issue_id, role: run.role, count: 0, duration: 0 };
+      group.count += 1;
+      group.duration += durationOf(run);
+      groups.set(key, group);
+    }
+    const body = document.querySelector("#task-times");
+    body.replaceChildren();
+    for (const group of [...groups.values()].sort((a, b) => b.duration - a.duration)) {
+      const row = document.createElement("tr");
+      for (const value of [group.issue, group.role, group.count, durationText(group.duration)]) {
+        const cell = document.createElement("td");
+        cell.textContent = String(value);
+        row.append(cell);
+      }
+      body.append(row);
+    }
+  }
+
   function renderRuns(snapshot) {
+    timedRuns = snapshot.runs;
+    snapshotClock = performance.now();
     runs.replaceChildren();
     total.textContent = String(snapshot.runs.length);
     const live = snapshot.runs.filter((run) => ["starting", "running"].includes(run.status));
@@ -313,6 +417,7 @@ const PAGE = `<!doctype html>
       empty.className = "empty";
       empty.textContent = "No agent has been dispatched from this dashboard.";
       runs.append(empty);
+      renderTiming();
       return;
     }
     for (const run of snapshot.runs) {
@@ -335,8 +440,12 @@ const PAGE = `<!doctype html>
       head.append(titleBox, status);
       const facts = document.createElement("div");
       facts.className = "facts";
+      const duration = fact("Execution time", durationText(durationOf(run)));
+      duration.querySelector("strong").dataset.duration = run.id;
       facts.append(
-        fact("Elapsed", (run.elapsed_ms / 1000).toFixed(1) + " s"),
+        duration,
+        fact("Started", new Date(run.started_at).toLocaleString()),
+        fact("Finished", run.finished_at == null ? "In progress" : new Date(run.finished_at).toLocaleString()),
         fact("Exit", run.exit_code == null ? "—" : String(run.exit_code)),
         fact("Record", run.run_record == null ? "—" : run.run_record),
       );
@@ -369,6 +478,7 @@ const PAGE = `<!doctype html>
       }
       runs.append(card);
     }
+    renderTiming();
   }
 
   async function mutate(path, body = {}) {
@@ -440,6 +550,7 @@ const PAGE = `<!doctype html>
   loadIssues();
   fetch("/api/snapshot").then((response) => response.json()).then(renderRuns);
   setInterval(loadIssues, 5000);
+  setInterval(renderTiming, 1000);
   const events = new EventSource("/events");
   events.onopen = () => {
     dot.classList.add("online");

@@ -40,6 +40,20 @@ Orchestrator has created its bound control record. Scope or status drift also
 blocks dispatch with the exact synchronization action. The catalog refreshes
 every five seconds so transitions become visible without a page reload.
 
+Click an issue card (or press Enter when focused) to open its full description,
+acceptance criteria, dependencies, reservations and dispatch status. Details also
+remain available for blocked, closed and unimported issues. Close the dialog or
+press Escape to return to the selected card. An open dialog refreshes with the
+catalog; opening it does not dispatch an agent.
+
+Each run shows its start, finish and execution duration. The clock starts at
+dispatch, includes preparation, advances even without runtime heartbeats and
+freezes on completion or process failure. An interruption request keeps counting
+until the process exits. A separate table adds attempts by task and role, with
+the longest totals first; concurrent durations are summed, not treated as project
+wall-clock duration. These dashboard totals cover the current server session
+and reset on restart; they do not measure model thinking time or token cost.
+
 The browser's selection is not authority. `/api/dispatch` reads the catalog
 again and refuses an unknown issue, a non-dispatchable phase, a role mismatch,
 or a second live process for the same issue.

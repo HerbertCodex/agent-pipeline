@@ -57,6 +57,12 @@ function appendOutput(run, text) {
   run.updated_at = new Date().toISOString();
 }
 
+function stopClock(run) {
+  if (run.finished_at != null) return;
+  run.duration_ms = Math.max(0, Math.round(performance.now() - run.started_clock));
+  run.finished_at = new Date().toISOString();
+}
+
 function publicRun(run) {
   return {
     id: run.id,
@@ -68,6 +74,8 @@ function publicRun(run) {
     started_at: run.started_at,
     updated_at: run.updated_at,
     elapsed_ms: run.elapsed_ms,
+    duration_ms: run.finished_at == null ? Math.max(0, Math.round(performance.now() - run.started_clock)) : run.duration_ms,
+    finished_at: run.finished_at,
     exit_code: run.exit_code,
     output: run.output,
     interactive: run.interactive,
@@ -83,6 +91,7 @@ function processEvent(run, event) {
   if (event.type === "output" && typeof event.text === "string") appendOutput(run, event.text);
   if (event.type === "interrupted") run.status = "interrupted";
   if (event.type === "completed") {
+    stopClock(run);
     run.status = event.exit_code === 0 ? "completed" : "failed";
     run.exit_code = event.exit_code;
     if (Number.isFinite(event.elapsed_ms)) run.elapsed_ms = event.elapsed_ms;
@@ -149,6 +158,8 @@ function publicIssue(record, rules, ready, waiting) {
   return {
     id: record.id,
     title: titleOf(record),
+    description: typeof record.content === "string" ? record.content : (record.description ?? ""),
+    acceptance_criteria: Array.isArray(record.acceptance_criteria) ? record.acceptance_criteria : [],
     spec_id: record.spec_id ?? null,
     phase,
     owner: rules.phases?.[phase]?.owner ?? "unknown",
@@ -170,6 +181,8 @@ function trackerIssueWithoutControl(entry, dependencies, managedTag) {
   return {
     id: record.id,
     title: titleOf(record),
+    description: typeof record.content === "string" ? record.content : (record.description ?? ""),
+    acceptance_criteria: Array.isArray(record.acceptance_criteria) ? record.acceptance_criteria : [],
     spec_id: null,
     phase: "not_imported",
     tracker_status: record.status,
@@ -191,6 +204,7 @@ function issueFromTracker(control, match, snapshot, config, rules, ready, waitin
   const merged = {
     ...control,
     title: source.title,
+    content: source.content ?? "",
     priority: source.priority ?? null,
     depends_on: snapshot.dependencies.get(source.id) ?? [],
   };
@@ -318,6 +332,9 @@ class RunRegistry {
       started_at: timestamp,
       updated_at: timestamp,
       elapsed_ms: 0,
+      started_clock: performance.now(),
+      duration_ms: 0,
+      finished_at: null,
       exit_code: null,
       output: "",
       interactive: this.interactiveInput,
@@ -363,6 +380,7 @@ class RunRegistry {
   }
 
   fail(run, error) {
+    stopClock(run);
     appendOutput(run, `${error.message}\n`);
     run.status = "failed";
     run.exit_code = 1;
@@ -371,6 +389,7 @@ class RunRegistry {
   }
 
   finish(run, code, buffer) {
+    stopClock(run);
     if (buffer.trim().length > 0) appendOutput(run, `${buffer}\n`);
     if (["starting", "running"].includes(run.status)) {
       run.status = code === 0 ? "completed" : "failed";

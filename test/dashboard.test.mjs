@@ -189,6 +189,23 @@ describe("live dashboard: a local view over portable agent events", () => {
     assert.match(snapshot.runs[0].output, /red test pinned/);
   });
 
+  test("measures silent execution and freezes duration when a child exits without events", async () => {
+    const child = fakeProcess();
+    const { dashboard, origin } = await runningDashboard(() => child);
+    await post(origin, "/api/dispatch", dashboard.token, { issue_id: "i-001", role: "implementer" });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const running = (await (await fetch(`${origin}/api/snapshot`)).json()).runs[0];
+    assert.ok(running.duration_ms >= 20);
+    assert.equal(running.finished_at, null);
+    child.emit("close", 1);
+    const finished = (await (await fetch(`${origin}/api/snapshot`)).json()).runs[0];
+    assert.ok(finished.duration_ms >= running.duration_ms);
+    assert.ok(finished.finished_at);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const later = (await (await fetch(`${origin}/api/snapshot`)).json()).runs[0];
+    assert.equal(later.duration_ms, finished.duration_ms);
+  });
+
   test("interrupts the exact child attached to a run", async () => {
     const child = fakeProcess();
     const { dashboard, origin } = await runningDashboard(() => child);
@@ -340,6 +357,7 @@ describe("live dashboard: a local view over portable agent events", () => {
       {
         id: "i-ready",
         title: "Ready work",
+        description: "Full issue description",
         spec_id: "s-one",
         priority: 1,
         acceptance_criteria: ["first", "second"],
@@ -378,6 +396,8 @@ describe("live dashboard: a local view over portable agent events", () => {
     assert.equal(byId.get("i-ready").dispatchable, true);
     assert.equal(byId.get("i-ready").role, "implementer");
     assert.equal(byId.get("i-ready").criteria_count, 2);
+    assert.equal(byId.get("i-ready").description, "Full issue description");
+    assert.deepEqual(byId.get("i-ready").acceptance_criteria, ["first", "second"]);
     assert.equal(byId.get("i-waiting").dispatchable, false);
     assert.match(byId.get("i-waiting").reason, /depends on i-active/);
     assert.equal(byId.get("i-active").role, "implementer");
@@ -401,6 +421,9 @@ describe("live dashboard: a local view over portable agent events", () => {
 
     let catalog = new Map(readIssueCatalog(root).map((item) => [item.id, item]));
     assert.equal(catalog.get("i-t1").title, "Authoritative title");
+    assert.equal(catalog.get("i-t1").description, source.content);
+    assert.equal(catalog.get("i-new").description, unimported.content);
+    assert.deepEqual(catalog.get("i-new").acceptance_criteria, []);
     assert.equal(catalog.get("i-t1").tracker_status, "open");
     assert.equal(catalog.get("i-t1").dispatchable, true);
     assert.equal(catalog.get("i-new").phase, "not_imported");
