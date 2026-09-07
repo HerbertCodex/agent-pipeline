@@ -60,6 +60,10 @@ For installed adapters, `setup.mjs --update` previews changes and `setup.mjs --u
 
 This command is new in the development checkout and is not included in the `v0.1.0` release below. The following bootstrap remains the manual path for other stacks.
 
+### Adopt an existing project on any stack
+
+Use the [copyable existing-project installation prompt](docs/existing-project.md) from your host repository root. It guides an agent to inspect and reuse your architecture, commands and CI, document the initial verification results, and configure the missing profile pieces. Compatible adapters are optional shortcuts; unsupported stacks still require configuration. The [French version](README.fr.md#installer-dans-un-projet-déjà-avancé-toutes-stacks) is also available.
+
 ### 1. Pin a release
 
 An updatable installation keeps provenance through a Git submodule pinned to a release tag:

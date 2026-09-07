@@ -20,6 +20,66 @@ Le projet transforme le développement multi-agent en workflow observable et bor
 | État modifié par plusieurs rôles | store à écrivain unique et verrou optimiste |
 | Agents silencieux | événements NDJSON, heartbeat, dashboard et interruption |
 
+## Installer dans un projet déjà avancé (toutes stacks)
+
+Depuis la racine de votre projet, donnez le prompt ci-dessous à votre agent. Il privilégie les outils et l’architecture existants, quelle que soit la stack : Spring Boot, AdonisJS, NestJS ou autre. Il guide l’adaptation du profil ; ce n’est pas un installateur universel automatique. Un adaptateur compatible reste un raccourci facultatif.
+
+Voir aussi le [guide et le prompt en anglais](docs/existing-project.md).
+
+<details>
+<summary>Afficher le prompt d’installation à copier</summary>
+
+```text
+Installe et configure Agent Pipeline dans ce projet existant, en respectant son architecture, ses conventions et ses outils.
+
+L’objectif est d’encadrer les prochaines fonctionnalités et corrections. Cette tâche ne comprend ni refonte du projet ni développement fonctionnel.
+
+Commence par lire les instructions du dépôt, puis inspecte :
+- les langages, frameworks et versions réellement utilisés ;
+- la structure du projet et ses éventuels modules ou workspaces ;
+- les commandes existantes de compilation, tests, lint et autres contrôles ;
+- la CI, les conventions et la documentation d’architecture ;
+- l’état Git et les modifications locales à préserver.
+
+Appuie-toi sur les fichiers observés. Ne suppose pas que le projet utilise NestJS et ne cherche pas à lui imposer un modèle de projet neuf.
+
+Lis ensuite la documentation et les scripts de la version d’Agent Pipeline présente. Si elle n’est pas installée, ajoute le dépôt officiel en suivant sa procédure documentée d’installation et de sélection de version :
+https://github.com/HerbertCodex/agent-pipeline
+
+Utilise le parcours d’initialisation réellement disponible :
+- réutilise un profil compatible lorsqu’il correspond au projet ;
+- sinon, configure le profil du projet à partir de ses outils existants ;
+- ne crée pas un adaptateur de framework complet pour cette seule installation ;
+- ne modifie pas le cœur d’Agent Pipeline pour contourner une incompatibilité ;
+- si une pipeline est déjà installée, inspecte-la et utilise son parcours de mise à jour ou de migration avant d’envisager une nouvelle initialisation.
+
+Privilégie les commandes déjà définies dans les scripts du projet, ses wrappers et sa CI. Réutilise les outils existants avant d’en créer de nouveaux. Génère les fichiers communs avec les scripts de la pipeline ; ne compose pas manuellement les fichiers qu’ils savent générer.
+
+Préserve les sources, les tests, les dépendances, les instructions des agents et la CI existante. Examine les conflits avant modification. Demande une décision uniquement lorsqu’un choix important ne peut pas être déduit du dépôt, notamment pour ajouter une dépendance ou remplacer une configuration.
+
+Établis un état initial des contrôles :
+- commandes exécutées et durées ;
+- contrôles réussis ;
+- défauts préexistants ;
+- contrôles indisponibles ou restant à configurer.
+
+Ne masque aucun échec, ne réduis aucun seuil et ne remplace aucun contrôle par une commande qui réussit sans vérifier. Ne lance pas plusieurs fois une vérification coûteuse si aucun changement ou échec non résolu ne justifie de la rejouer. Note la révision et les modifications locales pertinentes associées à cet état initial.
+
+Si la pipeline exige un contrôle que le projet ne possède pas, explique précisément ce qui manque. Ne présente pas l’installation comme terminée tant qu’un prérequis obligatoire reste insatisfait. N’élargis pas cette installation à la correction de toute la dette historique.
+
+Configure les permissions et les réservations selon les chemins réels du projet. Prévois l’isolation des tentatives et la conservation des preuves conformément aux capacités disponibles.
+
+Termine par :
+1. Les fichiers créés ou modifiés et leur rôle.
+2. Les résultats des vérifications et les limites restantes.
+3. Les commandes exactes pour démarrer la pipeline et son dashboard.
+4. Les éventuelles décisions nécessaires avant la première tâche.
+
+N’importe pas automatiquement toute la dette technique dans le backlog. Ne lance aucun agent de développement, ne crée aucune fonctionnalité et ne fais aucun commit, merge ou push pendant cette installation.
+```
+
+</details>
+
 ## Installation automatique dans un projet Nest existant
 
 Depuis la racine du projet créé avec `nest new`, avec ses dépendances installées, Git, Sudocode et ce checkout de développement dans `agent-pipeline/` :
