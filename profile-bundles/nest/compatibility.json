@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "adapter": "nest",
+  "adapter_version": "1.0.0",
+  "supported": [
+    {
+      "id": "nest11-node24-npm11-jest30-eslint9",
+      "node": { "min": "24.20.0", "max_exclusive": "25.0.0" },
+      "manager": "npm",
+      "manager_version": { "min": "11.19.0", "max_exclusive": "12.0.0" },
+      "packages": {
+        "@nestjs/core": { "min": "11.2.3", "max_exclusive": "12.0.0" },
+        "@nestjs/common": { "min": "11.2.3", "max_exclusive": "12.0.0" },
+        "@nestjs/cli": { "min": "11.0.24", "max_exclusive": "12.0.0" },
+        "typescript": { "min": "5.9.3", "max_exclusive": "6.0.0" },
+        "jest": { "min": "30.5.1", "max_exclusive": "31.0.0" },
+        "eslint": { "min": "9.39.5", "max_exclusive": "10.0.0" }
+      },
+      "reference": { "node": "24.20.0", "cli": "11.0.24", "manager_version": "11.19.0" },
+      "evidence": "VALIDATION.md"
+    }
+  ],
+  "observations": [
+    { "toolchain": "Nest 12.0.1 / CLI 12.0.0 / TypeScript 6", "status": "not_validated", "reason": "The generated HTTP test imports supertest/types, unresolved in the observed scaffold. See VALIDATION.md." }
+  ],
+  "probes": { "latest_node": "24", "tracker_package": "@sudocode-ai/cli", "tracker_version": "0.2.0" }
+}

@@ -152,6 +152,47 @@ describe("import-profile: installing a profile without silently overwriting", ()
     const written = JSON.parse(readFileSync(join(host, "pipeline.config.json"), "utf8"));
     assert.match(written.commands.dead_code ?? "", /dead-code/, "the gate the framework ships was lost");
     assert.equal(written.commands.design_limits, "eslint --config eslint.design.config.mjs .");
+    assert.equal(written.project_map.out, "docs/map.md");
+    assert.deepEqual(written.project_map.skip, ["dist"]);
+    assert.ok(written.project_map.regenerate);
+  });
+
+  test("completes an untouched init bootstrap while preserving its approved decisions", () => {
+    const { bundle, host } = exported();
+    const answers = {
+      product: "A lending API", stack: { imposed: false },
+      architecture: { project_type: "backend", id: "feature-modules" },
+    };
+    writeFileSync(join(host, "answers.json"), JSON.stringify(answers));
+    assert.equal(run(host, "init.mjs", ["--answers", "answers.json"]).status, 0);
+    const recorded = readFileSync(join(host, "pipeline.bootstrap.json"), "utf8");
+    const result = run(sandbox, "import-profile.mjs", [bundle, host]);
+    assert.equal(result.status, 0, result.output);
+    const config = JSON.parse(readFileSync(join(host, "pipeline.config.json"), "utf8"));
+    assert.deepEqual(config.architecture, answers.architecture);
+    assert.equal(config.bootstrap, "pipeline.bootstrap.json");
+    assert.equal(config.profile, "api-demo");
+    assert.equal(config.commands.design_limits, "eslint --config eslint.design.config.mjs .");
+    assert.equal(readFileSync(join(host, "pipeline.bootstrap.json"), "utf8"), recorded);
+    const profile = JSON.parse(readFileSync(join(host, config.profiles_dir, config.profile, "profile.json"), "utf8"));
+    assert.equal(profile.calibration_required, true);
+    assert.notEqual(run(sandbox, "import-profile.mjs", [bundle, host]).status, 0);
+  });
+
+  test("keeps customized or unproven bootstrap configurations untouched", () => {
+    const { bundle, host } = exported();
+    const architecture = { project_type: "backend", id: "feature-modules" };
+    writeFileSync(join(host, "pipeline.bootstrap.json"), JSON.stringify({ format: 1, architecture }));
+    for (const config of [
+      { bootstrap: "pipeline.bootstrap.json", architecture, commands: { check: "mine" } },
+      { bootstrap: "missing.json", architecture },
+      { bootstrap: "pipeline.bootstrap.json", architecture: { ...architecture, id: "custom", note: "mine" } },
+    ]) {
+      const original = JSON.stringify(config);
+      writeFileSync(join(host, "pipeline.config.json"), original);
+      assert.notEqual(run(sandbox, "import-profile.mjs", [bundle, host]).status, 0);
+      assert.equal(readFileSync(join(host, "pipeline.config.json"), "utf8"), original);
+    }
   });
 
   test("refuses to touch a configuration that already exists, and prints what to merge", () => {

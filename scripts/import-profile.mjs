@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { fail } from "./lib.mjs";
 
 /**
@@ -34,6 +35,21 @@ function hostDefaults() {
   return JSON.parse(readFileSync(CONFIG_TEMPLATE, "utf8"));
 }
 
+/** Returns only the untouched configuration stub written by init. */
+function bootstrapConfig(host, configPath) {
+  if (!existsSync(configPath)) return null;
+  try {
+    const config = JSON.parse(readFileSync(configPath, "utf8"));
+    if (config == null || Object.keys(config).sort().join(",") !== "architecture,bootstrap") return null;
+    if (config.bootstrap !== "pipeline.bootstrap.json") return null;
+    const record = JSON.parse(readFileSync(join(host, config.bootstrap), "utf8"));
+    if (record.format !== 1 || !record.architecture || !isDeepStrictEqual(record.architecture, config.architecture)) return null;
+    return config;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Installs a profile bundle into a host project.
  */
@@ -51,6 +67,8 @@ function main() {
   const skipped = [];
 
   const defaults = hostDefaults();
+  const configPath = join(host, "pipeline.config.json");
+  const bootstrap = bootstrapConfig(host, configPath);
   const profileDir = join(host, defaults.profiles_dir, name);
   mkdirSync(profileDir, { recursive: true });
   cpSync(join(bundle, "invariants.md"), join(profileDir, "invariants.md"));
@@ -79,8 +97,7 @@ function main() {
     if (manifest[key] !== undefined) slice[key] = manifest[key];
   }
 
-  const configPath = join(host, "pipeline.config.json");
-  if (existsSync(configPath)) {
+  if (existsSync(configPath) && bootstrap == null) {
     console.log(`${configPath} already exists. It belongs to the operator and is never rewritten.`);
     console.log("Merge this block by hand, then delete whatever your project does differently:\n");
     console.log(JSON.stringify(slice, null, 2));
@@ -95,9 +112,12 @@ function main() {
   // carries the ones the stack provides, and a whole-object overwrite drops
   // one of the two silently. The bundle wins where both name a key — it was
   // written for a real project, the template was written for none.
-  const merged = { ...slice, ...defaults };
+  const merged = { ...defaults, ...slice, ...bootstrap };
   if (defaults.commands != null || slice.commands != null) {
     merged.commands = { ...(defaults.commands ?? {}), ...(slice.commands ?? {}) };
+  }
+  if (defaults.project_map != null || slice.project_map != null) {
+    merged.project_map = { ...(defaults.project_map ?? {}), ...(slice.project_map ?? {}) };
   }
   writeFileSync(configPath, JSON.stringify(merged, null, 2));
   written.push("pipeline.config.json");

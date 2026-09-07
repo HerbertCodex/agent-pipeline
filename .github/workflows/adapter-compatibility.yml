@@ -1,0 +1,84 @@
+name: Adapter compatibility
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+      latest_node: ${{ steps.matrix.outputs.latest_node }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.20.0'
+          package-manager-cache: false
+      - run: node --test test/*.test.mjs
+      - id: matrix
+        run: |
+          value=$(node profile-bundles/nest/ci.mjs --matrix)
+          echo "value=$value" >> "$GITHUB_OUTPUT"
+          latest_node=$(node -p "JSON.parse(require('node:fs').readFileSync('profile-bundles/nest/compatibility.json')).probes.latest_node")
+          echo "latest_node=$latest_node" >> "$GITHUB_OUTPUT"
+
+  supported:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.contract.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Install probe prerequisites
+        env:
+          MANAGER_VERSION: ${{ matrix.manager_version }}
+        run: |
+          npm install --global "npm@$MANAGER_VERSION"
+          node profile-bundles/nest/probe-prerequisites.mjs
+      - name: Validate supported contract
+        env:
+          CASE_ID: ${{ matrix.id }}
+        run: node profile-bundles/nest/ci.mjs --case "$CASE_ID" --output compatibility-results
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: compatibility-${{ matrix.id }}
+          path: compatibility-results/
+          if-no-files-found: warn
+
+  latest:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ needs.contract.outputs.latest_node }}
+          package-manager-cache: false
+      - run: node profile-bundles/nest/probe-prerequisites.mjs
+      - name: Detect upstream changes without promoting support
+        run: node profile-bundles/nest/ci.mjs --case latest --output compatibility-results
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: compatibility-latest-candidate
+          path: compatibility-results/
+          if-no-files-found: warn

@@ -44,6 +44,22 @@ Product defines the contract, Implementer writes tests and code, QA validates wi
 
 ## Install
 
+### Automatic setup for an existing Nest project
+
+From the root of a project created with `nest new`, with dependencies installed, Git, Sudocode and this development checkout at `agent-pipeline/`:
+
+```sh
+node agent-pipeline/scripts/setup.mjs --runtime claude-code
+```
+
+The command detects existing tools, installs the supplied profile, generates configuration and role instructions, initializes the tracker, installs hooks and runs the actual checks. Application sources, package scripts and dependencies are preserved. No agent needs to compose installation files.
+
+Use `--dry-run` to preview without writing. Installed versions must match the [compatibility manifest](profile-bundles/nest/compatibility.json), currently validated for Nest 11 with Node 24, npm 11, Jest 30 and ESLint 9. Monorepos and unvalidated combinations require adaptation. `pipeline/setup-report.json` records steps and durations.
+
+For installed adapters, `setup.mjs --update` previews changes and `setup.mjs --update --apply` applies and verifies them while retaining independent local adaptations. CI checks the declared contract and probes the latest published CLI weekly. See [the Nest setup guide and limits](profile-bundles/nest/README.md).
+
+This command is new in the development checkout and is not included in the `v0.1.0` release below. The following bootstrap remains the manual path for other stacks.
+
 ### 1. Pin a release
 
 An updatable installation keeps provenance through a Git submodule pinned to a release tag:
@@ -65,6 +81,10 @@ node agent-pipeline/scripts/init.mjs
 The command asks only what source inspection cannot prove: product, constraints, whether the stack is imposed, project type, and approved architecture. It writes an auditable bootstrap record, decision entry, and intentionally incomplete configuration. The stack-specific installer then inspects real manifests and source before completing and calibrating the profile.
 
 For non-interactive automation, use `--answers <answers.json>`. Continue with the complete [new-project installation guide](docs/nouveau-profil.md).
+
+To reuse an existing stack profile, run `import-profile.mjs <bundle-dir>` after `init.mjs`: it completes the untouched bootstrap configuration while preserving your decisions. The shipped TypeScript profile is a contract to adapt, not a ready-to-run toolchain. First-time installation still includes tooling setup and calibration.
+
+For a Nest presentation, prepare the host project, its dependencies and Sudocode, then demonstrate `setup.mjs` itself. Diagnose checks in an existing installation with `preflight.mjs --timeout-seconds 60`, which reports progress and durations with a per-command timeout. See [installation cost and live demonstrations](docs/nouveau-profil.md#installation-cost-and-live-demonstrations).
 
 ### Requirements
 

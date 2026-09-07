@@ -20,7 +20,23 @@ Le projet transforme le développement multi-agent en workflow observable et bor
 | État modifié par plusieurs rôles | store à écrivain unique et verrou optimiste |
 | Agents silencieux | événements NDJSON, heartbeat, dashboard et interruption |
 
-## Installation versionnée
+## Installation automatique dans un projet Nest existant
+
+Depuis la racine du projet créé avec `nest new`, avec ses dépendances installées, Git, Sudocode et ce checkout de développement dans `agent-pipeline/` :
+
+```sh
+node agent-pipeline/scripts/setup.mjs --runtime claude-code
+```
+
+La commande détecte les outils existants, installe le profil fourni, génère la configuration, les rôles et les briefs, initialise le tracker, installe les hooks et vérifie les contrôles réels. Elle conserve les sources, les scripts du projet et les dépendances. Aucun agent n’a besoin de composer les fichiers d’installation.
+
+`--dry-run` affiche le plan sans écrire. Les versions installées doivent respecter le [manifeste de compatibilité](profile-bundles/nest/compatibility.json), actuellement validé pour Nest 11 avec Node 24, npm 11, Jest 30 et ESLint 9. Les monorepos et les combinaisons non validées restent à adapter. `pipeline/setup-report.json` contient les étapes et leurs durées.
+
+Pour faire évoluer un adaptateur installé, `setup.mjs --update` affiche les changements et `setup.mjs --update --apply` les applique avec vérification, en conservant les adaptations locales compatibles. La CI teste le contrat déclaré et surveille chaque semaine la dernière CLI publiée. Voir [le parcours Nest et ses limites](profile-bundles/nest/README.md).
+
+Cette commande est nouvelle dans le checkout de développement et n’est pas incluse dans la version `v0.1.0` ci-dessous.
+
+## Installation versionnée et adaptation manuelle
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
@@ -32,6 +48,10 @@ node agent-pipeline/scripts/init.mjs
 `init.mjs` enregistre le produit, les contraintes, la stack imposée ou non et l’architecture approuvée. Ces réponses deviennent un fichier de bootstrap, une décision et une configuration volontairement incomplète. L’installation de la stack inspecte ensuite les sources réelles et calibre les commandes. Consultez [le parcours complet](docs/nouveau-profil.md) et [la politique de versions](docs/releases.md).
 
 Le cœur nécessite Node.js 20+, Git et aucune dépendance npm de production. Sudocode fournit le parcours tracker complet ; l’adaptateur minimal GitHub Issues nécessite une CLI `gh` authentifiée.
+
+L’installation initiale inclut la préparation et la calibration des outils de la stack. Pour réutiliser un profil existant, lancez `import-profile.mjs <bundle-dir>` après `init.mjs` : la configuration initiale est complétée automatiquement en conservant vos décisions. Le profil TypeScript fourni reste un contrat à adapter, pas une stack prête à lancer.
+
+Pour une présentation avec Nest, préparez le projet, ses dépendances et Sudocode ; vous pouvez ensuite montrer la commande `setup.mjs` elle-même. Pour diagnostiquer les contrôles d’une installation existante, `preflight.mjs --timeout-seconds 60` affiche la progression et les durées, avec une limite par commande. Voir [le coût d’installation et les démonstrations](docs/nouveau-profil.md#installation-cost-and-live-demonstrations).
 
 ## Utilisation
 

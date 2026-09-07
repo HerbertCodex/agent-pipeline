@@ -55,6 +55,7 @@ function main() {
 
   const sources = roots
     .flatMap((root) => walk(root))
+    .filter((path) => !Array.isArray(map.extensions) || map.extensions.some((extension) => path.endsWith(extension)))
     .filter((path) => skip == null || !skip.test(path))
     .sort();
 

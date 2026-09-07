@@ -1,0 +1,6 @@
+{
+  "orchestrator": { "allow": ["pipeline/store/**", "docs/project-map.md", ".sudocode/**"], "deny": ["src/**", "test/**"] },
+  "product": { "allow": [".sudocode/**"], "deny": ["src/**", "test/**", "pipeline/**", "agent-pipeline/**", "pipeline.config.json", "AGENTS.md", "CLAUDE.md", ".claude/**"] },
+  "implementer": { "allow": ["src/**", "test/**"], "deny": ["package.json", "*lock*", "pipeline.config.json", "pipeline/**", "agent-pipeline/**", "AGENTS.md", "CLAUDE.md", ".claude/**", ".github/**"] },
+  "qa": { "allow": [], "deny": ["**"] }
+}

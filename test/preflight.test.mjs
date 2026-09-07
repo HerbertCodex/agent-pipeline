@@ -45,6 +45,13 @@ describe("preflight: telling a missing tool from a real finding", () => {
   test("a non-existent script path is classed unavailable", () => {
     assert.equal(classify("k", "node /absent/vraiment/pas-la.mjs").verdict, "indisponible");
   });
+
+  test("measures execution time and identifies an exceeded timeout", () => {
+    const result = classify("slow", 'exec node -e "setTimeout(() => {}, 10000)"', { timeoutMs: 100 });
+    assert.equal(result.verdict, "trop-longue");
+    assert.ok(result.duration_ms >= 0);
+    assert.match(result.detail, /100 ms/);
+  });
 });
 
 describe("preflight: what it returns to the operator", () => {
@@ -84,6 +91,33 @@ describe("preflight: what it returns to the operator", () => {
     const result = run(root, "preflight.mjs", ["--json"]);
     const parsed = JSON.parse(result.stdout);
     assert.deepEqual(parsed.missing, ["sast"]);
+    assert.ok(parsed.results.every((item) => Number.isFinite(item.duration_ms)));
+    assert.ok(Number.isFinite(parsed.duration_ms));
+  });
+
+  test("a timed-out gate fails preflight instead of claiming that every gate can run", () => {
+    const root = withCommands({ slow: 'exec node -e "setTimeout(() => {}, 10000)"' });
+    const result = run(root, "preflight.mjs", ["--timeout-seconds", "0.1", "--json"]);
+    assert.notEqual(result.status, 0);
+    const parsed = JSON.parse(result.stdout);
+    assert.deepEqual(parsed.timed_out, ["slow"]);
+  });
+
+  test("announces each command before publishing its measured result", () => {
+    const root = withCommands({ check: "true", lint: "true" });
+    const result = run(root, "preflight.mjs");
+    assert.match(result.stdout, /\[1\/2\] running check/);
+    assert.match(result.stdout, /\[2\/2\] running lint/);
+    assert.match(result.stdout, /\d+ ms/);
+  });
+
+  test("rejects invalid timeout options before running commands", () => {
+    const root = withCommands({ check: "true" });
+    for (const args of [["--timeout-seconds"], ["--timeout-seconds", "0"], ["--timeout-seconds", "oops"], ["--unknown"]]) {
+      const result = run(root, "preflight.mjs", args);
+      assert.notEqual(result.status, 0);
+      assert.match(result.output, /usage|timeout/);
+    }
   });
 
   test("refuses a configuration with no command at all", () => {

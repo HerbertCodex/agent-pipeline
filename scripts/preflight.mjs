@@ -32,20 +32,37 @@ const ABSENT =
  * @param command - command to run
  * @returns the verdict, the exit code and the first useful line
  */
-export function classify(key, command) {
-  const result = spawnSync(command, { shell: true, encoding: "utf8", timeout: 600000 });
+export function classify(key, command, { timeoutMs = 600000 } = {}) {
+  const started = performance.now();
+  const result = spawnSync(command, { shell: true, encoding: "utf8", timeout: timeoutMs });
+  const measured = { key, duration_ms: Math.round(performance.now() - started) };
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
   const lines = output.split("\n").filter((line) => line.trim().length > 0);
   const telling = lines.find((line) => ABSENT.test(line)) ?? lines[0] ?? "";
 
   if (result.error?.code === "ETIMEDOUT") {
-    return { key, verdict: "trop-longue", status: null, detail: "depasse dix minutes" };
+    return { ...measured, verdict: "trop-longue", status: null, detail: `exceeded ${timeoutMs} ms timeout` };
   }
-  if (result.status === 0) return { key, verdict: "verte", status: 0, detail: "" };
+  if (result.status === 0) return { ...measured, verdict: "verte", status: 0, detail: "" };
   if (result.status === 127 || ABSENT.test(output) || output.trim().length === 0) {
-    return { key, verdict: "indisponible", status: result.status, detail: telling.trim().slice(0, 120) };
+    return { ...measured, verdict: "indisponible", status: result.status, detail: telling.trim().slice(0, 120) };
   }
-  return { key, verdict: "refuse", status: result.status, detail: telling.trim().slice(0, 120) };
+  return { ...measured, verdict: "refuse", status: result.status, detail: telling.trim().slice(0, 120) };
+}
+
+/** Parses a per-command timeout without changing which gates are checked. */
+function options(args) {
+  let json = false;
+  let timeoutMs = 600000;
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === "--json") json = true;
+    else if (args[index] === "--timeout-seconds") {
+      const seconds = Number(args[++index]);
+      timeoutMs = seconds * 1000;
+      if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) fail("timeout must be a positive number of seconds, with millisecond precision");
+    } else fail("usage: preflight.mjs [--json] [--timeout-seconds <seconds>]");
+  }
+  return { json, timeoutMs };
 }
 
 /**
@@ -56,36 +73,45 @@ export function classify(key, command) {
  * nobody exercises. This control separates the two cases before they blur
  * together in a CI log.
  *
- * Usage: node preflight.mjs [--json]
+ * Usage: node preflight.mjs [--json] [--timeout-seconds <seconds>]
  */
 function main() {
-  const json = process.argv.includes("--json");
+  const { json, timeoutMs } = options(process.argv.slice(2));
   const config = loadConfig();
   const keys = Object.keys(config.commands ?? {});
   if (keys.length === 0) fail("no command declared in commands");
 
-  const results = keys.map((key) => classify(key, config.commands[key]));
+  const started = performance.now();
+  const results = keys.map((key, index) => {
+    if (!json) console.log(`[${index + 1}/${keys.length}] running ${key}`);
+    const item = classify(key, config.commands[key], { timeoutMs });
+    if (!json) {
+      const mark = { verte: "  ok   ", refuse: "  refuse", indisponible: "  ABSENT", "trop-longue": "  TIMEOUT" }[item.verdict];
+      console.log(`${mark} ${item.key.padEnd(16)} ${item.duration_ms} ms ${item.detail}`);
+    }
+    return item;
+  });
+  const duration_ms = Math.round(performance.now() - started);
   const missing = results.filter((item) => item.verdict === "indisponible");
+  const timedOut = results.filter((item) => item.verdict === "trop-longue");
 
   if (json) {
-    console.log(JSON.stringify({ results, missing: missing.map((item) => item.key) }, null, 2));
+    console.log(JSON.stringify({ results, missing: missing.map((item) => item.key), timed_out: timedOut.map((item) => item.key), duration_ms }, null, 2));
   } else {
-    for (const item of results) {
-      const mark = { verte: "  ok   ", refuse: "  refuse", indisponible: "  ABSENT", "trop-longue": "  lente " }[item.verdict];
-      console.log(`${mark} ${item.key.padEnd(16)} ${item.detail}`);
-    }
     console.log("");
-    if (missing.length === 0) {
+    console.log(`Elapsed: ${duration_ms} ms`);
+    if (missing.length === 0 && timedOut.length === 0) {
       console.log("every declared gate can run.");
       console.log("A red gate therefore reports a finding, never a missing tool.");
-    } else {
+    } else if (missing.length > 0) {
       console.log(`${missing.length} gate(s) cannot run : ${missing.map((item) => item.key).join(", ")}`);
       console.log("These gates fail instead of protecting. The repository claims a protection nobody exercises.");
       console.log("Install the tool, or drop the key from commands, but do not leave a gate permanently red.");
     }
+    if (timedOut.length > 0) console.log(`Preflight incomplete: timed out: ${timedOut.map((item) => item.key).join(", ")}. Inspect these commands before retrying.`);
   }
 
-  if (missing.length > 0) process.exit(1);
+  if (missing.length > 0 || timedOut.length > 0) process.exit(1);
 }
 
 if (process.argv[1]?.endsWith("preflight.mjs")) main();

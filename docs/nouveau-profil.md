@@ -6,6 +6,16 @@ It is not an introduction to the pipeline. For what it does and why, read `AGENT
 
 Throughout this document, **a gate** means a command that either passes or fails. If it fails, the work does not move on. Gates are named by key — `check`, `lint`, `test_unit` — in `pipeline.config.json`; the key stays the same across projects, the command behind it changes with the stack. That is what lets these documents point at a gate without knowing your tools.
 
+## Prefer the executable adapter when one supports the project
+
+For an existing standard Nest project, run `node agent-pipeline/scripts/setup.mjs --runtime claude-code` from the host root. Use `--dry-run` first to inspect the files and checks without changing anything. See [the Nest setup contract](../profile-bundles/nest/README.md) for prerequisites, supported layouts and failure recovery. This command currently belongs to the development checkout, after release v0.1.0.
+
+This path supplies centrally tested tooling and fixed policy bounds. It runs the host's actual checks before marking the preset validated and rendering the pipeline. It replaces manual tool authoring and manual negative probes for that supported preset; it does not fabricate calibration evidence or relax bounds until the host passes. Maintain the supplied negative proofs when changing its tools. Exported profiles and unsupported stacks still follow the manual calibration procedure below.
+
+Setup preserves an existing bootstrap decision if one exists. Without one it records only the installation and retention of the current code layout; product scope remains a later Product decision. Existing custom policies are conflicts, not permission to overwrite them. Runtime selection generates the appropriate entry point and prompts; automatic CLI dispatch remains separately configurable.
+
+Executable adapters carry a versioned compatibility manifest. Setup checks the installed tool versions before writing; preview may report missing tools as unverified, but execution refuses them. The reference CI matrix is generated from the manifest, and a weekly latest-version probe tests emerging combinations in isolation without promoting support. Keep the generated setup baseline and policy hashes in Git. Use `setup.mjs --update` for a read-only migration diff, then `--update --apply` to merge independent local changes and rerun the gates. Conflicts and legacy installations without a baseline require manual review.
+
 ## 0. Record what cannot be inferred
 
 Run `node agent-pipeline/scripts/init.mjs` before asking an agent to configure the stack. The interactive command records the product, constraints, imposed-stack answer and approved architecture in `pipeline.bootstrap.json`, `docs/decisions/0000-bootstrap.md` and a deliberately incomplete `pipeline.config.json`. For automation, pass `--answers <json>`.
@@ -28,11 +38,28 @@ Then, in the new repository:
 node agent-pipeline/scripts/import-profile.mjs <bundle-dir> [host-dir]
 ```
 
-It seeds the profile directory and writes `pipeline.config.json` **only when there is none**. If the project already has one, it refuses and prints the block to merge — that file belongs to the operator and is never rewritten by a script. Tool files that already exist are kept, and named in the output.
+It seeds the profile directory and writes `pipeline.config.json` when there is none, or completes the untouched bootstrap stub written by `init.mjs`. That stub must contain only `architecture` and `bootstrap`, and its architecture must match the recorded bootstrap decision. The import preserves those decisions, keeps the bundle's stack settings and adds the framework defaults. Any other existing configuration is kept, with the block to merge printed for the operator. Tool files that already exist are kept, and named in the output.
 
 **The imported profile does not run yet.** `apply-profile` refuses while `calibration_required` is `true` in the profile's `profile.json`. That flag is not ceremony: the thresholds in those tool files were measured on another codebase. Too loose and the gate stops refusing anything; too tight and the first run gets it loosened, and a gate loosened once loosens again. Measure them here, adjust the files, then set the flag to `false` — which is a claim that you did.
 
 You still write the invariants and the pitfalls document yourself. `apply-profile` refuses a profile without `pitfalls.md`, empty or not: it is what `store-verify` requires an escaped defect to leave behind, and a file that does not exist cannot receive anything. A profile carries what a stack does; it does not know what this repository has already learned.
+
+### Installation cost and live demonstrations
+
+A first installation on a stack without an executable adapter includes building its quality tooling and proving its checks. The shipped frontend TypeScript bundle defines the expected commands; it does not implement a ready-to-run toolchain. Importing it saves configuration work but does not remove stack setup or calibration. The Nest setup adapter supplies that tooling and executes the local checks directly.
+
+For repeated installations, reuse a profile exported from a working project of the same stack. Inspect and adapt its existing tools before creating new ones. Run `init.mjs`, then `import-profile.mjs`; completing the initial configuration requires no manual merge. Keep product planning and the first feature outside the installation checkpoint: an empty tracker with no runnable step is the expected successful result.
+
+`preflight.mjs` runs every declared command sequentially. Its default timeout is ten minutes **per command**, so it is not a quick binary-presence check. It now prints the command being checked and each duration. To diagnose slow setup, choose a per-command limit:
+
+```sh
+node agent-pipeline/scripts/preflight.mjs --timeout-seconds 60
+node agent-pipeline/scripts/preflight.mjs --timeout-seconds 60 --json > preflight-timings.json
+```
+
+Choose one output form: each invocation reruns the commands. JSON includes `duration_ms` for each result and the whole run, plus `timed_out`. A timeout makes preflight fail; it never counts as a successful calibration. The timeout targets the command's shell, not an isolated process tree; tools spawning background processes need their own process supervision. Commands stay sequential because they may share generated files or test resources.
+
+For a live Nest demonstration, prepare the host repository, dependencies and tracker CLI before the session, then run setup live. For unsupported stacks, prepare and verify the profile beforehand and present first-time stack calibration separately. See the adapter's validation notes for measured setup time; no universal duration is promised across machines, projects or registry conditions.
 
 ## What you configure, and what you do not touch
 
