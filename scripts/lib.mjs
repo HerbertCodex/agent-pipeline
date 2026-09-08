@@ -7,6 +7,7 @@ import {
   closeSync,
   renameSync,
   unlinkSync,
+  writeSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -296,6 +297,6 @@ export function isGenerated(path, config) {
  * @returns never
  */
 export function fail(message) {
-  console.error(message);
+  writeSync(2, `${message}\n`);
   process.exit(1);
 }

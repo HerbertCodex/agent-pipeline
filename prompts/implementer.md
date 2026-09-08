@@ -55,6 +55,26 @@ Apply every workflow section of your brief addressed to the implementer. Their i
 
 A `## Context for Implementer (REGRESSION)` block means QA found a defect no test caught. Pin it before you fix it: write the smallest test that fails on the current code for the reason named in `regression.criterion`, confirm it red, record a fresh `red_proof`, commit it alone, then fix. Prefer the narrowest formulation that still catches the defect — a test written in anger over-specifies and breaks on the next harmless refactor. Do not widen the test beyond what the issue claims.
 
+<!-- gate:data_model -->
+## RELATIONAL DATA CHANGES
+
+When the issue changes a governed entity, schema, migration, filter, ownership rule
+or query shape, read the v2 contract before writing. Update the physical schema,
+migration and contract together. Preserve non-null UTC `created_at` and `updated_at`
+unless the contract carries a reviewed exception. Sensitive mutations emit the
+declared append-only audit event without secrets.
+
+Declare new domain dependencies instead of assuming that a `3NF` label proves
+normalization. Every exposed filter belongs to an access pattern with a supporting
+index or measured exception. User and tenant queries include their ownership field;
+client input never chooses the authoritative scope. Use parameterized queries.
+
+Run `data_model` plus the contract's per-issue anomaly, authorization and database
+security proof gates against real infrastructure. A performance change carries a
+representative query plan and measured budget. A denormalization additionally
+carries before/after evidence, consistency handling and a review trigger.
+<!-- /gate -->
+
 ## VALIDATION BEFORE HANDOFF
 
 1. Run the relevant tests until green.

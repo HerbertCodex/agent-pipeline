@@ -86,7 +86,8 @@ function main() {
       console.error(`${role}: ${orphans.length} rule(s) name a gate nothing answers for here:`);
       for (const gate of orphans) console.error(`  \`${gate}\``);
       fail(
-        "Declare the command, or wrap the passage in <!-- gate:NAME --> ... <!-- /gate --> in its source " +
+        `${role}: unanswered gates: ${orphans.join(", ")}\n` +
+          "Declare the command, or wrap the passage in <!-- gate:NAME --> ... <!-- /gate --> in its source " +
           "document. A role reading its brief cannot tell a rule that binds it from one that binds nobody.",
       );
     }

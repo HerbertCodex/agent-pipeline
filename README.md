@@ -145,7 +145,7 @@ Use `--dry-run` to preview without writing. Installed versions must match the [c
 
 For installed adapters, `setup.mjs --update` previews changes and `setup.mjs --update --apply` applies and verifies them while retaining independent local adaptations. CI checks the declared contract and probes the latest published CLI weekly. See [the Nest setup guide and limits](profile-bundles/nest/README.md).
 
-This command is new in the development checkout and is not included in the `v0.1.0` release below. The following bootstrap remains the manual path for other stacks.
+This command is included starting with `v0.2.0`. The following bootstrap remains the manual path for other stacks.
 
 ### Adopt an existing project on any stack
 
@@ -157,7 +157,7 @@ An updatable installation keeps provenance through a Git submodule pinned to a r
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.1.0
+git -C agent-pipeline checkout v0.2.0
 git add .gitmodules agent-pipeline
 ```
 
@@ -319,10 +319,12 @@ For a project already running an older Agent Pipeline release, give the agent th
 
 Profiles bind stable gate names to real tools for the host stack: types, lint, tests, audit, secrets, architecture, duplication, design limits, and a generated project map. The [frontend TypeScript bundle](profile-bundles/frontend-typescript) is an example to recalibrate, not an imposed stack.
 
-Relational projects may declare `data_model`: persistence decision, physical schema, migrations, per-issue integration proof, 3NF by default, and an explicit UTC policy for `created_at` and `updated_at`. An offline UML review page can be generated with:
+Relational projects may activate [database governance v2](docs/database-governance.md): reviewed keys and dependencies, normalization, UTC timestamps, append-only audit, ownership, filters and indexes, measured query budgets, migration safety, database security and restoration proofs. It remains ORM-neutral and preserves legacy installations. Configure and render it with:
 
 ```sh
-node agent-pipeline/scripts/render-data-model.mjs docs/data-model.diagram.json data-model.html
+node agent-pipeline/scripts/configure-data-model.mjs reviewed-data-model.json
+node agent-pipeline/scripts/data-model-check.mjs
+node agent-pipeline/scripts/render-data-model.mjs docs/data-model.contract.json data-model.html
 ```
 
 ## Guarantees and limits
@@ -339,6 +341,7 @@ The pipeline makes decisions, evidence, transitions, and exceptions visible and 
 | [Handoffs and store](docs/handoff-store.md) | persistence and evidence protocol |
 | [Quality gates](docs/quality-gates.md) | executable rules |
 | [Security and load testing](docs/security-testing.md) | OWASP assurance, ZAP and isolated performance controls |
+| [Database governance](docs/database-governance.md) | Normalization, audit, filters, performance, authorization and database security |
 | [Releases](docs/releases.md) | versioning and updates |
 
 ## Development

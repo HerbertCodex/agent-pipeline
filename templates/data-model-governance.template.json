@@ -1,0 +1,152 @@
+{
+  "data_model": {
+    "decision": "docs/decisions/0001-persistence.md",
+    "model": "docs/data-model.md",
+    "schema": "db/schema.sql",
+    "migrations": "db/migrations",
+    "migration_gate": "migrations",
+    "integration_suite": "integration",
+    "contract": "docs/data-model.contract.json",
+    "reports_dir": "pipeline/evidence/data-model"
+  },
+  "contract": {
+    "version": 1,
+    "title": "Project relational data governance",
+    "database": {
+      "kind": "relational",
+      "workload": "oltp",
+      "dialect": "postgresql",
+      "schema_source": "db/schema.sql"
+    },
+    "policy": {
+      "normalization": {
+        "target": "3NF",
+        "dependencies_complete": true,
+        "exceptions": "docs/decisions/0001-persistence.md"
+      },
+      "timestamps": {
+        "authority": "database",
+        "timezone": "UTC",
+        "created_at": "created_at",
+        "updated_at": "updated_at",
+        "exceptions": [
+          {
+            "entity": "audit_log",
+            "reason": "An append-only event has no update lifecycle.",
+            "decision": "docs/decisions/0001-persistence.md"
+          }
+        ]
+      },
+      "audit": {
+        "enabled": true,
+        "entity": "audit_log",
+        "actor": "actor_id",
+        "action": "action",
+        "resource_type": "resource_type",
+        "resource_id": "resource_id",
+        "occurred_at": "occurred_at",
+        "correlation_id": "correlation_id",
+        "append_only": true,
+        "secrets_excluded": true,
+        "retention_decision": "docs/decisions/0001-persistence.md"
+      },
+      "security": {
+        "parameterized_queries": true,
+        "least_privilege": true,
+        "separate_migration_identity": true,
+        "tls": "required",
+        "public_network": false,
+        "secrets_source": "secret_manager",
+        "default_classification": "internal",
+        "authorization_default": "deny",
+        "connection_limit": 20,
+        "statement_timeout_ms": 5000,
+        "decision": "docs/decisions/0001-persistence.md"
+      },
+      "migrations": {
+        "strategy": "expand_contract",
+        "rollback_or_forward_fix": true,
+        "lock_budget_ms": 1000,
+        "decision": "docs/decisions/0001-persistence.md"
+      },
+      "recovery": {
+        "backups_encrypted": true,
+        "restore_target": "isolated",
+        "recovery_time_objective_minutes": 60,
+        "recovery_point_objective_minutes": 15,
+        "retention_decision": "docs/decisions/0001-persistence.md"
+      }
+    },
+    "entities": [
+      {
+        "name": "accounts",
+        "fields": [
+          { "name": "id", "type": "uuid", "nullable": false, "classification": "internal" },
+          { "name": "tenant_id", "type": "uuid", "nullable": false, "filterable": true, "classification": "internal" },
+          { "name": "email", "type": "text", "nullable": false, "classification": "restricted" },
+          { "name": "created_at", "type": "timestamp with time zone", "nullable": false },
+          { "name": "updated_at", "type": "timestamp with time zone", "nullable": false }
+        ],
+        "primary_key": ["id"],
+        "candidate_keys": [["tenant_id", "email"]],
+        "functional_dependencies": [
+          { "determinant": ["id"], "dependent": ["tenant_id", "email", "created_at", "updated_at"] },
+          { "determinant": ["tenant_id", "email"], "dependent": ["id", "created_at", "updated_at"] }
+        ],
+        "normalization": { "atomic_values": true, "no_repeating_groups": true, "normal_form": "3NF" },
+        "ownership": { "scope": "tenant", "field": "tenant_id", "row_level_security": "enabled" },
+        "indexes": [
+          { "name": "accounts_tenant_email_uq", "fields": ["tenant_id", "email"], "unique": true }
+        ]
+      },
+      {
+        "name": "audit_log",
+        "fields": [
+          { "name": "id", "type": "uuid", "nullable": false },
+          { "name": "actor_id", "type": "uuid", "nullable": false, "classification": "internal" },
+          { "name": "action", "type": "text", "nullable": false },
+          { "name": "resource_type", "type": "text", "nullable": false },
+          { "name": "resource_id", "type": "uuid", "nullable": false },
+          { "name": "occurred_at", "type": "timestamp with time zone", "nullable": false },
+          { "name": "correlation_id", "type": "text", "nullable": false }
+        ],
+        "primary_key": ["id"],
+        "candidate_keys": [],
+        "functional_dependencies": [
+          { "determinant": ["id"], "dependent": ["actor_id", "action", "resource_type", "resource_id", "occurred_at", "correlation_id"] }
+        ],
+        "normalization": { "atomic_values": true, "no_repeating_groups": true, "normal_form": "3NF" },
+        "ownership": { "scope": "system" },
+        "indexes": [
+          { "name": "audit_resource_time_idx", "fields": ["resource_type", "resource_id", "occurred_at"] }
+        ]
+      }
+    ],
+    "relations": [],
+    "access_patterns": [
+      {
+        "id": "account_by_tenant_and_email",
+        "entity": "accounts",
+        "filters": ["tenant_id", "email"],
+        "operators": { "tenant_id": ["eq"], "email": ["eq"] },
+        "select": ["id", "email", "created_at", "updated_at"],
+        "sort": [],
+        "pagination": "none",
+        "max_page_size": 1,
+        "audience": "authenticated",
+        "supporting_index": "accounts_tenant_email_uq",
+        "budget_ms": 25,
+        "representative_rows": 100000,
+        "plan_evidence": "docs/evidence/account-query-plan.txt"
+      }
+    ],
+    "denormalizations": [],
+    "proofs": {
+      "anomalies": { "gate": "test_data_anomalies", "replay": "per_issue" },
+      "authorization": { "gate": "test_data_authorization", "replay": "per_issue" },
+      "performance": { "gate": "test_data_performance", "replay": "closure" },
+      "database_security": { "gate": "test_database_security", "replay": "per_issue" },
+      "backup_restore": { "gate": "test_backup_restore", "replay": "closure" }
+    }
+  }
+}

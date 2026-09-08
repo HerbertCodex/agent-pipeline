@@ -14,6 +14,7 @@ const KNOWN_GATES = [
   "audit", "secrets_scan", "dead_code", "sast", "doc_lint", "comment_policy",
   "project_map", "map_coverage", "design_limits", "duplication", "accessibility",
   "security_scope", "dast_baseline", "dast_active", "dast_api", "load",
+  "data_model",
 ];
 
 /**
@@ -138,9 +139,11 @@ export function dataModelGates(paths, config) {
   const model = config?.data_model;
   if (model == null || !Array.isArray(paths)) return [];
   const touches = (target) => paths.some((path) => path === target || path.startsWith(`${target}/`));
-  if (!touches(model.schema) && !touches(model.migrations)) return [];
+  const governed = [model.schema, model.migrations, model.contract, model.model, model.decision].filter(Boolean);
+  if (!governed.some(touches)) return [];
   const suiteGate = config.test_suites?.[model.integration_suite]?.gate;
-  return [...new Set([model.migration_gate, suiteGate].filter(Boolean))];
+  const proofGates = Object.values(model.proof_gates ?? {}).filter((proof) => proof?.replay === "per_issue").map((proof) => proof.gate);
+  return [...new Set([model.migration_gate, suiteGate, ...(model.governance_version === 2 ? ["data_model", ...proofGates] : [])].filter(Boolean))];
 }
 
 function closureDeclared(config) {

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { createDashboard, readIssueCatalog } from "../dashboard/server.mjs";
+import { createDashboard, readDataModelEvidence, readIssueCatalog } from "../dashboard/server.mjs";
 import { readIssueTracker, trackerBinding } from "../scripts/issue-tracker.mjs";
 import {
   createSandbox,
@@ -118,6 +118,8 @@ describe("live dashboard: a local view over portable agent events", () => {
     assert.match(page, /aria-live="polite"/);
     assert.match(page, /Security and load reports/);
     assert.match(page, /id="security-reports"/);
+    assert.match(page, /Relational data governance/);
+    assert.match(page, /id="data-model-reports"/);
     assert.match(page, /output\.textContent/);
     assert.doesNotMatch(page, /innerHTML/);
     assert.doesNotMatch(page, /<script[^>]+src=/);
@@ -148,6 +150,48 @@ describe("live dashboard: a local view over portable agent events", () => {
     assert.equal(snapshot.security_reports[0].authenticated, true);
     assert.equal(snapshot.security_reports[0].duration_ms, 1250);
     assert.equal(snapshot.security_reports[0].summary.discovered_url_count, 18);
+  });
+
+  test("exposes sanitized relational governance controls and limitations", async () => {
+    const dashboard = createDashboard({
+      issueSource: selectableIssues,
+      dataModelSource: () => [{
+        revision: "cafebabe",
+        contract: "docs/data-model.contract.json",
+        summary: { entities: 4 },
+        controls: [
+          { name: "normalization", status: "contract_verified", statement: "Declared dependencies checked." },
+          { name: "data_authorization", status: "proof_required", statement: "Execute authorization gate." },
+        ],
+        proofs: { authorization: { gate: "test_data_authorization", replay: "per_issue" } },
+      }],
+    });
+    dashboards.push(dashboard);
+    await dashboard.listen(0, "127.0.0.1");
+    const address = dashboard.address();
+    const snapshot = await (await fetch(`http://127.0.0.1:${address.port}/api/snapshot`)).json();
+
+    assert.equal(snapshot.data_model_reports[0].revision, "cafebabe");
+    assert.equal(snapshot.data_model_reports[0].controls[1].status, "proof_required");
+  });
+
+  test("reads only fixed non-secret fields from relational governance evidence", () => {
+    const root = mkdtempSync(join(tmpdir(), "pipeline-data-dashboard-"));
+    sandboxes.push(root);
+    mkdirSync(join(root, "evidence"), { recursive: true });
+    writeFileSync(join(root, "evidence", "latest.json"), JSON.stringify({
+      generated_at: "2026-09-08T00:00:00.000Z",
+      revision: "abc",
+      contract: "docs/model.json",
+      secret: "must-not-leak",
+      summary: { entities: 2, credential: "must-not-leak" },
+      controls: [{ name: "database_security", status: "proof_required", statement: "Run the gate.", raw_credentials: "must-not-leak" }],
+      proofs: { database_security: { gate: "db_security", replay: "per_issue", token: "must-not-leak" } },
+    }));
+    const reports = readDataModelEvidence(root, { data_model: { governance_version: 2, reports_dir: "evidence" } });
+    assert.equal(reports[0].controls[0].name, "database_security");
+    assert.doesNotMatch(JSON.stringify(reports), /must-not-leak/);
+    assert.throws(() => readDataModelEvidence(root, { data_model: { governance_version: 2, reports_dir: "../outside" } }), /escapes the project/);
   });
 
   test("lists selectable issues from the durable store view", async () => {

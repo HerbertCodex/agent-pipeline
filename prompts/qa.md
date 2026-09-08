@@ -45,6 +45,24 @@ Two artefacts of the runner, not defects: `mutation` runs the unit config, so fi
 <!-- /gate -->
 An issue whose diff touches build configuration, dependencies or a security surface pulls the relevant full-battery command into its per-issue run — say which and why. Evidence order: read the CI run for the exact SHA (`gh run list --commit <sha>`, `gh run view`) and cite run id and job; run locally only what CI does not cover, what failed, or everything when no run exists. A red job or a non-zero command is evidence; never replace it with a favorable code reading. A CI/local divergence on the same SHA is an infrastructure anomaly to report.
 
+<!-- gate:data_model -->
+## RELATIONAL DATA REVIEW
+
+For a governed schema, contract, migration, filter or ownership change, run
+`data_model` and inspect its JSON evidence. Check that the contract matches the
+physical migration rather than accepting declarations as runtime proof. Replay the
+named anomaly, authorization and database-security gates against the real database.
+Cross-user or cross-tenant tests use two ordinary identities and attempt both read
+and mutation paths.
+
+Reject missing UTC timestamp behavior, editable or secret-bearing audit records,
+unscoped tenant access, string-built SQL, a filter without an access pattern, a
+claimed index absent from the real schema, or performance evidence without a
+representative volume and query plan. At closure, replay the declared performance
+and isolated backup-restoration gates. ZAP evidence complements this review but
+does not prove SQL constraints, grants, plans or restoration.
+<!-- /gate -->
+
 ## COVERAGE AND QUALITY REVIEW
 
 For every criterion, name the test that proves it (or the explicit manual check when automation is intentionally excluded), the code that implements it, and the observed result. Review the test diff independently: reject presentation assertions, structural selectors in E2E, snapshots, framework tests, mocks claiming to prove real infrastructure, and tests with no criterion mapping. Verify every file or export creation in the diff carries its reuse note, and that SAST suppressions and dead-code exclusions in the diff carry their written justification. Near-identical bodies in the diff are a review judgment even below the tool's threshold.

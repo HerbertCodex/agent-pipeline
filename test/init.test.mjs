@@ -27,7 +27,7 @@ describe("init", () => {
     const config = JSON.parse(readFileSync(join(root, "pipeline.config.json"), "utf8"));
     const decision = JSON.parse(readFileSync(join(root, "pipeline.bootstrap.json"), "utf8"));
     assert.deepEqual(config.architecture, { project_type: "backend", id: "feature-modules" });
-    assert.equal(decision.framework_version, "0.1.0");
+    assert.equal(decision.framework_version, "0.2.0");
     assert.match(readFileSync(join(root, "docs", "decisions", "0000-bootstrap.md"), "utf8"), /A lending API/);
   });
 

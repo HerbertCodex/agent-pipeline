@@ -183,13 +183,13 @@ La commande détecte les outils existants, installe le profil fourni, génère l
 
 Pour faire évoluer un adaptateur installé, `setup.mjs --update` affiche les changements et `setup.mjs --update --apply` les applique avec vérification, en conservant les adaptations locales compatibles. La CI teste le contrat déclaré et surveille chaque semaine la dernière CLI publiée. Voir [le parcours Nest et ses limites](profile-bundles/nest/README.md).
 
-Cette commande est nouvelle dans le checkout de développement et n’est pas incluse dans la version `v0.1.0` ci-dessous.
+Cette commande est incluse à partir de la version `v0.2.0`.
 
 ## Installation versionnée et adaptation manuelle
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.1.0
+git -C agent-pipeline checkout v0.2.0
 git add .gitmodules agent-pipeline
 node agent-pipeline/scripts/init.mjs
 ```
@@ -323,7 +323,15 @@ directement à l’agent le
 
 ## Stack et données
 
-Les profils relient les gates aux vrais outils de la stack. Aucun framework applicatif n’est imposé. Pour une base relationnelle, `data_model` rend explicites schéma, migrations, tests d’intégration, cible 3NF et politique UTC des horodatages. Le diagramme UML autonome se génère avec `render-data-model.mjs`.
+Les profils relient les gates aux vrais outils de la stack. Aucun framework applicatif n’est imposé. Pour une base relationnelle, la [gouvernance de base de données v2](docs/database-governance.md) contrôle clés et dépendances, normalisation, horodatages UTC, audit append-only, ownership, filtres et index, budgets mesurés, migrations, sécurité et restauration. Elle reste indépendante de l’ORM et préserve les anciennes installations.
+
+```sh
+node agent-pipeline/scripts/configure-data-model.mjs reviewed-data-model.json
+node agent-pipeline/scripts/data-model-check.mjs
+node agent-pipeline/scripts/render-data-model.mjs docs/data-model.contract.json data-model.html
+```
+
+Le guide contient aussi le prompt copiable pour mettre à jour un projet existant.
 
 ## Limites
 
@@ -337,6 +345,7 @@ La pipeline rend décisions, preuves, transitions et exceptions contrôlables. E
 - [Handoffs et store](docs/handoff-store.md)
 - [Gates de qualité](docs/quality-gates.md)
 - [Sécurité dynamique, OWASP et charge](docs/security-testing.md)
+- [Gouvernance des bases relationnelles](docs/database-governance.md)
 - [Versions et mises à jour](docs/releases.md)
 
 ## Licence

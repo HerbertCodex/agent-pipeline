@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+import { isDeepStrictEqual } from "node:util";
 import { loadConfig, loadRules, pathAllowed, deferredGates, fail } from "./lib.mjs";
 import { ARCHITECTURES, PROJECT_TYPES } from "./architectures.mjs";
 import { stripUndeclaredGates, orphanGates, perIssueGates, gatesForIssue, closureGates } from "./gates.mjs";
@@ -9,6 +10,7 @@ import { adaptPrompt, promptAdapter, rendersClaudeEntry } from "./runtime-adapte
 import { validateSecurityTesting } from "./security-testing.mjs";
 import { validateSecurityFiles } from "./security-scan.mjs";
 import { validateLoadTesting } from "./load-testing.mjs";
+import { readDataModelContract } from "./data-model-contract.mjs";
 
 const CI_TEMPLATE = "agent-pipeline/templates/ci.template.yml";
 const AGENTS_TEMPLATE = "agent-pipeline/templates/AGENTS.template.md";
@@ -77,6 +79,7 @@ function renderAgents(config) {
     dast_active: "Active dynamic security scan",
     dast_api: "API dynamic security scan",
     load: "Load and latency thresholds",
+    data_model: "Relational normalization, audit, access and security contract",
   };
   const qualityGates = Object.entries(qualityDescriptions)
     .filter(([key]) => typeof config.commands?.[key] === "string")
@@ -212,7 +215,8 @@ function renderPrompts(config, adapter) {
       console.error(`${PROMPTS_SRC}/${file}: ${orphans.length} rule(s) name a gate nothing answers for here:`);
       for (const gate of orphans) console.error(`  \`${gate}\``);
       fail(
-        "Declare the command, or wrap the passage in <!-- gate:NAME --> ... <!-- /gate --> in the prompt. " +
+        `${PROMPTS_SRC}/${file}: unanswered gates: ${orphans.join(", ")}\n` +
+          "Declare the command, or wrap the passage in <!-- gate:NAME --> ... <!-- /gate --> in the prompt. " +
           "A role cannot tell a rule that binds it from one that binds nobody.",
       );
     }
@@ -743,8 +747,9 @@ function checkDataModel(config) {
   if (normalization == null || typeof normalization !== "object" || Array.isArray(normalization)) {
     fail("data_model.normalization must declare the normal form and its exception decision");
   }
-  if (normalization.target !== "3NF") {
-    fail('data_model.normalization.target must be "3NF"; a deliberate denormalization belongs in its exception decision');
+  const allowedNormalForms = model.governance_version === 2 ? ["3NF", "BCNF", "4NF", "5NF"] : ["3NF"];
+  if (!allowedNormalForms.includes(normalization.target)) {
+    fail(`data_model.normalization.target must be ${allowedNormalForms.join(", ")}; a deliberate denormalization belongs in its exception decision`);
   }
   if (
     typeof normalization.exceptions !== "string" ||
@@ -777,6 +782,33 @@ function checkDataModel(config) {
   ) {
     fail("data_model.timestamps.exceptions must name the committed decision recording exceptions");
   }
+
+  if (model.governance_version == null) return;
+  if (model.governance_version !== 2) fail("data_model.governance_version must be 2 when present");
+  if (typeof model.contract !== "string" || !existsSync(model.contract) || !statSync(model.contract).isFile()) {
+    fail("data_model.contract must name the committed governance v2 JSON contract");
+  }
+  if (typeof model.reports_dir !== "string" || model.reports_dir.trim().length === 0) {
+    fail("data_model.reports_dir must name the evidence directory");
+  }
+  const reportsPath = resolve(model.reports_dir);
+  const contractPath = resolve(model.contract);
+  const projectRoot = resolve(".");
+  if (reportsPath !== projectRoot && !reportsPath.startsWith(`${projectRoot}${sep}`)) fail("data_model.reports_dir must stay inside the project");
+  if (contractPath !== projectRoot && !contractPath.startsWith(`${projectRoot}${sep}`)) fail("data_model.contract must stay inside the project");
+  if (typeof config.commands?.data_model !== "string") fail("data-model governance v2 requires commands.data_model");
+  let contract;
+  try { contract = readDataModelContract(model.contract, { root: process.cwd(), config }); }
+  catch (error) { fail(`data_model.contract is invalid: ${error.message}`); }
+  if (contract.contract.database.schema_source !== model.schema) fail("data_model contract schema_source must match data_model.schema");
+  if (contract.contract.policy.normalization.target !== normalization.target) fail("data_model normalization target differs from its contract");
+  if (!isDeepStrictEqual(model.proof_gates, contract.proofs)) fail("data_model.proof_gates differs from its reviewed contract");
+  for (const [name, proof] of Object.entries(contract.proofs)) {
+    const isPerIssue = perIssueGates(config).includes(proof.gate);
+    if (proof.replay === "per_issue" && !isPerIssue) fail(`data_model proof ${name} must not be deferred from per-issue replay`);
+    if (proof.replay === "closure" && isPerIssue) fail(`data_model proof ${name} declares closure replay but its gate is per_issue`);
+  }
+  if (!perIssueGates(config).includes("data_model")) fail("commands.data_model cannot be deferred to closure");
 }
 
 /**

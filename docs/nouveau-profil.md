@@ -8,7 +8,7 @@ Throughout this document, **a gate** means a command that either passes or fails
 
 ## Prefer the executable adapter when one supports the project
 
-For an existing standard Nest project, run `node agent-pipeline/scripts/setup.mjs --runtime claude-code` from the host root. Use `--dry-run` first to inspect the files and checks without changing anything. See [the Nest setup contract](../profile-bundles/nest/README.md) for prerequisites, supported layouts and failure recovery. This command currently belongs to the development checkout, after release v0.1.0.
+For an existing standard Nest project, run `node agent-pipeline/scripts/setup.mjs --runtime claude-code` from the host root. Use `--dry-run` first to inspect the files and checks without changing anything. See [the Nest setup contract](../profile-bundles/nest/README.md) for prerequisites, supported layouts and failure recovery. This command is included starting with release v0.2.0.
 
 This path supplies centrally tested tooling and fixed policy bounds. It runs the host's actual checks before marking the preset validated and rendering the pipeline. It replaces manual tool authoring and manual negative probes for that supported preset; it does not fabricate calibration evidence or relax bounds until the host passes. Maintain the supplied negative proofs when changing its tools. Exported profiles and unsupported stacks still follow the manual calibration procedure below.
 
@@ -201,65 +201,34 @@ Also adapt:
 
 ### Relational data, only when the project owns it
 
-Do not add a database block because a template has one. When the project owns relational data, add `data_model` only after recording the persistence decision and creating the first model, schema and migrations directory. It makes the source of truth inspectable without imposing an ORM:
-
-```json
-"data_model": {
-  "decision": "docs/decisions/0001-persistence.md",
-  "model": "docs/data-model.md",
-  "schema": "db/schema.sql",
-  "migrations": "db/migrations",
-  "migration_gate": "migrations",
-  "integration_suite": "integration",
-  "normalization": { "target": "3NF", "exceptions": "docs/decisions/0001-persistence.md" },
-  "timestamps": {
-    "authority": "database",
-    "timezone": "UTC",
-    "created_at": "created_at",
-    "updated_at": "updated_at",
-    "exceptions": "docs/decisions/0001-persistence.md"
-  }
-}
-```
-
-`migrations` is a declared command that exercises the real upgrade, not a placeholder; `integration` is a `test_suites` entry replayed per issue. A change to the schema or migrations forces both proofs even if the normal risk lane is otherwise smaller. The migration proof starts on an empty database; integration evidence covers foreign keys, unique/check/not-null constraints, expected indexes and the timestamp journey: insert sets both timestamps, update preserves `created_at` and advances `updated_at` in UTC. Review every migration for accidental repeated facts and dependencies, targeting 3NF. Deliberate denormalization, immutable event tables, pure joins and static reference data are documented exceptions, not invisible deviations.
-
-For a human-readable UML view, keep a small projection beside the model rather than trying to make the pipeline parse every SQL dialect. It names entities, fields and relations, for example `docs/data-model.diagram.json`; render it with:
+Do not add a database block merely because a template has one. When the project
+owns relational data, record its persistence decision, physical schema, migrations
+and real proof commands first. Then prepare the reviewed input from
+`templates/data-model-governance.template.json` and run:
 
 ```sh
-node agent-pipeline/scripts/render-data-model.mjs docs/data-model.diagram.json data-model.html
+node agent-pipeline/scripts/configure-data-model.mjs reviewed-data-model.json
+node agent-pipeline/scripts/apply-profile.mjs
+node agent-pipeline/scripts/data-model-check.mjs
 ```
 
-The generated HTML is self-contained. It draws foreign-key arrows from the referencing table to the referenced one and lists cardinalities; it is a review surface, while the physical schema remains authoritative.
+The v2 contract remains ORM-neutral. It declares keys, domain dependencies,
+normalization, UTC timestamps, audit, ownership, access patterns, indexes, query
+budgets, migration policy, database security and the project gates that prove real
+behavior. A schema or contract change forces its per-issue proofs even when its
+risk lane would otherwise use a smaller battery. Expensive performance and restore
+proofs can remain closure gates.
 
-```json
-{
-  "title": "Library data model",
-  "entities": [
-    {
-      "name": "books",
-      "fields": [
-        { "name": "id", "type": "uuid", "primary_key": true, "nullable": false },
-        { "name": "title", "type": "text", "nullable": false }
-      ]
-    },
-    {
-      "name": "loans",
-      "fields": [
-        { "name": "id", "type": "uuid", "primary_key": true, "nullable": false },
-        { "name": "book_id", "type": "uuid", "nullable": false }
-      ]
-    }
-  ],
-  "relations": [
-    {
-      "from": { "entity": "loans", "field": "book_id" },
-      "to": { "entity": "books", "field": "id" },
-      "cardinality": "many-to-one"
-    }
-  ]
-}
+Render the same reviewed contract as a self-contained review page:
+
+```sh
+node agent-pipeline/scripts/render-data-model.mjs docs/data-model.contract.json data-model.html
 ```
+
+Read [Relational database governance](database-governance.md) for the complete
+contract, limits, adoption path and copyable prompt for an existing installation.
+Legacy `data_model` blocks remain accepted so a framework update does not convert
+historical debt into an immediate blocker.
 
 ### 3. Write the project tools
 

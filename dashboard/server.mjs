@@ -1,9 +1,9 @@
 import { controlEvidenceHistory, executionHistory, gateHistory } from "../scripts/execution-metrics.mjs";
 import { randomBytes, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { readJsonl } from "../scripts/lib.mjs";
 import { computeWave } from "../scripts/next-issues.mjs";
@@ -115,6 +115,38 @@ function readProjectJson(path, label) {
   } catch (error) {
     throw new Error(`${label} cannot be read: ${error.message}`);
   }
+}
+
+/** Reads only the fixed, non-secret fields of the latest data-governance report. */
+export function readDataModelEvidence(cwd, config) {
+  if (config.data_model?.governance_version !== 2) return [];
+  const path = resolve(cwd, config.data_model.reports_dir ?? "pipeline/evidence/data-model", "latest.json");
+  const root = resolve(cwd);
+  if (path !== root && !path.startsWith(`${root}${sep}`)) throw new Error("data-model evidence path escapes the project");
+  if (!existsSync(path)) return [];
+  const report = readProjectJson(path, "data-model evidence");
+  return [{
+    generated_at: report.generated_at ?? null,
+    revision: report.revision ?? null,
+    contract: report.contract ?? null,
+    summary: {
+      entities: report.summary?.entities ?? null,
+      relations: report.summary?.relations ?? null,
+      access_patterns: report.summary?.access_patterns ?? null,
+      denormalizations: report.summary?.denormalizations ?? null,
+      target_normal_form: report.summary?.target_normal_form ?? null,
+      workload: report.summary?.workload ?? null,
+    },
+    controls: Array.isArray(report.controls) ? report.controls.map((control) => ({
+      name: control.name ?? "unknown",
+      status: control.status ?? "unknown",
+      statement: control.statement ?? "",
+    })) : [],
+    proofs: Object.fromEntries(Object.entries(report.proofs ?? {}).map(([name, proof]) => [name, {
+      gate: proof?.gate ?? null,
+      replay: proof?.replay ?? null,
+    }])),
+  }];
 }
 
 function recommendation(record, rules, ready, waiting) {
@@ -289,10 +321,11 @@ export function readIssueCatalog(cwd) {
 }
 
 class RunRegistry {
-  constructor(launchProcess, interactiveInput, historySource = () => [], gateSource = () => [], securitySource = () => []) {
+  constructor(launchProcess, interactiveInput, historySource = () => [], gateSource = () => [], securitySource = () => [], dataModelSource = () => []) {
     this.gateSource = gateSource;
     this.historySource = historySource;
     this.securitySource = securitySource;
+    this.dataModelSource = dataModelSource;
     this.launchProcess = launchProcess;
     this.interactiveInput = interactiveInput;
     this.runs = new Map();
@@ -308,6 +341,7 @@ class RunRegistry {
       runs: [...live, ...this.historySource().filter((run) => !ids.has(run.runtime_run_id))],
       gate_reports: this.gateSource(),
       security_reports: this.securitySource(),
+      data_model_reports: this.dataModelSource(),
     };
   }
 
@@ -627,6 +661,7 @@ function lifecycle(server, registry, token) {
  * @param {Function} [options.launchProcess] - Testable dispatch launcher.
  * @param {Function} [options.issueSource] - Testable issue catalog reader.
  * @param {Function} [options.securitySource] - Testable security evidence reader.
+ * @param {Function} [options.dataModelSource] - Testable database-governance evidence reader.
  * @param {boolean} [options.interactiveInput] - Override runtime stdin capability.
  * @returns {object} Dashboard lifecycle and its HTTP server state.
  */
@@ -636,6 +671,7 @@ export function createDashboard({
   launchProcess = null,
   issueSource = null,
   securitySource = null,
+  dataModelSource = null,
   interactiveInput = null,
 } = {}) {
   const token = randomBytes(24).toString("hex");
@@ -663,7 +699,13 @@ export function createDashboard({
     try { return controlEvidenceHistory(cwd, readProjectJson(resolve(cwd, "pipeline.config.json"), "pipeline configuration")); }
     catch { return []; }
   });
-  const registry = new RunRegistry(launcher, acceptsInput === true, history, gates, security);
+  const dataModels = dataModelSource ?? (() => {
+    try {
+      const config = readProjectJson(resolve(cwd, "pipeline.config.json"), "pipeline configuration");
+      return readDataModelEvidence(cwd, config);
+    } catch { return []; }
+  });
+  const registry = new RunRegistry(launcher, acceptsInput === true, history, gates, security, dataModels);
   const source = issueSource ?? (() => readIssueCatalog(cwd));
   const server = createServer(requestHandler(registry, token, source));
   return lifecycle(server, registry, token);

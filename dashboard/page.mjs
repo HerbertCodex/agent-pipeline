@@ -167,6 +167,11 @@ const PAGE = `<!doctype html>
     <p>Durable evidence tied to a revision, target, authentication state, and measured duration.</p>
     <table class="timing-table"><thead><tr><th>Control</th><th>Target</th><th>Status</th><th>Authenticated</th><th>Coverage</th><th>Revision</th><th>Time</th><th>Artifacts</th></tr></thead><tbody id="security-reports"></tbody></table>
   </section>
+  <section class="panel" aria-labelledby="data-model-title">
+    <h2 id="data-model-title">Relational data governance</h2>
+    <p>Latest revision-bound contract result. Runtime proof gates remain separate evidence.</p>
+    <table class="timing-table"><thead><tr><th>Control</th><th>Status</th><th>Evidence and limitation</th><th>Revision</th></tr></thead><tbody id="data-model-reports"></tbody></table>
+  </section>
   <section id="runs" aria-live="polite"><p class="empty">No agent has been dispatched from this dashboard.</p></section>
 </main>
 <dialog id="issue-details" aria-labelledby="detail-title">
@@ -458,6 +463,19 @@ const PAGE = `<!doctype html>
         row.append(cell);
       }
       securityBody.append(row);
+    }
+    const dataModelBody = document.querySelector("#data-model-reports");
+    dataModelBody.replaceChildren();
+    for (const report of snapshot.data_model_reports ?? []) {
+      for (const control of report.controls ?? []) {
+        const row = document.createElement("tr");
+        for (const value of [control.name, control.status, control.statement, report.revision ?? "—"]) {
+          const cell = document.createElement("td");
+          cell.textContent = String(value ?? "—");
+          row.append(cell);
+        }
+        dataModelBody.append(row);
+      }
     }
     timedRuns = snapshot.runs;
     snapshotClock = performance.now();

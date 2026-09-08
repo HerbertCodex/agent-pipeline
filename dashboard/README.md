@@ -63,6 +63,12 @@ state, commit, duration and artifact names. Only this fixed metadata is exposed;
 report bodies and unknown fields are not served by the dashboard. ZAP HTML, JSON
 and SARIF reports remain files in the project-owned evidence directory.
 
+When relational governance v2 is configured, the dashboard also reads the latest
+sanitized data-model report. It shows every structural control, its evidence or
+limitation and exact revision. It deliberately labels runtime checks as requiring
+their project-owned proof gates; a reviewed JSON contract is not presented as proof
+of authorization, query latency, database grants or backup restoration.
+
 The browser's selection is not authority. `/api/dispatch` reads the catalog
 again and refuses an unknown issue, a non-dispatchable phase, a role mismatch,
 or a second live process for the same issue.

@@ -81,6 +81,15 @@ configure-security.mjs; do not launch an active scan during installation.
 When Agent Pipeline is already installed, use the complete
 [copyable update and security prompt](security-testing.md#copyable-prompt-for-an-existing-installation).
 
+If the repository owns a relational database, also read
+agent-pipeline/docs/database-governance.md. Inspect the real schema, migrations,
+domain keys and dependencies, timestamps, audit, ownership, exposed filters,
+indexes, query plans, database identities, network policy and restoration process.
+Ask for the domain and operational decisions that files cannot prove, then prepare
+the reviewed v2 input and run configure-data-model.mjs. Do not redesign the schema
+or convert historical debt into backlog work during installation. The guide includes
+a dedicated [copyable update prompt](database-governance.md#updating-an-existing-installation).
+
 Finish with:
 1. Created or modified files and their purpose.
 2. Verification results and remaining limitations.
