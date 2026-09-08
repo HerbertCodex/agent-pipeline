@@ -121,6 +121,10 @@ describe("agnosticism: CI separates the core from the stack", () => {
     assert.match(template, /\{\{steps\}\}/, "les portes du projet viennent de commands, pas du template");
     assert.match(template, /\{\{install\}\}/, "l'installation appartient a l'ecosysteme du projet");
   });
+
+  test("the CI template exposes scheduled and operator-triggered deep checks", () => {
+    assert.match(template, /\{\{deep_events\}\}/);
+  });
 });
 
 describe("the framework requires a gate on design limits", () => {

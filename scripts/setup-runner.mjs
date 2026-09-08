@@ -1,12 +1,12 @@
 import { spawn } from "node:child_process";
 
 /** Runs one setup step with live output, a heartbeat and process-group cleanup. */
-export function runStep(name, command, args = [], { cwd = process.cwd(), timeoutMs = 120000, shell = false } = {}) {
+export function runStep(name, command, args = [], { cwd = process.cwd(), timeoutMs = 120000, shell = false, env = process.env } = {}) {
   console.log(`[setup] ${name}`);
   const started = performance.now();
   return new Promise((resolve) => {
     const grouped = process.platform !== "win32";
-    const child = spawn(command, args, { cwd, shell, detached: grouped, stdio: "inherit" });
+    const child = spawn(command, args, { cwd, shell, env, detached: grouped, stdio: "inherit" });
     let timedOut = false;
     let interrupted = false;
     let error;

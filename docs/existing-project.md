@@ -70,6 +70,17 @@ unsatisfied. Do not expand this installation into repairing all historical debt.
 Configure permissions and reservations for the actual project paths. Configure
 attempt isolation and evidence retention according to the available capabilities.
 
+If this repository exposes a web application or API, read
+agent-pipeline/docs/security-testing.md. Inspect the existing test environment,
+health endpoint, authentication, test-user provisioning, API definitions and
+external side effects. Ask me focused questions for decisions the repository cannot
+prove, especially destructive-scan authorization and secret provisioning. Do not
+guess a target or credential. Materialize the reviewed contract with
+configure-security.mjs; do not launch an active scan during installation.
+
+When Agent Pipeline is already installed, use the complete
+[copyable update and security prompt](security-testing.md#copyable-prompt-for-an-existing-installation).
+
 Finish with:
 1. Created or modified files and their purpose.
 2. Verification results and remaining limitations.

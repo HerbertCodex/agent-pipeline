@@ -130,6 +130,10 @@ Hence the rule, enforced in four places rather than written in one: `next-issues
 
 **`closure_gates` does not touch CI, deliberately.** It defers what QA replays by hand, and CI time is not QA time: a machine re-running `audit` on every push costs nothing and reports early, while an agent replaying it per issue costs the run. Deferring both from the same key would have removed a security gate from every push to save an agent one command.
 
+`ci.gate_events` is the explicit exception for a control whose external environment
+or attack cost makes every-push execution inappropriate. It names the GitHub event
+types for that command and is validated independently from `closure_gates`.
+
 So a gate you list there still runs on every push, and stops being replayed per issue. If your CI is slower than you expected, that key is not where to look — this document claimed otherwise until a real port's QA read the code and found the two had been decoupled without the sentence being rewritten.
 
 The trap is not a red gate, it is a green one: **a `--check` that compares an empty map to an empty map exits 0**. Count the files under your roots against the entries rendered, once, before trusting it.

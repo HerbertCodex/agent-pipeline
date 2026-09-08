@@ -9,6 +9,7 @@ on:
     branches-ignore:
       - main
   pull_request:
+{{deep_events}}
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -18,7 +19,8 @@ jobs:
   gates:
     name: gates ({{profile}})
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: {{timeout_minutes}}
+{{environment}}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -44,3 +46,5 @@ jobs:
 
       - name: store-invariants
         run: node agent-pipeline/scripts/store-verify.mjs
+
+{{artifacts}}

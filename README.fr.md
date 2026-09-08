@@ -235,6 +235,13 @@ l’isolation des tentatives et la conservation des preuves. Génère AGENTS.md,
 prompts, les briefs, les règles et les hooks avec les scripts de la pipeline ; ne
 modifie pas séparément une cible générée.
 
+Si le projet expose une application web ou une API, lis
+agent-pipeline/docs/security-testing.md. Inspecte l’environnement de test existant,
+le healthcheck, l’authentification, la création des comptes, les définitions d’API
+et les effets externes. Pose-moi des questions ciblées pour les décisions que le
+dépôt ne permet pas d’établir. Ne devine ni identifiant, ni cible, ni autorisation
+de scan actif. Applique ensuite la configuration relue avec configure-security.mjs.
+
 Le générateur de carte du projet doit lire les extensions et exports réels de cette
 stack. Une carte vide ou un contrôle qui réussit sans avoir inspecté de source ne
 constitue pas une preuve.
@@ -268,7 +275,7 @@ cette installation.
 
 </details>
 
-Le cœur nécessite Node.js 20+, Git et aucune dépendance npm de production. Sudocode fournit le parcours tracker complet ; l’adaptateur minimal GitHub Issues nécessite une CLI `gh` authentifiée.
+Le cœur nécessite Node.js 20+, Git et aucune dépendance npm de production. Sudocode fournit le parcours tracker complet ; l’adaptateur minimal GitHub Issues nécessite une CLI `gh` authentifiée. Docker n’est requis que lorsqu’un projet configure les contrôles ZAP optionnels.
 
 L’installation initiale inclut la préparation et la calibration des outils de la stack. Pour réutiliser un profil existant, lancez `import-profile.mjs <bundle-dir>` après `init.mjs` : la configuration initiale est complétée automatiquement en conservant vos décisions. Pour un frontend TypeScript, `profile-bundles/frontend-typescript/materialize.mjs <dossier-sortie>` crée d’abord un candidat propre aux technologies et aux scripts réellement détectés. Ce candidat doit encore être complété et calibré.
 
@@ -292,6 +299,28 @@ Sudocode prend en charge issues, specs, relations, création idempotente et stat
 
 `file_policy` prévient une écriture uniquement si la plateforme impose réellement des permissions par rôle. Sinon, la pipeline assure une **détection, pas une prévention** : `verify-scope` confronte le diff aux réservations et refuse la transition après le retour de l’agent. Une véritable prévention exige des identités ou sandboxes séparées.
 
+## Tests dynamiques de sécurité et de charge
+
+Un projet web peut configurer ZAP après l’installation de son profil :
+
+```sh
+node agent-pipeline/scripts/configure-security.mjs reviewed-security-config.json
+node agent-pipeline/scripts/apply-profile.mjs
+node agent-pipeline/scripts/security-scan.mjs check
+node agent-pipeline/scripts/security-scan.mjs baseline
+```
+
+Le contrat définit l’environnement jetable, les cibles exactes, les comptes de
+test fournis par variables d’environnement, la preuve d’authentification, l’image
+ZAP immuable, les limites de durée et la matrice OWASP Top 10 2025. Tous les scans
+refusent les données persistantes et les effets externes. Les tests de charge utilisent un outil et
+un gate séparés. Les contrôles coûteux sont différés à la fermeture, planifiés ou
+déclenchés manuellement. Consultez [le guide complet](docs/security-testing.md).
+
+Pour un projet utilisant déjà une ancienne version d’Agent Pipeline, donnez
+directement à l’agent le
+[prompt copiable de migration et de sécurité](docs/security-testing.md#copyable-prompt-for-an-existing-installation).
+
 ## Stack et données
 
 Les profils relient les gates aux vrais outils de la stack. Aucun framework applicatif n’est imposé. Pour une base relationnelle, `data_model` rend explicites schéma, migrations, tests d’intégration, cible 3NF et politique UTC des horodatages. Le diagramme UML autonome se génère avec `render-data-model.mjs`.
@@ -307,6 +336,7 @@ La pipeline rend décisions, preuves, transitions et exceptions contrôlables. E
 - [Machine d’état](docs/state-machine.md)
 - [Handoffs et store](docs/handoff-store.md)
 - [Gates de qualité](docs/quality-gates.md)
+- [Sécurité dynamique, OWASP et charge](docs/security-testing.md)
 - [Versions et mises à jour](docs/releases.md)
 
 ## Licence

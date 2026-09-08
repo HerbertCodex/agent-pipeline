@@ -162,6 +162,11 @@ const PAGE = `<!doctype html>
     <p>Local gate time is included in agent time when the agent runs the checks. It is not an additional project total.</p>
     <table class="timing-table"><thead><tr><th>Gate</th><th>Local runs</th><th>CI reuse</th><th>Failures</th><th>Local time</th></tr></thead><tbody id="gate-times"></tbody></table>
   </section>
+  <section class="panel" aria-labelledby="security-title">
+    <h2 id="security-title">Security and load reports</h2>
+    <p>Durable evidence tied to a revision, target, authentication state, and measured duration.</p>
+    <table class="timing-table"><thead><tr><th>Control</th><th>Target</th><th>Status</th><th>Authenticated</th><th>Coverage</th><th>Revision</th><th>Time</th><th>Artifacts</th></tr></thead><tbody id="security-reports"></tbody></table>
+  </section>
   <section id="runs" aria-live="polite"><p class="empty">No agent has been dispatched from this dashboard.</p></section>
 </main>
 <dialog id="issue-details" aria-labelledby="detail-title">
@@ -427,6 +432,32 @@ const PAGE = `<!doctype html>
         const cell = document.createElement("td"); cell.textContent = String(value); row.append(cell);
       }
       gateBody.append(row);
+    }
+    const securityBody = document.querySelector("#security-reports");
+    securityBody.replaceChildren();
+    for (const report of snapshot.security_reports ?? []) {
+      const row = document.createElement("tr");
+      const artifacts = report.reports ?? report.result_files ?? [];
+      const coverage = report.kind === "zap" && report.summary != null
+        ? (report.summary.discovered_url_count ?? "?") + " discovered · " + (report.summary.alert_count ?? "?") + " alerts"
+        : report.kind === "load" && report.summary?.metrics != null
+          ? "p95 " + report.summary.metrics.p95_ms + " ms · errors " + (report.summary.metrics.error_rate * 100).toFixed(2) + "%"
+          : "—";
+      for (const value of [
+        report.kind === "zap" ? "ZAP " + report.mode : "load",
+        report.target,
+        report.status,
+        report.authenticated == null ? "—" : report.authenticated ? "yes" : "no",
+        coverage,
+        report.commit_sha ?? "—",
+        durationText(report.duration_ms ?? 0),
+        artifacts.join(", ") || "—",
+      ]) {
+        const cell = document.createElement("td");
+        cell.textContent = String(value ?? "—");
+        row.append(cell);
+      }
+      securityBody.append(row);
     }
     timedRuns = snapshot.runs;
     snapshotClock = performance.now();

@@ -116,10 +116,38 @@ describe("live dashboard: a local view over portable agent events", () => {
     assert.match(page, /Dependencies:/);
     assert.match(page, /Reservations:/);
     assert.match(page, /aria-live="polite"/);
+    assert.match(page, /Security and load reports/);
+    assert.match(page, /id="security-reports"/);
     assert.match(page, /output\.textContent/);
     assert.doesNotMatch(page, /innerHTML/);
     assert.doesNotMatch(page, /<script[^>]+src=/);
     assert.doesNotMatch(page, /<link[^>]+href=/);
+  });
+
+  test("exposes durable security reports with scan coverage and timing", async () => {
+    const dashboard = createDashboard({
+      issueSource: selectableIssues,
+      securitySource: () => [{
+        kind: "zap",
+        mode: "baseline",
+        status: "passed",
+        target: "http://app:3000",
+        authenticated: true,
+        commit_sha: "deadbeef",
+        duration_ms: 1250,
+        summary: { discovered_url_count: 18, affected_url_count: 2, alert_count: 2, risks: { High: 0, Medium: 2 } },
+        reports: ["report.html", "report.sarif.json"],
+      }],
+    });
+    dashboards.push(dashboard);
+    await dashboard.listen(0, "127.0.0.1");
+    const address = dashboard.address();
+    const snapshot = await (await fetch(`http://127.0.0.1:${address.port}/api/snapshot`)).json();
+
+    assert.equal(snapshot.security_reports.length, 1);
+    assert.equal(snapshot.security_reports[0].authenticated, true);
+    assert.equal(snapshot.security_reports[0].duration_ms, 1250);
+    assert.equal(snapshot.security_reports[0].summary.discovered_url_count, 18);
   });
 
   test("lists selectable issues from the durable store view", async () => {

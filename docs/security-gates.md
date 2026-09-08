@@ -8,12 +8,34 @@ Two commands guard the supply chain and the source: `audit` refuses a dependency
 A third joins them where it is declared: `sast` looks for the classic dangerous constructs.
 <!-- /gate -->
 
+<!-- gate:security_scope -->
+`security_scope` validates a project's dynamic-test boundary, OWASP Top 10 2025
+assurance ledger, target allowlist and accepted-finding expiries without sending
+traffic.
+<!-- /gate -->
+<!-- gate:dast_baseline -->
+`dast_baseline` proves what ZAP could reach and passively inspect in the configured
+test environment. Its report does not make claims about unreachable behavior.
+<!-- /gate -->
+<!-- gate:dast_active -->
+`dast_active` attacks only the allowlisted target in disposable data, within the
+declared scan and per-rule durations.
+<!-- /gate -->
+<!-- gate:dast_api -->
+`dast_api` imports the declared OpenAPI, GraphQL or SOAP definition before its
+bounded active scan.
+<!-- /gate -->
+
 Each has a limit worth knowing, because a gate believed wider than it is protects less than no gate at all:
 
 - **`secrets_scan` sweeps the working tree, not the git history.** A secret already pushed is rotated, not scanned away. The gate will never catch it.
 - **`audit` reports what its database knows today.** A green result is a statement about the present, and it is the reason the command runs on every push rather than once.
 <!-- gate:sast -->
 - **`sast` finds patterns, not intentions.** It does not know your domain, so it cannot see an authorisation check that was never written.
+<!-- /gate -->
+<!-- gate:dast_baseline -->
+- **A dynamic scan sees reached traffic, not the whole product.** Authentication
+  proof, explored URL count, exact target and revision belong with every result.
 <!-- /gate -->
 <!-- /brief -->
 

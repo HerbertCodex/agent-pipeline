@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "source": "https://owasp.org/Top10/2025/",
+  "categories": {
+    "A01": { "name": "Broken Access Control", "status": "unverified", "controls": [], "limitations": [] },
+    "A02": { "name": "Security Misconfiguration", "status": "unverified", "controls": [], "limitations": [] },
+    "A03": { "name": "Software Supply Chain Failures", "status": "unverified", "controls": [], "limitations": [] },
+    "A04": { "name": "Cryptographic Failures", "status": "unverified", "controls": [], "limitations": [] },
+    "A05": { "name": "Injection", "status": "unverified", "controls": [], "limitations": [] },
+    "A06": { "name": "Insecure Design", "status": "unverified", "controls": [], "limitations": [] },
+    "A07": { "name": "Authentication Failures", "status": "unverified", "controls": [], "limitations": [] },
+    "A08": { "name": "Software or Data Integrity Failures", "status": "unverified", "controls": [], "limitations": [] },
+    "A09": { "name": "Security Logging and Alerting Failures", "status": "unverified", "controls": [], "limitations": [] },
+    "A10": { "name": "Mishandling of Exceptional Conditions", "status": "unverified", "controls": [], "limitations": [] }
+  }
+}

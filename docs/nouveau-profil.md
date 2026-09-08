@@ -162,7 +162,17 @@ Running the page with no analysis at all asks the eight questions in full. That 
 
 `project_map` needs three values, not one: `out` (where the map lives), `regenerate` (the command that WRITES it) and `commands.project_map` (the one that verifies it). Declaring only the verification is the state every project started in, and it leaves the map with no writer but the agents themselves — which is what serialised whole waves. `apply-profile` refuses a `project_map.out` with no `regenerate` beside it, and refuses a `file_policy.orchestrator` forbidding the path the Orchestrator is the only role allowed to write.
 
-`closure_gates` names the gates QA replays once at spec closure rather than on every issue. It does **not** defer CI: a machine reruns the declared checks on every push so that a failure is reported early. Only the map gates are deferred in CI, whether or not they appear in `closure_gates`, because the map is stale on the branch by construction and that is not the operator's call to make.
+`closure_gates` names the gates QA replays once at spec closure rather than on every issue. It does **not** defer CI by itself: ordinary commands still run on every push so a failure is reported early. Map gates are pull-request-only because the map is stale on the branch by construction. A costly external control may additionally declare `ci.gate_events`; that separate, validated policy limits it to pull requests, schedules or manual dispatch without confusing agent replay cost with CI cost.
+
+Without an explicit `ci.gate_events` entry, only the map gates are deferred in CI.
+
+For web applications and APIs, configure the optional dynamic-test contract only
+after the real start, reset, health, authentication and API surfaces are known. Read
+[dynamic security and load testing](security-testing.md), prepare a reviewed JSON
+input, then run `configure-security.mjs`. The command adds a cheap boundary check,
+defers ZAP and load execution to closure, and gives those expensive CI gates
+pull-request, scheduled or manual event filters. Credential values stay outside the
+configuration.
 
 `language` decides which language the rendered pages are written in. `en` and `fr` ship; anything else is refused at configuration time rather than at the first page, hours later, where a typo looks like a broken script. Omit the key and the pages are English.
 

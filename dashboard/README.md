@@ -57,6 +57,12 @@ Gate reports separate local execution time from gates reused from successful CI 
 Gate time is already included in agent time: do not add those totals.
 These measurements do not identify model thinking time or token cost.
 
+The security and load table reads durable `run.json` records from the configured
+evidence directories. It shows the control, exact target, result, authentication
+state, commit, duration and artifact names. Only this fixed metadata is exposed;
+report bodies and unknown fields are not served by the dashboard. ZAP HTML, JSON
+and SARIF reports remain files in the project-owned evidence directory.
+
 The browser's selection is not authority. `/api/dispatch` reads the catalog
 again and refuses an unknown issue, a non-dispatchable phase, a role mismatch,
 or a second live process for the same issue.

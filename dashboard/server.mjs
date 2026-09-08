@@ -1,4 +1,4 @@
-import { executionHistory, gateHistory } from "../scripts/execution-metrics.mjs";
+import { controlEvidenceHistory, executionHistory, gateHistory } from "../scripts/execution-metrics.mjs";
 import { randomBytes, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -289,9 +289,10 @@ export function readIssueCatalog(cwd) {
 }
 
 class RunRegistry {
-  constructor(launchProcess, interactiveInput, historySource = () => [], gateSource = () => []) {
+  constructor(launchProcess, interactiveInput, historySource = () => [], gateSource = () => [], securitySource = () => []) {
     this.gateSource = gateSource;
     this.historySource = historySource;
+    this.securitySource = securitySource;
     this.launchProcess = launchProcess;
     this.interactiveInput = interactiveInput;
     this.runs = new Map();
@@ -306,6 +307,7 @@ class RunRegistry {
       generated_at: new Date().toISOString(),
       runs: [...live, ...this.historySource().filter((run) => !ids.has(run.runtime_run_id))],
       gate_reports: this.gateSource(),
+      security_reports: this.securitySource(),
     };
   }
 
@@ -624,6 +626,7 @@ function lifecycle(server, registry, token) {
  * @param {string} [options.frameworkRoot] - Root containing the core scripts.
  * @param {Function} [options.launchProcess] - Testable dispatch launcher.
  * @param {Function} [options.issueSource] - Testable issue catalog reader.
+ * @param {Function} [options.securitySource] - Testable security evidence reader.
  * @param {boolean} [options.interactiveInput] - Override runtime stdin capability.
  * @returns {object} Dashboard lifecycle and its HTTP server state.
  */
@@ -632,6 +635,7 @@ export function createDashboard({
   frameworkRoot = DEFAULT_FRAMEWORK_ROOT,
   launchProcess = null,
   issueSource = null,
+  securitySource = null,
   interactiveInput = null,
 } = {}) {
   const token = randomBytes(24).toString("hex");
@@ -655,7 +659,11 @@ export function createDashboard({
     try { return gateHistory(cwd, readProjectJson(resolve(cwd, "pipeline.config.json"), "pipeline configuration")); }
     catch { return []; }
   };
-  const registry = new RunRegistry(launcher, acceptsInput === true, history, gates);
+  const security = securitySource ?? (() => {
+    try { return controlEvidenceHistory(cwd, readProjectJson(resolve(cwd, "pipeline.config.json"), "pipeline configuration")); }
+    catch { return []; }
+  });
+  const registry = new RunRegistry(launcher, acceptsInput === true, history, gates, security);
   const source = issueSource ?? (() => readIssueCatalog(cwd));
   const server = createServer(requestHandler(registry, token, source));
   return lifecycle(server, registry, token);

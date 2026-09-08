@@ -104,7 +104,11 @@ Once those choices are settled:
 8. Configure enforceable invariants, role permissions, file reservations, project
    mapping, tracker, CI, attempt isolation and evidence retention. Generate common
    policy, prompts, briefs and hooks with pipeline scripts.
-9. Run every mandatory control, retain its duration and output, prove each new gate
+9. For a web application or API, read docs/security-testing.md, inspect the test
+   environment and ask for any missing target, authentication, side-effect or
+   active-scan decision. Apply the reviewed contract with configure-security.mjs;
+   do not launch an active scan during installation.
+10. Run every mandatory control, retain its duration and output, prove each new gate
    can fail with an isolated reversible case, restore the case, and rerun the
    affected control. Do not weaken thresholds or use placeholder commands.
 
@@ -205,6 +209,13 @@ reservations, architecture, project map, tracker, CI, attempt isolation and evid
 retention. Generate AGENTS.md, prompts, briefs, rules and hooks with pipeline
 scripts; do not edit a generated target independently.
 
+If the project exposes a web application or API, read
+agent-pipeline/docs/security-testing.md. Inspect its existing test environment,
+health endpoint, authentication, test-user provisioning, API definitions and
+external side effects. Ask focused questions for values that cannot be proved from
+the repository; do not guess credentials, targets, destructive-scan authorization
+or production exclusions. Write a reviewed input and run configure-security.mjs.
+
 The project-map generator must read the real extensions and exports of this stack.
 An empty map or a check that passes without inspecting source is not evidence.
 
@@ -246,7 +257,8 @@ For a Nest presentation, prepare the host project, its dependencies and Sudocode
 - Git;
 - a host repository;
 - [Sudocode](https://github.com/sudocode-ai/sudocode) for the complete tracker workflow, or authenticated `gh` for the minimal GitHub Issues adapter;
-- an agent CLI only when automatic dispatch is used.
+- an agent CLI only when automatic dispatch is used;
+- Docker only when the optional ZAP controls are configured.
 
 The core has no production npm dependency.
 
@@ -281,6 +293,28 @@ The minimal GitHub Issues adapter reads labelled work through `gh`, distinguishe
 
 `permissions.mjs` derives globally enforceable denials and can check a platform settings file. True per-role prevention requires separate platform identities or sandboxes. A prompt prohibition is never presented as a security boundary.
 
+## Dynamic security and load testing
+
+Web projects can install a stack-neutral ZAP contract after their project profile:
+
+```sh
+node agent-pipeline/scripts/configure-security.mjs reviewed-security-config.json
+node agent-pipeline/scripts/apply-profile.mjs
+node agent-pipeline/scripts/security-scan.mjs check
+node agent-pipeline/scripts/security-scan.mjs baseline
+```
+
+The contract owns the disposable environment, exact target allowlist,
+environment-backed test identities, authentication proof, immutable ZAP image,
+scan budgets, reports, accepted findings and OWASP Top 10 2025 assurance matrix.
+Every scan refuses persistent environments and external side effects. Load testing uses the
+project's dedicated tool and evidence contract rather than ZAP. Deep scans are
+closure, scheduled or manually triggered controls, keeping ordinary issue feedback
+short. See [dynamic security and load testing](docs/security-testing.md).
+
+For a project already running an older Agent Pipeline release, give the agent the
+[copyable migration and security prompt](docs/security-testing.md#copyable-prompt-for-an-existing-installation).
+
 ## Stack-neutral quality
 
 Profiles bind stable gate names to real tools for the host stack: types, lint, tests, audit, secrets, architecture, duplication, design limits, and a generated project map. The [frontend TypeScript bundle](profile-bundles/frontend-typescript) is an example to recalibrate, not an imposed stack.
@@ -304,6 +338,7 @@ The pipeline makes decisions, evidence, transitions, and exceptions visible and 
 | [State machine](docs/state-machine.md) | phases, roles, transitions |
 | [Handoffs and store](docs/handoff-store.md) | persistence and evidence protocol |
 | [Quality gates](docs/quality-gates.md) | executable rules |
+| [Security and load testing](docs/security-testing.md) | OWASP assurance, ZAP and isolated performance controls |
 | [Releases](docs/releases.md) | versioning and updates |
 
 ## Development

@@ -1,5 +1,6 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve, basename } from 'node:path';
+import { sanitizeControlSummary } from './security-testing.mjs';
 
 /** Reads durable lifecycle records; incomplete historical runs are never shown as live children. */
 export function executionHistory(root, config) {
@@ -30,4 +31,35 @@ export function gateHistory(root, config) {
     try { const report = JSON.parse(readFileSync(join(directory, name), 'utf8')); return Array.isArray(report.gates) ? [report] : []; }
     catch { return []; }
   });
+}
+
+/** Reads whitelisted DAST and load records for the local dashboard. */
+export function controlEvidenceHistory(root, config) {
+  const directories = [
+    config.security_testing?.zap?.reports_dir,
+    config.load_testing?.reports_dir,
+  ].filter((value) => typeof value === 'string');
+  const records = [];
+  const visit = (directory) => {
+    if (!existsSync(directory)) return;
+    for (const name of readdirSync(directory)) {
+      const path = join(directory, name);
+      try {
+        if (statSync(path).isDirectory()) visit(path);
+        else if (name === 'run.json') {
+          const raw = JSON.parse(readFileSync(path, 'utf8'));
+          if (!['zap', 'load'].includes(raw.kind)) continue;
+          const record = Object.fromEntries([
+            'kind', 'mode', 'status', 'target', 'authenticated', 'commit_sha', 'duration_ms',
+            'started_at', 'finished_at', 'exit_code', 'reports', 'result_files', 'error',
+          ].filter((key) => raw[key] !== undefined).map((key) => [key, raw[key]]));
+          const summary = sanitizeControlSummary(raw.kind, raw.summary);
+          if (summary != null) record.summary = summary;
+          records.push(record);
+        }
+      } catch { /* One malformed or interrupted artifact does not hide its neighbours. */ }
+    }
+  };
+  for (const directory of directories) visit(resolve(root, directory));
+  return records.sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)));
 }

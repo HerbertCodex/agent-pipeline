@@ -268,7 +268,30 @@ describe("a closure gate does not run on every push, or the branch stays red", (
       /if: \$\{\{ github\.event_name == 'pull_request' \}\}/,
       "a gate the branch cannot satisfy turns every push red until the PR",
     );
-    assert.ok(!workflow.slice(workflow.indexOf("- name: check"), workflow.indexOf("- name: project-map")).includes("event_name"));
+    assert.match(
+      workflow.slice(workflow.indexOf("- name: check"), workflow.indexOf("- name: project-map")),
+      /if: \$\{\{ github\.event_name == 'push' \|\| github\.event_name == 'pull_request' \}\}/,
+      "ordinary gates do not join an expensive scheduled or operator-triggered run",
+    );
+  });
+
+  test("CI renders a reviewed timeout for scheduled gates", () => {
+    sandbox = withMap({
+      ci: {
+        provider: "github",
+        install: "npm ci",
+        timeout_minutes: 55,
+        gate_events: { smoke: ["schedule", "workflow_dispatch"] },
+        runtime_setup: { uses: "actions/setup-node@v4", with: { "node-version": "24" } },
+      },
+    });
+    seedFramework(sandbox);
+    const applied = run(sandbox, "apply-profile.mjs", []);
+    assert.equal(applied.status, 0, applied.output);
+    const workflow = readFileSync(join(sandbox, ".github", "workflows", "ci.yml"), "utf8");
+    assert.match(workflow, /timeout-minutes: 55/);
+    const smoke = workflow.slice(workflow.indexOf("- name: smoke"));
+    assert.match(smoke.slice(0, 240), /github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_dispatch'/);
   });
 
   test("the pre-push hook leaves closure gates to the pull request", () => {
