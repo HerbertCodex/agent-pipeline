@@ -61,11 +61,25 @@ Treat agent metadata such as .agents/ and .codex/ as workspace controls, not as
 evidence of an application stack.
 
 Before writing files, confirm the current directory and inspect its contents. Use
-any product, stack, version, package-manager, repository-layout and agent-runtime
-choices already supplied with this request. For each important choice that remains
-unspecified and cannot be inferred from an empty directory, present a concrete
-recommendation with its consequences and ask me to decide. In particular, do not
-silently choose NestJS or any other framework.
+only product, stack, version, package-manager, repository-layout and agent-runtime
+choices explicitly supplied with this request. Never infer the product from the
+directory name or invent a generic application shell.
+
+If the product goal was not supplied, your next action must be to ask what I want
+to build, who will use it and which essential constraints apply. Wait for my answer
+before recommending a stack or architecture. Then identify the remaining decisions
+and ask focused questions in dependency order: product, imposed stack or stack
+selection, repository layout, architecture, agent runtime, tracker and CI. Use the
+agent platform's interactive question facility when available. Base each
+recommendation on my preceding answers and explain its practical consequence. Wait
+for required answers before writing files. Do not present a complete configuration
+built from guesses and ask for blanket approval. I do not need to send another
+prompt to trigger these questions.
+
+Before recommending exact runtime, framework or tool versions, inspect their
+official requirements and Agent Pipeline's applicable compatibility manifests.
+Never recommend a combination already recorded as incompatible. In particular, do
+not silently choose NestJS or any other framework.
 
 Once those choices are settled:
 

@@ -36,12 +36,28 @@ qu’aucun projet n’existe encore et ne sélectionne ni ne modifie un dépôt 
 Considère les métadonnées comme .agents/ et .codex/ comme des contrôles de l’espace
 de travail, pas comme la preuve d’une stack applicative.
 
-Avant d’écrire, confirme le dossier courant et inspecte son contenu. Réutilise tous
-les choix déjà fournis avec cette demande concernant le produit, la stack, les
-versions, le gestionnaire de paquets, la structure du dépôt et le runtime d’agent.
-Pour chaque choix important encore absent et impossible à déduire d’un dossier vide,
-présente une recommandation concrète avec ses conséquences et demande-moi de
-décider. Ne choisis pas silencieusement NestJS ni aucun autre framework.
+Avant d’écrire, confirme le dossier courant et inspecte son contenu. Réutilise
+uniquement les choix explicitement fournis avec cette demande concernant le produit,
+la stack, les versions, le gestionnaire de paquets, la structure du dépôt et le
+runtime d’agent. Ne déduis jamais le produit du nom du dossier et n’invente pas une
+coquille d’application générique.
+
+Si l’objectif du produit n’a pas été fourni, ta prochaine action doit être de me
+demander ce que je veux construire, qui l’utilisera et quelles contraintes
+essentielles s’appliquent. Attends ma réponse avant de recommander une stack ou une
+architecture. Identifie ensuite les décisions restantes et pose des questions
+ciblées dans leur ordre de dépendance : produit, stack imposée ou choix de stack,
+structure du dépôt, architecture, runtime d’agent, tracker et CI. Utilise l’outil de
+questions interactives de la plateforme lorsqu’il est disponible. Appuie chaque
+recommandation sur mes réponses précédentes et explique sa conséquence pratique.
+Attends les réponses obligatoires avant d’écrire. Ne présente pas une configuration
+complète construite sur des suppositions pour demander une approbation globale. Je
+ne dois pas envoyer un autre prompt pour déclencher ces questions.
+
+Avant de recommander les versions exactes des runtimes, frameworks ou outils,
+consulte leurs prérequis officiels et les manifests de compatibilité applicables
+d’Agent Pipeline. Ne recommande jamais une combinaison déjà déclarée incompatible.
+Ne choisis pas silencieusement NestJS ni aucun autre framework.
 
 Une fois ces choix réglés :
 
