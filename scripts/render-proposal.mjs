@@ -206,9 +206,11 @@ ${renderTitles(handoff.decomposition_titles, t)}
   } ${t.commits_tail}</p></section>
 `;
 
-  const page =
-    `<meta name="proposal-review-digest" content="${reviewDigest(handoff)}">\n` +
-    shell(t.default_title.replace("{spec}", specId), body);
+  const page = shell(
+    t.default_title.replace("{spec}", specId),
+    body,
+    `<meta name="proposal-review-digest" content="${reviewDigest(handoff)}">\n`,
+  );
   const written = resolvePage(target, config);
   writeFileSync(written, page);
   console.log(

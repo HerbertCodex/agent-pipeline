@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, readdirSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createSandbox, destroySandbox, run } from "./harness.mjs";
+import { shell } from "../scripts/page.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PAGES = join(here, "..", "pages");
@@ -42,6 +43,14 @@ function keysOf(value, prefix = "", found = []) {
   }
   return found;
 }
+
+test("generated review pages declare UTF-8 before localized text", () => {
+  const html = shell("Décision d’équipe", "<p>Échéance confirmée</p>");
+  assert.match(html, /^<!doctype html>\n<html/);
+  assert.match(html, /<meta charset="utf-8">/);
+  assert.ok(html.indexOf('<meta charset="utf-8">') < html.indexOf("Décision"));
+  assert.match(html, /<\/body>\n<\/html>\n$/);
+});
 
 describe("the pages speak the operator's language, and neither version drifts", () => {
   test("the framework ships at least English and French", () => {

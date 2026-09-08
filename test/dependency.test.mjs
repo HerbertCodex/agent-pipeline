@@ -84,6 +84,17 @@ describe("render-dependency: the page an operator decides on", () => {
     assert.match(html, /privilege|runtime/i);
   });
 
+  test("lays out fact labels and values in distinct responsive columns", () => {
+    sandbox = createSandbox();
+    const html = readFileSync(renderPage(ASSESSMENT), "utf8");
+
+    assert.match(html, /<dl class="facts">/);
+    assert.match(html, /<div><dt>[^<]+<\/dt><dd>MIT<\/dd><\/div>/);
+    assert.match(html, /\.facts>div\{display:grid;grid-template-columns:/);
+    assert.match(html, /@media \(max-width:640px\)[\s\S]*\.facts>div\{grid-template-columns:1fr/);
+    assert.doesNotMatch(html, /class="rid">(?:License|Licence)/);
+  });
+
   test("shows what was rejected, because a silent rejection is the whole problem", () => {
     sandbox = createSandbox();
     const html = readFileSync(renderPage(ASSESSMENT), "utf8");

@@ -54,13 +54,13 @@ function card(candidate, index, t) {
     [t.audited_on, safety.audited_on],
   ]
     .filter(([, value]) => value !== null && value !== undefined && value !== "")
-    .map(([label, value]) => `<li><span class="rid">${esc(label)}</span><p>${esc(String(value))}</p></li>`)
+    .map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(String(value))}</dd></div>`)
     .join("");
 
   return `<article class="feature">
 <header><span class="num">${pad(index)}</span><h3>${esc(candidate.name)} <small>${esc(candidate.version ?? "")}</small></h3></header>
 <p class="plain">${esc(candidate.does ?? "")}</p>
-<ol class="rules">${rows}</ol>
+<dl class="facts">${rows}</dl>
 </article>`;
 }
 
@@ -128,7 +128,11 @@ ${rejected(handoff.alternatives_rejected, t)}
 <p class="note">${esc(t.commits_note)}</p></section>
 `;
 
-  const page = `<meta name="dependency-review-digest" content="${dependencyDigest(handoff)}">\n` + shell(t.doc_title.replace("{issue}", issue), body);
+  const page = shell(
+    t.doc_title.replace("{issue}", issue),
+    body,
+    `<meta name="dependency-review-digest" content="${dependencyDigest(handoff)}">\n`,
+  );
   const written = resolvePage(target, config);
   writeFileSync(written, page);
   console.log(
