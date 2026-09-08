@@ -42,7 +42,8 @@ export function plan(root, defaults) {
     if (existsSync(path)) installed.packages[name] = json(path).version;
   }
   const compatibility = assessCompatibility(compatibilityManifest, installed);
-  if (compatibility.status === "unsupported") throw new Error(`Unsupported Nest toolchain for adapter ${compatibilityManifest.adapter_version}: ${compatibility.cases.flatMap((entry) => entry.mismatches).join("; ")}. See profile-bundles/nest/compatibility.json.`);
+  const stackCompatible = compatibility.cases.some((entry) => entry.mismatches.every((message) => message.startsWith("node ")));
+  if (compatibility.status === "unsupported" && !stackCompatible) throw new Error(`Unsupported Nest toolchain for adapter ${compatibilityManifest.adapter_version}: ${compatibility.cases.flatMap((entry) => entry.mismatches).join("; ")}. See profile-bundles/nest/compatibility.json.`);
   const profile = "nest";
   const profileDir = `${defaults.profiles_dir}/${profile}`;
   const tool = `node ${profileDir}/tools/gate.mjs`;

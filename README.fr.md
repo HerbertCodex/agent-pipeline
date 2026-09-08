@@ -90,7 +90,7 @@ node agent-pipeline/scripts/setup.mjs --runtime claude-code
 
 La commande détecte les outils existants, installe le profil fourni, génère la configuration, les rôles et les briefs, initialise le tracker, installe les hooks et vérifie les contrôles réels. Elle conserve les sources, les scripts du projet et les dépendances. Aucun agent n’a besoin de composer les fichiers d’installation.
 
-`--dry-run` affiche le plan sans écrire. Les versions installées doivent respecter le [manifeste de compatibilité](profile-bundles/nest/compatibility.json), actuellement validé pour Nest 11 avec Node 24, npm 11, Jest 30 et ESLint 9. Les monorepos et les combinaisons non validées restent à adapter. `pipeline/setup-report.json` contient les étapes et leurs durées.
+`--dry-run` affiche le plan sans écrire. Les versions installées doivent respecter le [manifeste de compatibilité](profile-bundles/nest/compatibility.json), actuellement validé pour Nest 11 avec Node 22, npm 11, Jest 30 et ESLint 9. Node 24 est exclu tant que la dépendance SQLite native du tracker y interrompt le processus. Nest 12 reste surveillé, mais son projet officiel actuel échoue encore à l’audit des dépendances de sévérité haute. Les monorepos et les autres combinaisons non validées restent à adapter. `pipeline/setup-report.json` contient les étapes et leurs durées.
 
 Pour faire évoluer un adaptateur installé, `setup.mjs --update` affiche les changements et `setup.mjs --update --apply` les applique avec vérification, en conservant les adaptations locales compatibles. La CI teste le contrat déclaré et surveille chaque semaine la dernière CLI publiée. Voir [le parcours Nest et ses limites](profile-bundles/nest/README.md).
 

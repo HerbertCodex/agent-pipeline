@@ -46,7 +46,8 @@ function design() {
 
 try {
   const gate = process.argv[2];
-  if (gate === "check") binary("typescript", ["--noEmit", "--incremental", "false"]);
+  if (gate === "check") binary("typescript", ["--noEmit", "--incremental", "false",
+    ...(setup.test_runner === "vitest" ? ["--module", "Preserve", "--moduleResolution", "Bundler"] : [])]);
   else if (gate === "lint") binary(setup.linter, ["src", "test", ...(setup.linter === "eslint" ? ["--ext", ".ts"] : [])]);
   else if (gate === "build") execute(setup.package_manager, ["run", "build"]);
   else if (gate === "test_unit") binary(setup.test_runner, setup.test_runner === "jest" ? ["--runInBand"] : ["run"]);

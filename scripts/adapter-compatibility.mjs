@@ -21,6 +21,14 @@ export function inRange(value, range) {
 export function validateManifest(manifest) {
   if (manifest?.schema_version !== 1 || typeof manifest.adapter !== "string" || !version(manifest.adapter_version)
     || !Array.isArray(manifest.supported) || manifest.supported.length === 0) throw new Error("Invalid adapter compatibility manifest");
+  const runtimeDependencies = manifest.runtime_dependencies ?? [];
+  if (!Array.isArray(runtimeDependencies)) throw new Error("Invalid runtime dependency contract");
+  for (const dependency of runtimeDependencies) {
+    if (typeof dependency.name !== "string" || !version(dependency.version)) throw new Error("Invalid runtime dependency");
+    const min = version(dependency.node?.min);
+    const max = version(dependency.node?.max_exclusive);
+    if (!min || !max || compare(min, max) >= 0) throw new Error("Invalid runtime dependency range");
+  }
   const ids = new Set();
   for (const entry of manifest.supported) {
     if (!/^[a-z0-9-]+$/.test(entry.id ?? "") || ids.has(entry.id) || typeof entry.manager !== "string"
@@ -33,6 +41,15 @@ export function validateManifest(manifest) {
     }
     if (!inRange(entry.reference?.node, entry.node) || !inRange(entry.reference?.manager_version, entry.manager_version)
       || !version(entry.reference?.cli) || typeof entry.evidence !== "string") throw new Error("Invalid compatibility manifest reference");
+    for (const dependency of runtimeDependencies) {
+      const supportedMin = version(entry.node.min);
+      const supportedMax = version(entry.node.max_exclusive);
+      const dependencyMin = version(dependency.node.min);
+      const dependencyMax = version(dependency.node.max_exclusive);
+      if (compare(supportedMin, dependencyMin) < 0 || compare(supportedMax, dependencyMax) > 0) {
+        throw new Error(`Supported node range exceeds runtime dependency ${dependency.name}`);
+      }
+    }
   }
   return manifest;
 }

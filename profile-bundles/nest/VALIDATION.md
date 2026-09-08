@@ -1,6 +1,6 @@
 # Setup validation
 
-Measured locally on 2026-09-07, Linux x64, Node 24.20.0.
+The original baseline below was measured locally on 2026-09-07, Linux x64, Node 24.20.0. The released compatibility probe was revalidated on 2026-09-08 with Node 22.23.2 after the CI failure described under Compatibility lifecycle.
 
 ## Complete Nest 11 installation
 
@@ -24,7 +24,9 @@ A separate recovery probe added an invalid assignment to the installed host. Run
 
 A second host was generated with `@nestjs/cli@12.0.0` and installed Nest core 12.0.1. Its real Oxlint, build, Vitest unit and HTTP integration tests, and compiled-application smoke test passed when exercised individually.
 
-The complete setup correctly stopped at type checking: the generated HTTP test imported `supertest/types`, which was not resolvable in that dependency graph. No source fix, dependency substitution, test exclusion or successful-installation claim was made for that scaffold.
+The generated HTTP test imports `supertest/types`. The production configuration uses NodeNext resolution, under which the direct strict check could not resolve that test-only import. The adapter now checks a Vitest test graph with TypeScript's `Preserve` module mode and `Bundler` resolution; the separate `nest build` gate retains the scaffold's production NodeNext configuration. This passed without changing the application, dependencies or test coverage.
+
+The complete setup was repeated on 2026-09-08 with Node 22.23.2, npm 11.19.0, TypeScript 6.0.3, Vitest 4.1.11 and Oxlint 1.82.0. Type checking, lint, build, unit, HTTP integration, smoke, design, secrets and static analysis passed. Setup then stopped at `npm audit --audit-level high`: the generated dependency graph reported high-severity `tmp` and `undici` advisories through `@nestjs/mau`, with only a forced breaking downgrade offered. The audit was not weakened, and Nest 12 was not added to the released support manifest.
 
 ## Automated checks
 
@@ -34,8 +36,10 @@ To repeat the complete check, follow the disposable-host procedure in [README.md
 
 ## Compatibility lifecycle
 
-The manifest-driven supported probe was also executed locally on 2026-09-07 using `ci.mjs --case nest11-node24-npm11-jest30-eslint9`. Official scaffolding, installation, negative proofs, a healthy rerun and an adapter migration all passed. The migration preview left the installed version unchanged; applying the disposable adapter update from 1.0.0 to 1.0.1 retained the local `language: "fr"` setting and passed all gates. The update itself took 37.532 seconds, excluding its parent process overhead.
+The manifest-driven supported probe was executed locally on 2026-09-08 using `ci.mjs --case nest11-node22-npm11-jest30-eslint9` with Node 22.23.2. Official scaffolding took 16.841 seconds. Installation took 7.723 seconds, the negative proofs 5.660 seconds, the healthy rerun 6.940 seconds and the adapter migration 7.160 seconds. The migration retained the local `language: "fr"` setting and passed all gates.
 
-The separate `latest` candidate probe resolved CLI 12.0.0 and Nest 12.0.1, with TypeScript 6.0.3, Vitest 4.1.11 and Oxlint 1.81.0. It failed at the unresolved `supertest/types` import described above. Its report marked it as a candidate, and the released support manifest was unchanged.
+The earlier 2026-09-07 Node 24.20.0 probe passed on one local machine, but the GitHub runner later reproduced a native cleanup abort in Sudocode 0.2.0's `better-sqlite3` 11.x dependency immediately after tracker initialization. Node 24 was removed from the support contract because a supported combination must be reproducible in CI. The manifest now records the tracker and its admitted Node range as a runtime dependency, and validation rejects any stack case that exceeds that range.
 
-The complete native suite passed 627 tests with no failures or skips. It includes compatibility bounds, unknown-version refusal, migration conflicts, local-change preservation and restoration of managed files after a failed update. These are local results; the scheduled GitHub workflow has not been executed remotely as part of this validation.
+The separate latest candidate probe resolved CLI 12.0.0 and Nest 12.0.1. It passed the corrected test resolution and stopped only at the high-severity dependency audit described above. Its report remained candidate evidence, and the released support manifest was unchanged.
+
+The complete dependency-free repository suite passed 641 tests with no failures or skips under Node 22.23.2. It includes compatibility bounds, runtime-dependency constraints, Vitest module resolution, unknown-version refusal, migration conflicts, local-change preservation and restoration of managed files after a failed update.

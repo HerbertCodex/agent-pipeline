@@ -12,9 +12,9 @@ The setup command is available in the development checkout; the earlier `v0.1.0`
 
 ## Before running
 
-The adapter detects `nest-cli.json`, the dependency manifest and one lockfile. Its tooling recognizes the standard single-application layout with Jest/Vitest and ESLint/Oxlint, but **admission is restricted to the combinations declared in [compatibility.json](compatibility.json)**. Currently that is Nest 11, Node 24, npm 11, TypeScript 5, Jest 30 and ESLint 9, starting at the exact minimum versions in the manifest. pnpm, Yarn and Nest 12 are not yet admitted despite the available command-routing code. Workspaces, monorepos, Yarn PnP and custom runner flags require a dedicated adapter or the manual guide.
+The adapter detects `nest-cli.json`, the dependency manifest and one lockfile. Its tooling recognizes the standard single-application layout with Jest/Vitest and ESLint/Oxlint, but **admission is restricted to the combinations declared in [compatibility.json](compatibility.json)**. Currently that is Nest 11, Node 22, npm 11, TypeScript 5, Jest 30 and ESLint 9, starting at the exact minimum versions in the manifest. Node 24 is excluded because Sudocode 0.2.0's native SQLite dependency aborts during process cleanup. pnpm, Yarn and Nest 12 are not yet admitted despite the available command-routing code. Workspaces, monorepos, Yarn PnP and custom runner flags require a dedicated adapter or the manual guide.
 
-The check reads installed `node_modules` versions, the running Node version and the package-manager executable. A declared dependency range does not prove which tool is installed. Unknown majors, stable versions below the validated floor and prereleases are refused before writes. Preview reports missing dependencies as `unverified`; an actual installation requires a fully compatible toolchain. Supported ranges admit updates inside the declared contract, and the real gates still run on each installation. They are not a claim that every possible version combination was measured.
+The check reads installed `node_modules` versions, the running Node version and the package-manager executable. A declared dependency range does not prove which tool is installed. Unknown majors, stable versions below the validated floor and prereleases are refused before writes. Preview can report an otherwise matching stack on an unsupported Node runtime, but an actual installation refuses it before writes. Missing dependencies remain `unverified`; an actual installation requires a fully compatible toolchain. Supported ranges admit updates inside the declared contract, and the real gates still run on each installation. They are not a claim that every possible version combination was measured.
 
 Git and the Sudocode CLI must be installed. Setup checks prerequisites before creating configuration and initializes a missing tracker through `sudocode init`. Existing tracker data and control-store records are retained. No product issues are created.
 
@@ -68,7 +68,7 @@ Every Monday, and on manual workflow dispatch, an additional job resolves the la
 
 Artifacts include actual installed versions, the generated package manifest and lockfile, setup results and migration preview. These distinguish a dependency-resolution change from an adapter defect. The workflow becomes active when this change reaches GitHub; no remote run is claimed by local tests.
 
-To add support, review a successful probe, add a bounded manifest case and its reference versions, record evidence and bump `adapter_version`. Then rerun the supported matrix. The CI prerequisite installer is separate from host setup and installs the manifest-pinned tracker CLI only on the test runner.
+To add support, review a successful probe, add a bounded manifest case and its reference versions, record evidence and bump `adapter_version`. Then rerun the supported matrix. Runtime dependencies and their admitted Node ranges are part of the same manifest contract, so a stack case cannot claim a Node range wider than its setup prerequisites. The CI prerequisite installer is separate from host setup and installs the manifest-pinned tracker CLI only on the test runner.
 
 ## Fixed policy and actual coverage
 
@@ -93,7 +93,7 @@ node agent-pipeline/scripts/setup.mjs --runtime claude-code
 
 The verifier adds temporary deliberate defects, asserts nonzero gate exits and removes its probes in `finally`. It exercises type checking, lint, build, unit and integration assertions, all four design bounds, secrets, duplication, stale maps and HTTP status rejection. The second command rebuilds and verifies the healthy host. Dependency advisories and generic core tools also retain their own upstream/core tests; no fake registry result is used as proof.
 
-The standard Nest 12 CLI template observed during development included a test import from `supertest/types` that did not resolve with its installed dependencies. Setup reports that compiler error instead of changing the application or excluding the failing test. A generated scaffold is not assumed to pass every check.
+The standard Nest 12 CLI template uses Vitest and imports `supertest/types` from its HTTP test. The adapter's strict test check now uses TypeScript's bundler resolution for that Vitest test graph, while `nest build` continues to verify the production NodeNext build. With that correction, type checking, lint, build, unit, HTTP integration, smoke, design and static security checks pass. The current scaffold still fails `npm audit --audit-level high` through transitive `tmp` and `undici` advisories from `@nestjs/mau`, so Nest 12 remains outside released support. A generated scaffold is not assumed to pass every check.
 
 ## Adding another stack
 

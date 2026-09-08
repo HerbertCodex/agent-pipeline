@@ -6,8 +6,11 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { plan as adapterPlan } from "../profile-bundles/nest/installer.mjs";
+import { inRange } from "../scripts/adapter-compatibility.mjs";
 
 const roots = [];
+const compatibilityManifest = JSON.parse(readFileSync(new URL("../profile-bundles/nest/compatibility.json", import.meta.url), "utf8"));
+const supportedRuntime = compatibilityManifest.supported.some((entry) => inRange(process.versions.node, entry.node));
 afterEach(() => roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
 function project() {
   const root = mkdtempSync(join(tmpdir(), "pipeline-setup-"));
@@ -183,7 +186,7 @@ test("update defaults to a read-only diff and retains independent local changes"
   const preview = JSON.parse(result.stdout);
   assert.equal(preview.config.smoke.path, "/health");
   assert.equal(preview.update.from, "0.9.0");
-  assert.equal(preview.update.to, "1.1.0");
+  assert.equal(preview.update.to, "1.2.0");
   assert.ok(preview.update.changes.some((item) => item.path === toolPath));
   assert.equal(readFileSync(join(root, toolPath), "utf8"), "// previous adapter tool\n");
   assert.equal(JSON.parse(readFileSync(join(root, "pipeline.config.json"), "utf8")).setup.adapter_version, "0.9.0");
@@ -201,7 +204,7 @@ test("update refuses conflicting tool edits and legacy installations without a b
   assert.notEqual(setup(root, ["--apply"]).status, 0);
 });
 
-test("a failed update restores managed files and retains the previous adapter baseline", () => {
+test("a failed update restores managed files and retains the previous adapter baseline", { skip: !supportedRuntime }, () => {
   const { root, config, toolPath, put } = installedFixture();
   config.commands.check = 'node -e "console.error(\'fixture gate refusal\'); process.exit(1)"';
   put("pipeline.config.json", config);
