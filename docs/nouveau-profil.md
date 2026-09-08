@@ -44,6 +44,34 @@ It seeds the profile directory and writes `pipeline.config.json` when there is n
 
 You still write the invariants and the pitfalls document yourself. `apply-profile` refuses a profile without `pitfalls.md`, empty or not: it is what `store-verify` requires an escaped defect to leave behind, and a file that does not exist cannot receive anything. A profile carries what a stack does; it does not know what this repository has already learned.
 
+### Materializing a TypeScript frontend profile
+
+The generic frontend contract can inspect a real TypeScript frontend and emit a
+technology-specific, project-owned bundle without adding a permanent core adapter:
+
+```sh
+node agent-pipeline/profile-bundles/frontend-typescript/materialize.mjs \
+  pipeline/profile-candidates/frontend
+```
+
+Run it from the host root after the application scaffold exists. It derives the
+profile name, package manager, source roots, framework and available gates from
+observed files. It maps only effective package scripts and records mandatory gaps
+in `DISCOVERY.md`; it does not install a checker or invent a successful command.
+For example, React and Vite produce `frontend-react-vite`, while missing browser
+tests remain missing.
+
+Review the candidate, implement and negatively prove its missing required gates,
+then import it with the existing mechanism:
+
+```sh
+node agent-pipeline/scripts/import-profile.mjs \
+  pipeline/profile-candidates/frontend
+```
+
+The materialized bundle stays at `calibration_required: true`. Detection proves
+what the repository carries, not that its thresholds or checks are effective.
+
 ### Installation cost and live demonstrations
 
 A first installation on a stack without an executable adapter includes building its quality tooling and proving its checks. The shipped frontend TypeScript bundle defines the expected commands; it does not implement a ready-to-run toolchain. Importing it saves configuration work but does not remove stack setup or calibration. The Nest setup adapter supplies that tooling and executes the local checks directly.

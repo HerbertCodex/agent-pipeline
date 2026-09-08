@@ -77,7 +77,9 @@ Une fois ces choix réglés :
 7. Réutilise un adaptateur exécutable compatible lorsque le projet généré respecte
    son contrat déclaré. Sinon, configure un profil propre au projet à partir des
    vraies commandes du squelette ; ne crée pas d’adaptateur universel et ne modifie
-   pas le cœur d’Agent Pipeline pour contourner une incompatibilité.
+   pas le cœur d’Agent Pipeline pour contourner une incompatibilité. Pour un
+   frontend TypeScript, matérialise d’abord le contrat générique fourni afin de
+   produire un candidat propre aux technologies détectées.
 8. Configure les invariants vérifiables, les permissions des rôles, les réservations,
    la carte du projet, le tracker, la CI, l’isolation des tentatives et la conservation
    des preuves. Génère les règles, prompts, briefs et hooks communs avec les scripts
@@ -223,7 +225,9 @@ complet pour cette seule installation.
 Si un profil compatible existe, importe-le puis calibre-le sur ce projet. Sinon,
 crée un profil propre au projet à partir des vrais outils de la stack. Privilégie
 les commandes fournies par les scripts, wrappers et manifests du projet. Ne modifie
-pas le cœur dans agent-pipeline/ pour contourner une incompatibilité.
+pas le cœur dans agent-pipeline/ pour contourner une incompatibilité. Pour un
+frontend TypeScript, utilise d’abord la commande `materialize.mjs` du profil
+générique afin de générer le candidat propre à la stack réellement détectée.
 
 Configure au minimum les commandes, les invariants vérifiables, les permissions par
 rôle, les réservations, l’architecture, la carte du projet, le tracker, la CI,
@@ -266,7 +270,7 @@ cette installation.
 
 Le cœur nécessite Node.js 20+, Git et aucune dépendance npm de production. Sudocode fournit le parcours tracker complet ; l’adaptateur minimal GitHub Issues nécessite une CLI `gh` authentifiée.
 
-L’installation initiale inclut la préparation et la calibration des outils de la stack. Pour réutiliser un profil existant, lancez `import-profile.mjs <bundle-dir>` après `init.mjs` : la configuration initiale est complétée automatiquement en conservant vos décisions. Le profil TypeScript fourni reste un contrat à adapter, pas une stack prête à lancer.
+L’installation initiale inclut la préparation et la calibration des outils de la stack. Pour réutiliser un profil existant, lancez `import-profile.mjs <bundle-dir>` après `init.mjs` : la configuration initiale est complétée automatiquement en conservant vos décisions. Pour un frontend TypeScript, `profile-bundles/frontend-typescript/materialize.mjs <dossier-sortie>` crée d’abord un candidat propre aux technologies et aux scripts réellement détectés. Ce candidat doit encore être complété et calibré.
 
 Pour une présentation avec Nest, préparez le projet, ses dépendances et Sudocode ; vous pouvez ensuite montrer la commande `setup.mjs` elle-même. Pour diagnostiquer les contrôles d’une installation existante, `preflight.mjs --timeout-seconds 60` affiche la progression et les durées, avec une limite par commande. Voir [le coût d’installation et les démonstrations](docs/nouveau-profil.md#installation-cost-and-live-demonstrations).
 

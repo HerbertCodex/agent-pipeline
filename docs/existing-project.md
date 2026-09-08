@@ -36,6 +36,8 @@ https://github.com/HerbertCodex/agent-pipeline
 Use the initialization path actually available:
 - reuse a compatible profile when it fits this project;
 - otherwise configure a project profile using the existing tools;
+- for a TypeScript frontend, materialize the shipped generic frontend contract
+  into a technology-specific candidate before completing its missing gates;
 - do not build a complete framework adapter just for this installation;
 - do not modify the Agent Pipeline core to bypass an incompatibility;
 - if a pipeline is already installed, inspect it and use its supported update or

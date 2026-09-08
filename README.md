@@ -98,7 +98,9 @@ Once those choices are settled:
 7. Reuse a compatible executable adapter when the generated project falls inside
    its declared contract. Otherwise configure a project-owned profile from the
    scaffold's actual commands; do not create a universal framework adapter or
-   modify the Agent Pipeline core to bypass an incompatibility.
+   modify the Agent Pipeline core to bypass an incompatibility. For a TypeScript
+   frontend, first materialize the shipped generic contract into a detected,
+   technology-specific candidate with its `materialize.mjs` command.
 8. Configure enforceable invariants, role permissions, file reservations, project
    mapping, tracker, CI, attempt isolation and evidence retention. Generate common
    policy, prompts, briefs and hooks with pipeline scripts.
@@ -194,7 +196,9 @@ optional shortcut; do not build a complete framework adapter for this installati
 If a compatible profile exists, import it and calibrate it on this project.
 Otherwise create a project-owned profile from the stack's actual tools. Prefer
 commands supplied by project scripts, wrappers and manifests. Do not modify the
-core under agent-pipeline/ to bypass an incompatibility.
+core under agent-pipeline/ to bypass an incompatibility. For a TypeScript frontend,
+first run the generic profile's `materialize.mjs` command to generate the candidate
+for the stack actually detected.
 
 Configure at least the commands, enforceable invariants, role permissions, file
 reservations, architecture, project map, tracker, CI, attempt isolation and evidence
@@ -232,7 +236,7 @@ backlog, commit, merge or push during this installation.
 
 </details>
 
-To reuse an existing stack profile, run `import-profile.mjs <bundle-dir>` after `init.mjs`: it completes the untouched bootstrap configuration while preserving your decisions. The shipped TypeScript profile is a contract to adapt, not a ready-to-run toolchain. First-time installation still includes tooling setup and calibration.
+To reuse an existing stack profile, run `import-profile.mjs <bundle-dir>` after `init.mjs`: it completes the untouched bootstrap configuration while preserving your decisions. For a TypeScript frontend, `profile-bundles/frontend-typescript/materialize.mjs <output-dir>` creates a technology-specific candidate from the real package scripts before import. The candidate still requires tooling setup and calibration.
 
 For a Nest presentation, prepare the host project, its dependencies and Sudocode, then demonstrate `setup.mjs` itself. Diagnose checks in an existing installation with `preflight.mjs --timeout-seconds 60`, which reports progress and durations with a per-command timeout. See [installation cost and live demonstrations](docs/nouveau-profil.md#installation-cost-and-live-demonstrations).
 

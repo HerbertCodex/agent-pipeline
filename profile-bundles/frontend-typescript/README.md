@@ -3,10 +3,40 @@
 This bundle defines the quality surfaces expected of a TypeScript frontend
 without selecting React, Vue, Svelte, Angular or another framework.
 
-It is a contract, not a drop-in toolchain. Its commands target stable npm
-script names so the bootstrap agent can map the project's actual compiler,
+It is a contract, not a drop-in toolchain. Its commands name the compiler,
 linter, component runner, browser runner, accessibility checker and visual
-regression tool behind them.
+regression surfaces a real project must implement.
+
+## Materialize a profile for the detected stack
+
+For an existing or newly scaffolded TypeScript frontend, generate a reviewable
+project-owned bundle from the repository root:
+
+```bash
+node agent-pipeline/profile-bundles/frontend-typescript/materialize.mjs \
+  pipeline/profile-candidates/frontend
+```
+
+The command reads `package.json`, `tsconfig.json`, the package-manager evidence,
+source roots and installed or declared frontend packages. A React application
+built with Vite therefore produces a profile named `frontend-react-vite`. Only
+effective package scripts are mapped to gates; absent end-to-end, accessibility
+or visual checks remain explicitly absent. The host project is not modified.
+
+Review `pipeline/profile-candidates/frontend/DISCOVERY.md`, implement and prove
+the missing mandatory gates with the project's real tools, then import the
+candidate through the normal mechanism:
+
+```bash
+node agent-pipeline/scripts/import-profile.mjs \
+  pipeline/profile-candidates/frontend
+```
+
+The generic Agent Pipeline project-map implementation is selected unless the
+project carries its own real `project-map` writer. The generated bundle keeps
+`calibration_required: true`; stack detection is not calibration evidence.
+
+## Import the complete reference contract
 
 Import it from the host repository:
 
@@ -15,8 +45,10 @@ node agent-pipeline/scripts/import-profile.mjs \
   agent-pipeline/profile-bundles/frontend-typescript
 ```
 
-The import deliberately sets `calibration_required: true`. Before changing
-that flag, the bootstrap agent must:
+Direct import installs every reference command and is useful when the project
+already implements that complete npm script contract. It deliberately sets
+`calibration_required: true`. Before changing that flag, the bootstrap agent
+must:
 
 1. replace commands that do not match the selected stack;
 2. implement every referenced package script;
