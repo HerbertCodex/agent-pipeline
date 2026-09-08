@@ -44,6 +44,73 @@ Product defines the contract, Implementer writes tests and code, QA validates wi
 
 ## Install
 
+### Start from an empty directory
+
+Run your agent inside the intended empty directory and give it this prompt. Hidden agent metadata such as `.agents/` or `.codex/` may already exist; it does not make the directory an application repository.
+
+<details>
+<summary>Show the copyable empty-directory prompt</summary>
+
+```text
+Initialize a new application and install Agent Pipeline in this directory.
+
+This directory is intentionally empty. Creating the Git repository, application
+scaffold and pipeline here is authorized. Do not refuse merely because no existing
+project files are present, and do not select or modify a neighboring repository.
+Treat agent metadata such as .agents/ and .codex/ as workspace controls, not as
+evidence of an application stack.
+
+Before writing files, confirm the current directory and inspect its contents. Use
+any product, stack, version, package-manager, repository-layout and agent-runtime
+choices already supplied with this request. For each important choice that remains
+unspecified and cannot be inferred from an empty directory, present a concrete
+recommendation with its consequences and ask me to decide. In particular, do not
+silently choose NestJS or any other framework.
+
+Once those choices are settled:
+
+1. Initialize Git in this directory if needed.
+2. Check the selected stack's official documentation and generate its minimal
+   official scaffold directly in this directory. Do not implement a product
+   feature. Record the exact generator and resolved versions.
+3. Run the scaffold's real build, type, lint and test commands once. Record their
+   results and durations as the initial application baseline.
+4. Add the official Agent Pipeline repository using its documented, pinned and
+   updatable installation procedure:
+   https://github.com/HerbertCodex/agent-pipeline
+5. Read its README, docs/releases.md and docs/nouveau-profil.md completely. Inspect
+   any shipped compatibility manifest before selecting an executable adapter.
+6. Run init.mjs and record the approved product, stack and architecture decisions.
+7. Reuse a compatible executable adapter when the generated project falls inside
+   its declared contract. Otherwise configure a project-owned profile from the
+   scaffold's actual commands; do not create a universal framework adapter or
+   modify the Agent Pipeline core to bypass an incompatibility.
+8. Configure enforceable invariants, role permissions, file reservations, project
+   mapping, tracker, CI, attempt isolation and evidence retention. Generate common
+   policy, prompts, briefs and hooks with pipeline scripts.
+9. Run every mandatory control, retain its duration and output, prove each new gate
+   can fail with an isolated reversible case, restore the case, and rerun the
+   affected control. Do not weaken thresholds or use placeholder commands.
+
+If the latest official scaffold is outside a released adapter contract, show the
+exact mismatch and ask whether to use a supported version or continue with a
+project-owned profile. Do not claim completion while a mandatory dependency, tool,
+decision or control is missing.
+
+Finish with:
+
+1. Decisions applied and exact versions selected.
+2. Created or modified files and their purpose.
+3. Baseline commands, durations, results and negative proofs.
+4. Remaining limitations or decisions.
+5. Exact commands to start the pipeline and dashboard.
+
+Do not create the first product spec, launch development agents, implement a
+feature, commit, merge or push during this initialization.
+```
+
+</details>
+
 ### Automatic setup for an existing Nest project
 
 From the root of a project created with `nest new`, with dependencies installed, Git, Sudocode and this development checkout at `agent-pipeline/`:

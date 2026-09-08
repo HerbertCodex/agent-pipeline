@@ -20,6 +20,77 @@ Le projet transforme le développement multi-agent en workflow observable et bor
 | État modifié par plusieurs rôles | store à écrivain unique et verrou optimiste |
 | Agents silencieux | événements NDJSON, heartbeat, dashboard et interruption |
 
+## Démarrer dans un dossier vide
+
+Lancez votre agent dans le dossier vide destiné au projet et donnez-lui ce prompt. Des métadonnées cachées comme `.agents/` ou `.codex/` peuvent déjà être présentes ; elles ne constituent pas un projet applicatif.
+
+<details>
+<summary>Afficher le prompt pour dossier vide</summary>
+
+```text
+Initialise une nouvelle application et installe Agent Pipeline dans ce dossier.
+
+Ce dossier est volontairement vide. Tu es autorisé à y créer le dépôt Git, le
+squelette de l’application et la pipeline. Ne refuse pas la tâche simplement parce
+qu’aucun projet n’existe encore et ne sélectionne ni ne modifie un dépôt voisin.
+Considère les métadonnées comme .agents/ et .codex/ comme des contrôles de l’espace
+de travail, pas comme la preuve d’une stack applicative.
+
+Avant d’écrire, confirme le dossier courant et inspecte son contenu. Réutilise tous
+les choix déjà fournis avec cette demande concernant le produit, la stack, les
+versions, le gestionnaire de paquets, la structure du dépôt et le runtime d’agent.
+Pour chaque choix important encore absent et impossible à déduire d’un dossier vide,
+présente une recommandation concrète avec ses conséquences et demande-moi de
+décider. Ne choisis pas silencieusement NestJS ni aucun autre framework.
+
+Une fois ces choix réglés :
+
+1. Initialise Git dans ce dossier si nécessaire.
+2. Consulte la documentation officielle de la stack choisie et génère directement
+   ici son squelette officiel minimal. N’implémente aucune fonctionnalité produit.
+   Note le générateur exact et les versions résolues.
+3. Exécute une fois les vraies commandes de build, types, lint et tests du squelette.
+   Conserve leurs résultats et leurs durées comme état initial de l’application.
+4. Ajoute le dépôt officiel Agent Pipeline avec sa procédure documentée,
+   versionnée et actualisable :
+   https://github.com/HerbertCodex/agent-pipeline
+5. Lis intégralement son README, docs/releases.md et docs/nouveau-profil.md. Examine
+   tout manifeste de compatibilité fourni avant de choisir un adaptateur exécutable.
+6. Exécute init.mjs et enregistre les décisions approuvées sur le produit, la stack
+   et l’architecture.
+7. Réutilise un adaptateur exécutable compatible lorsque le projet généré respecte
+   son contrat déclaré. Sinon, configure un profil propre au projet à partir des
+   vraies commandes du squelette ; ne crée pas d’adaptateur universel et ne modifie
+   pas le cœur d’Agent Pipeline pour contourner une incompatibilité.
+8. Configure les invariants vérifiables, les permissions des rôles, les réservations,
+   la carte du projet, le tracker, la CI, l’isolation des tentatives et la conservation
+   des preuves. Génère les règles, prompts, briefs et hooks communs avec les scripts
+   de la pipeline.
+9. Exécute chaque contrôle obligatoire, conserve sa durée et sa sortie, prouve que
+   chaque nouvelle porte peut échouer avec un cas isolé et réversible, restaure ce
+   cas puis rejoue le contrôle concerné. Ne réduis aucun seuil et n’utilise aucune
+   commande factice.
+
+Si le dernier squelette officiel ne respecte pas le contrat d’un adaptateur publié,
+présente l’écart exact et demande s’il faut utiliser une version supportée ou
+continuer avec un profil propre au projet. N’annonce pas la fin de l’installation
+tant qu’une dépendance, un outil, une décision ou un contrôle obligatoire manque.
+
+Termine par :
+
+1. Les décisions appliquées et les versions exactes choisies.
+2. Les fichiers créés ou modifiés et leur rôle.
+3. Les commandes initiales, leurs durées, leurs résultats et les preuves négatives.
+4. Les limites ou décisions restantes.
+5. Les commandes exactes pour démarrer la pipeline et le dashboard.
+
+Ne crée pas la première spec produit, ne lance aucun agent de développement,
+n’implémente aucune fonctionnalité et ne fais aucun commit, merge ou push pendant
+cette initialisation.
+```
+
+</details>
+
 ## Installer dans un projet déjà avancé (toutes stacks)
 
 Depuis la racine de votre projet, donnez le prompt ci-dessous à votre agent. Il privilégie les outils et l’architecture existants, quelle que soit la stack : Spring Boot, AdonisJS, NestJS ou autre. Il guide l’adaptation du profil ; ce n’est pas un installateur universel automatique. Un adaptateur compatible reste un raccourci facultatif.
