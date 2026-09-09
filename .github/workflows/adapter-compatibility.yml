@@ -20,10 +20,19 @@ jobs:
       latest_node: ${{ steps.matrix.outputs.latest_node }}
     steps:
       - uses: actions/checkout@v7
+      # The fixture suite exercises the real adapter, so it needs a toolchain
+      # the adapter admits. Node 22.23.2 ships npm 10.9.8, below the 11.19.0
+      # every supported case requires: without this provisioning the suite
+      # failed on its environment and reported it as a defect of the code
+      # under test. The supported matrix provisions the same way.
       - uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
           package-manager-cache: false
+      - name: Provision the declared package manager
+        run: |
+          version=$(node -p "JSON.parse(require('node:fs').readFileSync('profile-bundles/nest/compatibility.json')).supported[0].reference.manager_version")
+          npm install --global "npm@$version"
       - run: node --test test/*.test.mjs
       - id: matrix
         run: |

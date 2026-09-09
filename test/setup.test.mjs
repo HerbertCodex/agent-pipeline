@@ -189,7 +189,7 @@ test("update defaults to a read-only diff and retains independent local changes"
   const preview = JSON.parse(result.stdout);
   assert.equal(preview.config.smoke.path, "/health");
   assert.equal(preview.update.from, "0.9.0");
-  assert.equal(preview.update.to, "1.2.0");
+  assert.equal(preview.update.to, compatibilityManifest.adapter_version);
   assert.ok(preview.update.changes.some((item) => item.path === toolPath));
   assert.equal(readFileSync(join(root, toolPath), "utf8"), "// previous adapter tool\n");
   assert.equal(JSON.parse(readFileSync(join(root, "pipeline.config.json"), "utf8")).setup.adapter_version, "0.9.0");

@@ -215,7 +215,8 @@ async function main() {
       tracker_directory: config.issue_tracker.root,
       git_hooks: ["pre-commit", "pre-push"],
       checks: Object.keys(config.commands),
-      prerequisites: "Installed host tools, Git repository, configured tracker CLI. Dependencies are never installed by setup.",
+      remediation: planned.remediation ?? null,
+      prerequisites: "Installed host tools, Git repository, configured tracker CLI. Setup installs no dependency, except to make effective a declared remediation it just applied and reported.",
     }));
     return;
   }
@@ -264,6 +265,16 @@ async function main() {
     }
     if (![config.issue_tracker.issues_file, config.issue_tracker.specs_file].every((file) => existsSync(join(config.issue_tracker.root, file)))) {
       await step("initialize tracker", config.issue_tracker.command, ["init"]);
+    }
+    if (planned.remediation) {
+      // The official scaffold fails the audit gate as generated. The repair is
+      // declared in the adapter manifest, applied here, and reported: an
+      // override only reaches the audit through a regenerated lockfile, so the
+      // install is part of the repair rather than a convenience.
+      write("package.json", planned.remediation.package_json);
+      report.remediation = planned.remediation.applied;
+      for (const entry of planned.remediation.applied) console.log(`[setup] remediation ${entry.id}: ${entry.change}`);
+      await step("apply scaffold remediation", planned.remediation.install.command, planned.remediation.install.args);
     }
     await step("generate project map", config.project_map.regenerate, [], true);
     for (const [name, command] of Object.entries(config.commands)) await step(name, command, [], true);
