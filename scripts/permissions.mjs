@@ -49,9 +49,17 @@ function representative(glob) {
  */
 function universalDenials(config, candidates) {
   const policy = config.file_policy ?? {};
+  const owned = Object.values(policy).flatMap((rules) => rules?.allow ?? []).map(representative);
 
   return candidates
     .filter((glob) => {
+      // A glob wide enough to cover a path some role owns cannot be refused
+      // globally, whatever its own witness says. `**` covers everything QA
+      // refuses AND everything the implementer writes; `scripts/**` covers
+      // the one script the implementer owns. Judging the glob only by the
+      // single path it represents misses that, and derives a rule that stops
+      // the pipeline while looking like a hardening.
+      if (owned.some((path) => matchAny(path, [glob]))) return false;
       const path = representative(glob);
       return !Object.values(policy).some((rules) => {
         if (rules?.allow != null) return matchAny(path, rules.allow);
