@@ -30,6 +30,7 @@ describe("frontend TypeScript reference profile: measurable structure", () => {
       "accessibility",
       "architecture",
       "design_tokens",
+      "css_ownership",
       "visual_regression",
       "dead_code",
       "duplication",

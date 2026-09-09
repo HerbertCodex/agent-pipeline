@@ -1,6 +1,7 @@
 - TypeScript strict mode covers production and test code; no explicit or implicit `any` escapes the compiler. (`check`)
 - Imports follow the dependency directions of the architecture selected for this project; cycles and cross-feature shortcuts fail. (`architecture`)
 - Colours, typography, spacing, radii and motion values originate in the declared design tokens. (`design_tokens`)
+- A class name claimed by two stylesheets is refused unless the declared primitives sheet owns it: stylesheets are global and loaded per route, so the last to arrive wins on every page already displayed. (`css_ownership`)
 - Interactive components expose names, focus, keyboard operation and state to the accessibility tree. (`accessibility`)
 - Component and hook complexity, length, parameter count and nesting stay below the calibrated limits. (`design_limits`)
 - Unused exports, orphan modules and unused dependencies are refused rather than kept for later. (`dead_code`)
