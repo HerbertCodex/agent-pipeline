@@ -255,6 +255,10 @@ describe("a closure gate does not run on every push, or the branch stays red", (
       ci: {
         provider: "github",
         install: "npm ci",
+        // The scheduled run the second assertion speaks of has to exist for
+        // it to assert anything: without it the workflow triggers on push
+        // and pull_request only, and "push or pull_request" excludes nothing.
+        gate_events: { smoke: ["schedule"] },
         runtime_setup: { uses: "actions/setup-node@v4", with: { "node-version": "24" } },
       },
     });

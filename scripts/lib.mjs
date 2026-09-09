@@ -22,6 +22,15 @@ import { createHash, randomUUID } from "node:crypto";
  * @param path - config file path, project root by default
  * @returns the parsed configuration, or never if it is invalid
  */
+/**
+ * Minutes granted to the generated CI job when the project states none.
+ *
+ * Shared rather than repeated: the renderer and the deep-control
+ * configuration both reason about this budget, and a second copy let one
+ * of them shrink the job the other had already sized.
+ */
+export const DEFAULT_CI_TIMEOUT_MINUTES = 25;
+
 export function loadConfig(path = "pipeline.config.json") {
   if (!existsSync(path)) fail(`not found: ${path} (run it from the project root)`);
   let config;

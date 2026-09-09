@@ -614,3 +614,50 @@ describe("load testing contract", () => {
     }
   });
 });
+
+describe("security setup budget", () => {
+  test("configuring a deep control never lowers the job's budget", () => {
+    const root = createSandbox();
+    try {
+      const configPath = join(root, "pipeline.config.json");
+      const original = JSON.parse(readFileSync(configPath));
+      // No timeout_minutes: the project never stated one, so the generator's
+      // own default is the budget in force.
+      original.ci = { provider: "github", install: "project install", runtime_setup: { uses: "owner/runtime@v1", with: {} } };
+      original.architecture = { id: "feature-modules", project_type: "backend" };
+      original.commands = {
+        check: "true", lint: "true", build: "true", test_unit: "true", audit: "true",
+        secrets_scan: "true", project_map: "true", design_limits: "true", duplication: "true", smoke: "true",
+      };
+      writeFileSync(configPath, JSON.stringify(original));
+      seedFramework(root);
+
+      const before = run(root, "apply-profile.mjs", []);
+      assert.equal(before.status, 0, before.output);
+      const budget = (text) => Number(text.match(/timeout-minutes: (\d+)/)[1]);
+      const initial = budget(readFileSync(join(root, ".github/workflows/ci.yml"), "utf8"));
+
+      const input = join(root, "security-input.json");
+      writeFileSync(input, JSON.stringify({
+        // A small site: the scan is cheap, so its own budget is far below the
+        // battery's. That is exactly when the regression shows.
+        security_testing: configured({
+          allow_active: false,
+          zap: { ...configured().zap, max_scan_minutes: 5, max_rule_minutes: 1 },
+        }),
+        ci_artifact_upload: { uses: `owner/upload@${"c".repeat(40)}` },
+      }));
+      assert.equal(run(root, "configure-security.mjs", [input]).status, 0);
+      const applied = run(root, "apply-profile.mjs", []);
+      assert.equal(applied.status, 0, applied.output);
+      const after = budget(readFileSync(join(root, ".github/workflows/ci.yml"), "utf8"));
+
+      assert.ok(
+        after >= initial,
+        `adding a scan cut the job from ${initial} to ${after} minutes: the battery it must still run did not shrink`,
+      );
+    } finally {
+      destroySandbox(root);
+    }
+  });
+});
