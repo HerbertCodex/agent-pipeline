@@ -5,6 +5,10 @@ import { join } from "node:path";
 import { afterEach, describe, test } from "node:test";
 import { run } from "./harness.mjs";
 
+// Read rather than repeated: a literal here has to be hand-edited at every
+// release, and a test nobody can leave alone stops guarding anything.
+const VERSION = readFileSync(new URL("../VERSION", import.meta.url), "utf8").trim();
+
 const roots = [];
 afterEach(() => roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
 
@@ -27,7 +31,7 @@ describe("init", () => {
     const config = JSON.parse(readFileSync(join(root, "pipeline.config.json"), "utf8"));
     const decision = JSON.parse(readFileSync(join(root, "pipeline.bootstrap.json"), "utf8"));
     assert.deepEqual(config.architecture, { project_type: "backend", id: "feature-modules" });
-    assert.equal(decision.framework_version, "0.2.0");
+    assert.equal(decision.framework_version, VERSION);
     assert.match(readFileSync(join(root, "docs", "decisions", "0000-bootstrap.md"), "utf8"), /A lending API/);
   });
 

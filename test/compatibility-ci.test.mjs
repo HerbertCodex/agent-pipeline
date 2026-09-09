@@ -2,6 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { chdirToFramework } from "./framework-root.mjs";
+
+chdirToFramework();
 
 test("CI matrix follows every supported manifest entry rather than a second version list", () => {
   const manifest = JSON.parse(readFileSync(new URL("../profile-bundles/nest/compatibility.json", import.meta.url), "utf8"));

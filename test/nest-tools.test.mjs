@@ -6,6 +6,9 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { secretKind } from "../profile-bundles/nest/tools/secrets.mjs";
 import { violations } from "../profile-bundles/nest/tools/design.mjs";
+import { chdirToFramework } from "./framework-root.mjs";
+
+chdirToFramework();
 
 test("the Nest secret scanner detects credential shapes without accepting ordinary identifiers", () => {
   assert.equal(secretKind("-----BEGIN " + "PRIVATE KEY-----"), "private key");

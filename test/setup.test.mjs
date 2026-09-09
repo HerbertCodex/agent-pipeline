@@ -7,6 +7,9 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { plan as adapterPlan } from "../profile-bundles/nest/installer.mjs";
 import { inRange } from "../scripts/adapter-compatibility.mjs";
+import { chdirToFramework } from "./framework-root.mjs";
+
+chdirToFramework();
 
 const roots = [];
 const compatibilityManifest = JSON.parse(readFileSync(new URL("../profile-bundles/nest/compatibility.json", import.meta.url), "utf8"));

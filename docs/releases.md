@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.2.0
+git -C agent-pipeline checkout v0.2.1
 git add .gitmodules agent-pipeline
 ```
 
@@ -22,6 +22,17 @@ application during a framework upgrade.
 Vendoring remains possible from a release archive, but the host must retain the version in a committed `agent-pipeline.version` file. Removing the nested `.git` without recording the source tag makes provenance and upgrades unverifiable, so it is no longer the recommended installation.
 
 A release is published only after the release commit is merged, `VERSION` matches the intended tag, and the complete core test suite passes on that exact SHA. The tag and GitHub release are external publication steps requiring the operator's approval.
+
+## v0.2.1
+
+This patch release makes the core test suite independent of the working
+directory. Four suites resolved shipped templates, adapter tools and the
+durable run store against it, so running them from a host repository — which
+the installation guide and the generated CI both do — read the host's files
+and reported 13 failures that said nothing about the framework. A guard now
+runs the whole suite from an unrelated directory, so the same drift fails
+instead of reaching an installation. No behavior outside the tests changed;
+updating from v0.2.0 needs no project action beyond re-pinning.
 
 ## v0.2.0
 

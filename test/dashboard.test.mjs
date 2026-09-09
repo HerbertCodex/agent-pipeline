@@ -14,6 +14,9 @@ import {
   trackerIssue,
   writeStore,
 } from "./harness.mjs";
+import { chdirToFramework } from "./framework-root.mjs";
+
+chdirToFramework();
 
 const dashboards = [];
 const sandboxes = [];
