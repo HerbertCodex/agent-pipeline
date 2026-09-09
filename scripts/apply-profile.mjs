@@ -484,6 +484,22 @@ function checkCalibration(config) {
         "false to state that you did.",
     );
   }
+  // The claim has to carry what it measured. Cleared alone, it makes an
+  // imported reference contract and a profile proven against this repository
+  // read the same, and that difference is exactly what the flag exists to
+  // state. A record and a sentence are both accepted: a materialized profile
+  // has the first, one written by hand can only have the second.
+  const detected = manifest.detected;
+  const recorded = detected != null && typeof detected === "object" && Object.keys(detected).length > 0;
+  const written = typeof manifest.calibration_note === "string" && manifest.calibration_note.trim().length > 0;
+  if (manifest.calibration_required === false && !recorded && !written) {
+    fail(
+      `${path} clears calibration_required without saying against what. The flag is a claim that ` +
+        "someone measured, and a claim with nothing attached cannot be reviewed a month later. Record " +
+        "the stack it was proven against under detected — materialize.mjs writes that block — or state " +
+        "it in one sentence under calibration_note.",
+    );
+  }
 }
 
 /**

@@ -278,7 +278,9 @@ async function main() {
     }
     await step("generate project map", config.project_map.regenerate, [], true);
     for (const [name, command] of Object.entries(config.commands)) await step(name, command, [], true);
-    write(profileManifest, serialize({ ...manifest, calibration_required: false }));
+    // Clearing the flag states that the gates were proven here; the adapter's
+    // observation says against what. apply-profile refuses the claim without it.
+    write(profileManifest, serialize({ ...manifest, calibration_required: false, ...(planned.detected ? { detected: planned.detected } : {}) }));
     await core("apply-profile.mjs");
     await core("sync-briefs.mjs");
     await core("install-hooks.mjs");

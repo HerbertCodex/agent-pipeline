@@ -79,3 +79,18 @@ describe("Nest scaffold remediation", () => {
     assert.equal(planned.remediation, null, "an already repaired scaffold must not be rewritten");
   });
 });
+
+describe("Nest adapter calibration evidence", () => {
+  test("the plan records the toolchain the gates will be proven against", () => {
+    const planned = plan(scaffold(), defaults());
+    assert.ok(planned.detected, "the plan records nothing about the toolchain it observed");
+    // Setup clears calibration_required once the gates pass. That claim is
+    // refused by apply-profile unless it says against what, so the adapter
+    // has to carry its observation rather than assert a bare flag.
+    assert.equal(planned.detected.manager, "npm");
+    assert.equal(planned.detected.test_runner, "vitest");
+    assert.equal(planned.detected.linter, "oxlint");
+    assert.equal(planned.detected.node, process.versions.node);
+    assert.ok("packages" in planned.detected);
+  });
+});
