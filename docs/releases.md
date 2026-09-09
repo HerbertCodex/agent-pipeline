@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.3.0
+git -C agent-pipeline checkout v0.4.0
 git add .gitmodules agent-pipeline
 ```
 
@@ -22,6 +22,26 @@ application during a framework upgrade.
 Vendoring remains possible from a release archive, but the host must retain the version in a committed `agent-pipeline.version` file. Removing the nested `.git` without recording the source tag makes provenance and upgrades unverifiable, so it is no longer the recommended installation.
 
 A release is published only after the release commit is merged, `VERSION` matches the intended tag, and the complete core test suite passes on that exact SHA. The tag and GitHub release are external publication steps requiring the operator's approval.
+
+## v0.4.0
+
+> **Breaking.** This release refuses an installation that v0.3.0 accepted.
+
+`apply-profile` now refuses a profile that clears `calibration_required` while
+recording nothing. The flag was already documented as a claim that someone
+measured; nothing checked that the claim carried what it measured, so an
+imported reference contract and a profile proven against the host repository
+read the same a month later.
+
+**Migration, one line.** A profile that cleared the flag must now say against
+what. Record the stack under `detected` — `materialize.mjs` writes that block,
+and a setup adapter now carries its own observation — or state it in one
+sentence under `calibration_note`. A profile with no `profile.json` is
+untouched: nothing was claimed there.
+
+The Nest adapter records the runtime, package manager, test runner, linter and
+installed versions it observed, and setup attaches them when it declares the
+calibration done. It had them and discarded them.
 
 ## v0.3.0
 
