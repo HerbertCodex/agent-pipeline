@@ -18,14 +18,17 @@ test("compatibility uses actual installed versions, including bounded patch upgr
   }
 });
 
-test("Nest 12 remains outside support while its complete setup battery is red", () => {
+test("Nest 12 is admitted at the versions that were probed, and refused beyond them", () => {
   const nest12 = {
     node: "22.23.2", manager: "npm", manager_version: "11.19.0",
     packages: { "@nestjs/core": "12.0.1", "@nestjs/common": "12.0.1", "@nestjs/cli": "12.0.0",
       typescript: "6.0.3", vitest: "4.1.11", oxlint: "1.82.0" },
   };
-  assert.equal(assessCompatibility(manifest, nest12).status, "unsupported");
+  assert.equal(assessCompatibility(manifest, nest12).status, "compatible");
+  // Admission stops at what was measured. TypeScript 7 was never probed, so
+  // it is refused rather than assumed to behave like the version that was.
   assert.equal(assessCompatibility(manifest, { ...nest12, packages: { ...nest12.packages, typescript: "7.0.0" } }).status, "unsupported");
+  assert.equal(assessCompatibility(manifest, { ...nest12, packages: { ...nest12.packages, "@nestjs/core": "13.0.0" } }).status, "unsupported");
 });
 
 test("missing versions stay unverified and prereleases do not enter stable support", () => {

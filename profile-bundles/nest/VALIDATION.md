@@ -46,13 +46,21 @@ The complete dependency-free repository suite passed 641 tests with no failures 
 
 ## Revalidation of 2026-09-09: Node 24 and Nest 12
 
-Measured on Linux x64. Local probes ran on Node 24.20.0 with npm 11.19.0; the runtime probe ran on GitHub runners.
+Measured on Linux x64. Local probes ran on Node 24.20.0 with npm 11.19.0; runtime probes ran on GitHub runners. The scaffold and remediation measurements below are runtime-independent; the supported range remains Node 22.
 
-### The tracker no longer aborts on Node 24
+### The tracker still aborts on Node 24
 
-The blocker recorded on 2026-09-07 was reprobed on a GitHub runner across both runtimes ([run 34326800080](https://github.com/HerbertCodex/agent-pipeline/actions/runs/34326800080)). On **Node 24.21.0** two consecutive `sudocode init` invocations returned 0 with no native cleanup abort. `@sudocode-ai/cli` is unchanged at 0.2.0 and still resolves `better-sqlite3` 11.10.0, so the earlier observation was runner-specific rather than a property of the dependency. Node 24 is admitted; Node 25 and later remain unprobed.
+An isolated probe on a GitHub runner ([run 34326800080](https://github.com/HerbertCodex/agent-pipeline/actions/runs/34326800080)) had two consecutive `sudocode init` invocations return 0 on **Node 24.21.0**, which suggested the 2026-09-07 blocker had lifted. It had not. Promoting Node 24 and running the complete probe reproduced the abort ([run 34327707072](https://github.com/HerbertCodex/agent-pipeline/actions/runs/34327707072)): the tracker initializes and applies its five migrations, then the process dies during environment cleanup.
 
-The same run recorded that **Node 22.23.2 ships npm 10.9.8**. Every supported case required npm 11.19.0, so no runtime inside the previously declared node range could satisfy the declared toolchain. The fixture suite ran under a toolchain the adapter rejects and reported that as a failure of the code under test. The contract job now runs on a declared runtime, and `adapter-compatibility.test.mjs` refuses a runtime admitted without an admitted package manager.
+```
+node[2622]: void node::RemoveEnvironmentCleanupHook(...) at ../src/api/hooks.cc:142
+Assertion failed: (env) != nullptr
+  Statement::~Statement() [.../@sudocode-ai/cli/node_modules/better-sqlite3/build/Release/better_sqlite3.node]
+```
+
+An isolated initialization is therefore not evidence for this runtime: only the complete setup exercises the statement lifetime that aborts. `@sudocode-ai/cli` is unchanged at 0.2.0 and still resolves `better-sqlite3` 11.10.0. **Node 24 stays outside the contract**, and the supported range stays on Node 22.
+
+The isolated run also recorded that **Node 22.23.2 ships npm 10.9.8**. Every supported case required npm 11.19.0, so no runtime inside the previously declared node range could satisfy the declared toolchain. The fixture suite ran under a toolchain the adapter rejects and reported that as a failure of the code under test. The contract job now provisions the declared manager before running the suite, exactly as the supported matrix does, and `adapter-compatibility.test.mjs` refuses a runtime admitted without an admitted package manager.
 
 ### The official scaffold fails its own audit gate
 
