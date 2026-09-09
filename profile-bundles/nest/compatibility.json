@@ -15,7 +15,7 @@
   ],
   "supported": [
     {
-      "id": "nest11-node24-npm11-jest30-eslint9",
+      "id": "nest11-node22-npm11-jest30-eslint9",
       "node": {
         "min": "22.23.2",
         "max_exclusive": "23.0.0"
@@ -59,7 +59,7 @@
       "evidence": "VALIDATION.md"
     },
     {
-      "id": "nest12-node24-npm11-vitest4-oxlint1",
+      "id": "nest12-node22-npm11-vitest4-oxlint1",
       "node": {
         "min": "22.23.2",
         "max_exclusive": "23.0.0"
@@ -110,8 +110,8 @@
       "package": "multer",
       "version": "2.3.0",
       "applies_to": [
-        "nest11-node24-npm11-jest30-eslint9",
-        "nest12-node24-npm11-vitest4-oxlint1"
+        "nest11-node22-npm11-jest30-eslint9",
+        "nest12-node22-npm11-vitest4-oxlint1"
       ],
       "advisories": [
         "GHSA-wc9g-mqfw-jrwm",
@@ -129,7 +129,7 @@
         "deploy"
       ],
       "applies_to": [
-        "nest12-node24-npm11-vitest4-oxlint1"
+        "nest12-node22-npm11-vitest4-oxlint1"
       ],
       "advisories": [
         "GHSA-52f5-9888-hmc6",
