@@ -1,36 +1,161 @@
 {
   "schema_version": 1,
   "adapter": "nest",
-  "adapter_version": "1.2.0",
+  "adapter_version": "2.0.0",
   "runtime_dependencies": [
     {
       "name": "@sudocode-ai/cli",
       "version": "0.2.0",
-      "node": { "min": "22.0.0", "max_exclusive": "23.0.0" },
-      "reason": "Sudocode 0.2.0 depends on better-sqlite3 11.x, whose native addon is not admitted on Node 24."
+      "node": {
+        "min": "22.0.0",
+        "max_exclusive": "23.0.0"
+      },
+      "reason": "Sudocode 0.2.0 resolves better-sqlite3 11.10.0, whose Statement destructor calls node::RemoveEnvironmentCleanupHook after the environment is gone. On Node 24.21.0 the tracker initializes, then the process aborts on that assertion. Reprobed on a GitHub runner on 2026-09-09 and still reproducing: an isolated `sudocode init` exits 0, the full setup does not. Node 24 stays outside the contract until the tracker publishes a compatible dependency."
     }
   ],
   "supported": [
     {
       "id": "nest11-node22-npm11-jest30-eslint9",
-      "node": { "min": "22.23.2", "max_exclusive": "23.0.0" },
-      "manager": "npm",
-      "manager_version": { "min": "11.19.0", "max_exclusive": "12.0.0" },
-      "packages": {
-        "@nestjs/core": { "min": "11.2.3", "max_exclusive": "12.0.0" },
-        "@nestjs/common": { "min": "11.2.3", "max_exclusive": "12.0.0" },
-        "@nestjs/cli": { "min": "11.0.24", "max_exclusive": "12.0.0" },
-        "typescript": { "min": "5.9.3", "max_exclusive": "6.0.0" },
-        "jest": { "min": "30.5.1", "max_exclusive": "31.0.0" },
-        "eslint": { "min": "9.39.5", "max_exclusive": "10.0.0" }
+      "node": {
+        "min": "22.23.2",
+        "max_exclusive": "23.0.0"
       },
-      "reference": { "node": "22.23.2", "cli": "11.0.24", "manager_version": "11.19.0" },
+      "manager": "npm",
+      "manager_version": {
+        "min": "11.19.0",
+        "max_exclusive": "12.0.0"
+      },
+      "packages": {
+        "@nestjs/core": {
+          "min": "11.2.3",
+          "max_exclusive": "12.0.0"
+        },
+        "@nestjs/common": {
+          "min": "11.2.3",
+          "max_exclusive": "12.0.0"
+        },
+        "@nestjs/cli": {
+          "min": "11.0.24",
+          "max_exclusive": "12.0.0"
+        },
+        "typescript": {
+          "min": "5.9.3",
+          "max_exclusive": "6.0.0"
+        },
+        "jest": {
+          "min": "30.5.1",
+          "max_exclusive": "31.0.0"
+        },
+        "eslint": {
+          "min": "9.39.5",
+          "max_exclusive": "10.0.0"
+        }
+      },
+      "reference": {
+        "node": "22.23.2",
+        "cli": "11.0.24",
+        "manager_version": "11.19.0"
+      },
+      "evidence": "VALIDATION.md"
+    },
+    {
+      "id": "nest12-node22-npm11-vitest4-oxlint1",
+      "node": {
+        "min": "22.23.2",
+        "max_exclusive": "23.0.0"
+      },
+      "manager": "npm",
+      "manager_version": {
+        "min": "11.19.0",
+        "max_exclusive": "12.0.0"
+      },
+      "packages": {
+        "@nestjs/core": {
+          "min": "12.0.1",
+          "max_exclusive": "13.0.0"
+        },
+        "@nestjs/common": {
+          "min": "12.0.1",
+          "max_exclusive": "13.0.0"
+        },
+        "@nestjs/cli": {
+          "min": "12.0.0",
+          "max_exclusive": "13.0.0"
+        },
+        "typescript": {
+          "min": "6.0.3",
+          "max_exclusive": "7.0.0"
+        },
+        "vitest": {
+          "min": "4.1.11",
+          "max_exclusive": "5.0.0"
+        },
+        "oxlint": {
+          "min": "1.82.0",
+          "max_exclusive": "2.0.0"
+        }
+      },
+      "reference": {
+        "node": "22.23.2",
+        "cli": "12.0.0",
+        "manager_version": "11.19.0"
+      },
       "evidence": "VALIDATION.md"
     }
   ],
-  "observations": [
-    { "toolchain": "Node 24 with @sudocode-ai/cli 0.2.0", "status": "not_validated", "reason": "Sudocode's better-sqlite3 11.x process aborts during native cleanup. Use the admitted Node 22 runtime until the tracker publishes a compatible dependency." },
-    { "toolchain": "Nest 12.0.1 / CLI 12.0.0 / TypeScript 6 / Vitest 4 / Oxlint 1", "status": "not_validated", "reason": "The adapter resolves the generated supertest/types import with Vitest's bundler resolution, but the official scaffold still fails npm audit on high-severity transitive vulnerabilities from @nestjs/mau. See VALIDATION.md." }
+  "remediations": [
+    {
+      "id": "multer-fixed-release",
+      "kind": "override",
+      "package": "multer",
+      "version": "2.3.0",
+      "applies_to": [
+        "nest11-node22-npm11-jest30-eslint9",
+        "nest12-node22-npm11-vitest4-oxlint1"
+      ],
+      "advisories": [
+        "GHSA-wc9g-mqfw-jrwm",
+        "GHSA-qfvm-cv95-jqjf",
+        "GHSA-qvfw-j98x-7q72",
+        "GHSA-535w-7cp7-47q4"
+      ],
+      "reason": "@nestjs/platform-express pins multer 2.2.0 exactly, in Nest 11 as in Nest 12. Four high-severity denial-of-service advisories apply to <=2.2.0 and are fixed in 2.3.0, same major. The audit gate is not weakened: the vulnerable release is replaced by its corrected one."
+    },
+    {
+      "id": "drop-deploy-helper",
+      "kind": "remove_dev_dependency",
+      "package": "@nestjs/mau",
+      "scripts": [
+        "deploy"
+      ],
+      "applies_to": [
+        "nest12-node22-npm11-vitest4-oxlint1"
+      ],
+      "advisories": [
+        "GHSA-52f5-9888-hmc6",
+        "GHSA-ph9p-34f9-6g65"
+      ],
+      "reason": "The Nest 12 scaffold ships the `nest deploy` helper. Its inquirer -> external-editor -> tmp chain carries two high-severity advisories for which no fixed release exists, so no override can repair it. Build, lint, unit tests, end-to-end tests and the running application do not depend on it."
+    }
   ],
-  "probes": { "latest_node": "22.23.2" }
+  "observations": [
+    {
+      "toolchain": "Node 24.21.0 with @sudocode-ai/cli 0.2.0",
+      "status": "not_validated",
+      "reason": "better-sqlite3 11.10.0 aborts on environment cleanup after a successful tracker initialization. Reproduced in CI on 2026-09-09; see VALIDATION.md."
+    },
+    {
+      "toolchain": "Node 22 with its bundled npm",
+      "status": "not_supported",
+      "reason": "Node 22.23.2 ships npm 10.9.8, below the 11.19.0 every supported case requires. Any job running adapter code must provision the declared manager, as the supported matrix already does."
+    },
+    {
+      "toolchain": "Nest 11 or Nest 12 official scaffold, unremediated",
+      "status": "fails_audit",
+      "reason": "Both fail `npm audit --audit-level high` on multer 2.2.0. The declared remediations are required, not optional."
+    }
+  ],
+  "probes": {
+    "latest_node": "26.8.1"
+  }
 }

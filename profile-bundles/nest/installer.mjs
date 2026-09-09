@@ -9,7 +9,43 @@ export function detect(root) {
   return existsSync(join(root, "nest-cli.json")) && existsSync(join(root, "package.json")) && Boolean(json(join(root, "package.json")).dependencies?.["@nestjs/core"]);
 }
 
-/** Inspects the existing toolchain; no dependency or application file is rewritten. */
+/**
+ * Repairs what the audit gate would refuse in the official scaffold.
+ *
+ * The manifest declares each remediation with its advisories and its reason,
+ * so the list shrinks when upstream publishes a fix instead of living as
+ * adapter logic nobody revisits. Returns null when the host already carries
+ * the repair: setup rewrites a manifest it did not need to touch.
+ *
+ * @param root - the host repository
+ * @param pkg - its parsed package.json
+ * @param manifest - the adapter compatibility manifest
+ * @param manager - the package manager the host uses
+ * @returns the applied remediations, the rewritten manifest and the install
+ *   that makes an override reach the lockfile, or null when nothing applies
+ */
+export function remediate(root, pkg, manifest, manager) {
+  const next = structuredClone(pkg);
+  const applied = [];
+  for (const entry of manifest.remediations ?? []) {
+    if (entry.kind === "override") {
+      if (next.overrides?.[entry.package] === entry.version) continue;
+      next.overrides = { ...next.overrides, [entry.package]: entry.version };
+      applied.push({ id: entry.id, change: `overrides.${entry.package} = ${entry.version}`, advisories: entry.advisories });
+    } else if (entry.kind === "remove_dev_dependency") {
+      if (!next.devDependencies?.[entry.package]) continue;
+      const { [entry.package]: _removed, ...rest } = next.devDependencies;
+      next.devDependencies = rest;
+      const scripts = (entry.scripts ?? []).filter((name) => next.scripts?.[name]);
+      for (const name of scripts) delete next.scripts[name];
+      applied.push({ id: entry.id, change: `removed devDependency ${entry.package}${scripts.length ? ` and script ${scripts.join(", ")}` : ""}`, advisories: entry.advisories });
+    } else throw new Error(`Unknown remediation kind: ${entry.kind}`);
+  }
+  if (applied.length === 0) return null;
+  return { applied, package_json: `${JSON.stringify(next, null, 2)}\n`, install: { command: manager, args: ["install"] } };
+}
+
+/** Inspects the existing toolchain; only the declared audit remediations touch the host manifest. */
 export function plan(root, defaults) {
   const pkg = json(join(root, "package.json"));
   const nest = json(join(root, "nest-cli.json"));
@@ -71,7 +107,8 @@ export function plan(root, defaults) {
   files[`${profileDir}/invariants.md`] = readFileSync(new URL("./invariants.md", import.meta.url), "utf8");
   files[`${profileDir}/pitfalls.md`] = "# Project pitfalls\n\nNo project-specific findings recorded during installation.\n";
   files[config.project_context] = `# Project context\n\n<!-- agent:summary -->\nExisting Nest project. Product scope is defined separately through Product.\n<!-- /agent -->\n\n<!-- agent:commands -->\nRead the command table in the compiled role brief. Installed package manager: ${manager}.\n<!-- /agent -->\n\n<!-- agent:context -->\nThe setup preset preserves the existing application. Design bounds are fixed preset policy, never automatically relaxed. The map and static security scan are heuristic. No dead-code, mutation, coverage threshold or documentation enforcement is claimed. Secrets scanning detects common token formats and private keys, not all secrets. CI is not configured. Filesystem policies detect scope violations unless the harness enforces them.\n<!-- /agent -->\n`;
-  return { config, files, required, manager, compatibilityManifest, compatibility, ignored: ["node_modules/", "dist/", "coverage/"] };
+  const remediation = remediate(root, pkg, compatibilityManifest, manager);
+  return { config, files, required, manager, compatibilityManifest, compatibility, remediation, ignored: ["node_modules/", "dist/", "coverage/"] };
 }
 
 export function prerequisites(root, planned) {
