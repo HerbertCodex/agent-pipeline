@@ -235,12 +235,41 @@ describe("apply-profile: an imported profile is not usable until it is calibrate
     );
   });
 
-  test("runs once the calibration has been claimed", () => {
+  test("a claim of calibration must name what it was measured against", () => {
     sandbox = withProfile();
     const dir = join(sandbox, "agent-pipeline", "profiles", "api-demo");
+    // Clearing the flag is a claim that someone measured. Alone, it says
+    // nothing about what: an imported reference contract and a profile proven
+    // against this repository become indistinguishable the day after.
     writeFileSync(join(dir, "profile.json"), JSON.stringify({ calibration_required: false }));
     const result = run(sandbox, "apply-profile.mjs", ["--check"]);
-    assert.doesNotMatch(result.output, /calibration_required/, "the gate must be satisfiable, or it gets deleted");
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /calibrat/i);
+    assert.match(result.output, /detected|calibration_note/, "the refusal must name the way out");
+  });
+
+  test("runs once the claim carries what materialize observed", () => {
+    sandbox = withProfile();
+    const dir = join(sandbox, "agent-pipeline", "profiles", "api-demo");
+    writeFileSync(join(dir, "profile.json"), JSON.stringify({
+      calibration_required: false,
+      detected: { technologies: [{ name: "solid", package: "solid-js", declared: "^1.9.14", installed: "1.9.14" }] },
+    }));
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.doesNotMatch(result.output, /calibrat/i, "the gate must be satisfiable, or it gets deleted");
+  });
+
+  test("a written sentence satisfies the claim as well as a detection record", () => {
+    sandbox = withProfile();
+    const dir = join(sandbox, "agent-pipeline", "profiles", "api-demo");
+    // A profile written by hand has no detection to record. It still has to
+    // say against what it was measured, in one sentence.
+    writeFileSync(join(dir, "profile.json"), JSON.stringify({
+      calibration_required: false,
+      calibration_note: "Thresholds measured against this repository's own modules on 2026-09-09.",
+    }));
+    const result = run(sandbox, "apply-profile.mjs", ["--check"]);
+    assert.doesNotMatch(result.output, /calibrat/i);
   });
 
   test("says nothing about calibration for a profile written in place", () => {
