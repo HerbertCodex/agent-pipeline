@@ -1121,6 +1121,13 @@ function main() {
   if (ciEnabled) {
   if (!existsSync(CI_TEMPLATE)) fail(`not found: ${CI_TEMPLATE}`);
   ci = readFileSync(CI_TEMPLATE, "utf8");
+  // The events the workflow actually triggers on, decided once: the steps
+  // below need it to tell a condition that selects from one that states
+  // nothing.
+  const deepEvents = new Set(Object.values(config.ci.gate_events ?? {}).flat());
+  const triggers = new Set(["push", "pull_request",
+    ...(deepEvents.has("schedule") ? ["schedule"] : []),
+    ...(deepEvents.has("workflow_dispatch") ? ["workflow_dispatch"] : [])]);
   const vars = {
     profile: config.profile,
     install: config.ci.install,
@@ -1129,13 +1136,10 @@ function main() {
       .map(([k, v]) => `          ${k}: ${v}`)
       .join("\n"),
     timeout_minutes: config.ci.timeout_minutes ?? DEFAULT_CI_TIMEOUT_MINUTES,
-    deep_events: (() => {
-      const events = new Set(Object.values(config.ci.gate_events ?? {}).flat());
-      return [
-        ...(events.has("workflow_dispatch") ? ["  workflow_dispatch:"] : []),
-        ...(events.has("schedule") ? ["  schedule:", "    - cron: \"23 2 * * *\""] : []),
-      ].join("\n");
-    })(),
+    deep_events: [
+      ...(deepEvents.has("workflow_dispatch") ? ["  workflow_dispatch:"] : []),
+      ...(deepEvents.has("schedule") ? ["  schedule:", "    - cron: \"23 2 * * *\""] : []),
+    ].join("\n"),
     environment: (() => {
       const publicValues = Object.entries(config.ci.environment ?? {}).map(([name, value]) => `      ${name}: ${JSON.stringify(value)}`);
       const secrets = (config.ci.secret_environment ?? []).map((name) => `      ${name}: \${{ secrets.${name} }}`);
@@ -1162,11 +1166,17 @@ function main() {
         // orchestrator regenerates it — and a job red by design is a job
         // people stop reading.
         const events = config.ci?.gate_events?.[key];
-        const condition = Array.isArray(events)
-          ? events.map((event) => `github.event_name == '${event}'`).join(" || ")
+        const selected = Array.isArray(events)
+          ? events
           : deferredGates(config).has(key)
-            ? "github.event_name == 'pull_request'"
-            : "github.event_name == 'push' || github.event_name == 'pull_request'";
+            ? ["pull_request"]
+            : ["push", "pull_request"];
+        // A condition the workflow always satisfies states nothing, and
+        // repeated on every ordinary gate it buries the one that decides.
+        // It is written only when it excludes an event `on:` declares.
+        const condition = [...triggers].every((event) => selected.includes(event))
+          ? ""
+          : selected.map((event) => `github.event_name == '${event}'`).join(" || ");
         const deferred = condition ? `\n        if: \${{ ${condition} }}` : "";
         return `      - name: ${key.replaceAll("_", "-")}${deferred}\n        run: ${cmd}`;
       })
