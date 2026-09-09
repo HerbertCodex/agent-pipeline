@@ -43,3 +43,41 @@ The earlier 2026-09-07 Node 24.20.0 probe passed on one local machine, but the G
 The separate latest candidate probe resolved CLI 12.0.0 and Nest 12.0.1. It passed the corrected test resolution and stopped only at the high-severity dependency audit described above. Its report remained candidate evidence, and the released support manifest was unchanged.
 
 The complete dependency-free repository suite passed 641 tests with no failures or skips under Node 22.23.2. It includes compatibility bounds, runtime-dependency constraints, Vitest module resolution, unknown-version refusal, migration conflicts, local-change preservation and restoration of managed files after a failed update.
+
+## Revalidation of 2026-09-09: Node 24 and Nest 12
+
+Measured on Linux x64. Local probes ran on Node 24.20.0 with npm 11.19.0; the runtime probe ran on GitHub runners.
+
+### The tracker no longer aborts on Node 24
+
+The blocker recorded on 2026-09-07 was reprobed on a GitHub runner across both runtimes ([run 34326800080](https://github.com/HerbertCodex/agent-pipeline/actions/runs/34326800080)). On **Node 24.21.0** two consecutive `sudocode init` invocations returned 0 with no native cleanup abort. `@sudocode-ai/cli` is unchanged at 0.2.0 and still resolves `better-sqlite3` 11.10.0, so the earlier observation was runner-specific rather than a property of the dependency. Node 24 is admitted; Node 25 and later remain unprobed.
+
+The same run recorded that **Node 22.23.2 ships npm 10.9.8**. Every supported case required npm 11.19.0, so no runtime inside the previously declared node range could satisfy the declared toolchain. The fixture suite ran under a toolchain the adapter rejects and reported that as a failure of the code under test. The contract job now runs on a declared runtime, and `adapter-compatibility.test.mjs` refuses a runtime admitted without an admitted package manager.
+
+### The official scaffold fails its own audit gate
+
+Both scaffolds were generated with the official CLI and audited unchanged:
+
+| scaffold | `npm audit --audit-level high` |
+| --- | --- |
+| `@nestjs/cli@11.0.24`, Nest 11.2.3 | exit 1, 4 high, `multer` |
+| `@nestjs/cli@12.0.0`, Nest 12.0.1 | exit 1, 10 high, `multer` and `@nestjs/mau` |
+
+`@nestjs/platform-express` pins `multer` to exactly 2.2.0 in Nest 11 and Nest 12 alike, and four high-severity advisories apply to `<=2.2.0`. These advisories postdate the 2026-09-08 validation: the released manifest had become stale, declaring supported a toolchain that no longer passed its own gate.
+
+The Nest 12 scaffold additionally ships `@nestjs/mau`, the `nest deploy` helper, whose `inquirer` → `external-editor` → `tmp` chain carries two high-severity advisories with **no fixed release available**. No override repairs it. Overriding `undici` cleared its own advisories but left that chain intact.
+
+### Both toolchains pass once remediated
+
+The manifest now declares two remediations, applied by the adapter and reported in the setup report. `multer` is raised to its **corrected** release 2.3.0 — the vulnerability is repaired, not suppressed — and `@nestjs/mau` with its `deploy` script is removed, because nothing in build, lint, tests or the running application depends on it.
+
+| toolchain | audit | build | lint | test | test:e2e |
+| --- | --- | --- | --- | --- | --- |
+| Nest 11.2.3, TS 5.9.3, Jest 30.5.1, ESLint 9.39.5 | **0 vulnerabilities** | pass | pass | pass | pass |
+| Nest 12.0.1, TS 6.0.3, Vitest 4.1.11, Oxlint 1.82.0 | **0 vulnerabilities** | pass | pass | pass | pass |
+
+Nest 11 needs the `multer` override alone; it ships no deploy helper.
+
+### What this revalidation does not establish
+
+The end-to-end `ci.mjs` probe — official scaffolding, full installation, negative proofs, healthy rerun and adapter migration — was not rerun locally for either case. It runs in the `supported` matrix on the runner, and that job is the evidence for the released contract. Timings from the 2026-09-08 baseline above are not carried forward: they were measured on a different runtime.
