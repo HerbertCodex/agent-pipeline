@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.2.1
+git -C agent-pipeline checkout v0.3.0
 git add .gitmodules agent-pipeline
 ```
 
@@ -22,6 +22,36 @@ application during a framework upgrade.
 Vendoring remains possible from a release archive, but the host must retain the version in a committed `agent-pipeline.version` file. Removing the nested `.git` without recording the source tag makes provenance and upgrades unverifiable, so it is no longer the recommended installation.
 
 A release is published only after the release commit is merged, `VERSION` matches the intended tag, and the complete core test suite passes on that exact SHA. The tag and GitHub release are external publication steps requiring the operator's approval.
+
+## v0.3.0
+
+This minor release repairs three generation defects found while installing v0.2.0
+in a real project, and admits Nest 12 into the supported contract.
+
+The derived platform permissions no longer refuse a path some role must write:
+`**` was reported as globally refusable, and applying it stopped every write for
+every role. Configuring a deep security control no longer shrinks the CI job it
+adds work to. The generated workflow no longer writes a condition the workflow
+always satisfies, so the conditions that do select stay visible.
+
+The Nest adapter admits Nest 12 alongside Nest 11, both on Node 22 with npm
+11.19.0. The official scaffold fails `npm audit --audit-level high` in either
+version, on a `multer` pin its own dependencies carry, so the manifest now
+declares the remediations that repair it: the vulnerable release is replaced by
+its corrected one, and the deploy helper whose advisory chain has no fix is
+removed. Setup applies and reports them.
+
+Setup's contract changes accordingly: it installs no dependency **except to make
+effective a declared remediation it just applied and reported**. An override only
+reaches the audit through a regenerated lockfile.
+
+Node 24 remains outside the contract. An isolated tracker initialization returns 0
+on Node 24.21.0, but the complete setup still aborts in better-sqlite3's statement
+destructor; see the Nest adapter's VALIDATION.md.
+
+Updating from v0.2.x regenerates `.github/workflows/ci.yml` on the next
+`apply-profile`, and `--check` reports the drift until then. What the workflow
+executes does not change.
 
 ## v0.2.1
 
