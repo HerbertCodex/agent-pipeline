@@ -16,6 +16,7 @@
     "architecture": "npm run check:architecture",
     "design_system": "npm run check:design-system",
     "design_tokens": "npm run check:tokens",
+    "css_ownership": "npm run check:css-ownership",
     "visual_regression": "npm run test:visual",
     "dead_code": "npm run check:dead-code",
     "duplication": "npm run check:duplication",

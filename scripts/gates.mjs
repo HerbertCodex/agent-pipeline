@@ -14,7 +14,7 @@ const KNOWN_GATES = [
   "audit", "secrets_scan", "dead_code", "sast", "doc_lint", "comment_policy",
   "project_map", "map_coverage", "design_limits", "duplication", "accessibility",
   "security_scope", "dast_baseline", "dast_active", "dast_api", "load",
-  "data_model",
+  "data_model", "css_ownership",
 ];
 
 /**

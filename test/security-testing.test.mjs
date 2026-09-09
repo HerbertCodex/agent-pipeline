@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, test } from "node:test";
@@ -464,6 +464,7 @@ describe("security execution", () => {
           if (name === "ZAP baseline scan") {
             scanTimeoutMs = options.timeoutMs;
             const mount = args[args.indexOf("--volume") + 1].split(":/zap/wrk")[0];
+            assert.equal(statSync(mount).mode & 0o777, 0o777, "the container's own user cannot write into the evidence directory");
             writeFileSync(join(mount, "report.html"), "<html></html>\n");
             writeFileSync(join(mount, "report.sarif.json"), "{}\n");
             writeFileSync(join(mount, "report.json"), JSON.stringify({ site: [] }));

@@ -159,6 +159,23 @@ The trap is not a red gate, it is a green one: **a `--check` that compares an em
 A non-exported function carries neither contract nor narration. If its body needs to be told, its name or its decomposition is what is wrong.
 <!-- /brief -->
 
+<!-- brief:implementer,qa -->
+<!-- gate:css_ownership -->
+## One class name, one owner
+
+`css_ownership` refuses a class name claimed by two stylesheets unless the declared primitives sheet
+(`design_system.primitives_sheet`) owns it. Stylesheets are global and loaded per route: the router
+injects the sheet of a route as soon as it preloads it, and from that moment its rules apply to every
+page already on screen. Two sheets naming the same class for two unrelated objects therefore do not
+collide when they are read but when one of them happens to arrive, which no unit test and no
+single-page screenshot reproduces. The primitives sheet is the one exception: a name it declares is
+shared on purpose, and a feature naming it again extends it rather than competing for it. The gate
+reads selector preludes only, follows brace depth so a rule nested in a media query counts, keeps
+line numbers exact past multi-line comments, and refuses to pass when no sheet names a class at all.
+It was written after a site bar repainted on every page the day another route's sheet was preloaded.
+<!-- /gate -->
+<!-- /brief -->
+
 <!-- brief:product,qa -->
 ## What no tool proves
 

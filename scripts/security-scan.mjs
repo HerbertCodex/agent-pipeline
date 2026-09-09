@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -118,6 +118,11 @@ export async function runSecurityScan(value, mode, dependencies = {}) {
   const stamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
   const evidenceDir = resolve(cwd, security.zap.reports_dir, `${stamp}-${mode}-${randomUUID()}`);
   mkdirSync(evidenceDir, { recursive: true });
+  // The scanner image runs as its own user and needs its own home, so it is
+  // not run as the host user; the mount is opened to it instead. A CI runner
+  // creates the directory as an account the container does not share, and
+  // the scan then completes every job and fails on the report it cannot write.
+  chmodSync(evidenceDir, 0o777);
   const apiDefinition = mode === "api" ? safeApiDefinition(cwd, security, evidenceDir) : undefined;
   const plan = buildZapPlan(security, mode, { apiDefinition, acceptedFindings: findings });
   writeFileSync(join(evidenceDir, "zap.yaml"), plan);

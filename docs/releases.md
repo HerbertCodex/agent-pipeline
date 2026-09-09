@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.5.0
+git -C agent-pipeline checkout v0.5.1
 git add .gitmodules agent-pipeline
 ```
 
@@ -26,6 +26,28 @@ A release is published only after the release commit is merged, `VERSION` matche
 ## Unreleased
 
 No unreleased changes.
+
+## v0.5.1
+
+This patch release lets the core test suite pass on the Node a host project
+runs, and lets the baseline scan write its evidence on a CI runner. The Codex
+adapter added in v0.5.0 refuses any Node outside its manifest before it reads a
+task package, which is what the manifest is for; but the test proving its
+sandbox behaviour spawned it on the suite's own Node, so a host on Node 24 read
+one red that described its runtime rather than the framework, and the generated
+CI replays the suite on exactly that Node. The sandbox test now skips outside
+the manifest and says why, and a second test, skipped inside it, proves the
+refusal instead. The ZAP evidence directory is now world-writable when created:
+the scanner image runs as its own user with its own home, a CI runner creates
+the directory as an account the container does not share, and the scan then
+completed every job and failed on the report it could not write.
+
+A new `css_ownership` gate ships in the core and in the frontend bundle. It
+refuses a class name claimed by two stylesheets unless the sheet named by
+`design_system.primitives_sheet` owns it; see docs/quality-gates.md. A frontend
+project adopts it by declaring that sheet and a `check:css-ownership` script;
+a project that does not is unaffected. Updating from v0.5.0 needs no other
+project action beyond re-pinning.
 
 ## v0.5.0
 
