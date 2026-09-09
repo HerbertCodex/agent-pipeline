@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { loadConfig } from "./lib.mjs";
+import { loadConfig, DEFAULT_CI_TIMEOUT_MINUTES } from "./lib.mjs";
 import { validateLoadTesting } from "./load-testing.mjs";
 import { validateSecurityTesting, zapExecutionBudgetMinutes } from "./security-testing.mjs";
 
@@ -68,7 +68,10 @@ export function configureSecurity(inputPath, root = process.cwd()) {
       ...(security.allow_active && security.api ? { dast_api: ["schedule", "workflow_dispatch"] } : {}),
       ...(input.load_testing ? { load: ["schedule", "workflow_dispatch"] } : {}),
     },
-    timeout_minutes: Math.max(config.ci?.timeout_minutes ?? 0, scheduledMinutes, pullRequestMinutes),
+    // The floor is the budget already in force, not zero: a project that
+    // never stated a timeout still runs its whole battery under the
+    // generator default, and a cheap scan must not shrink the job below it.
+    timeout_minutes: Math.max(config.ci?.timeout_minutes ?? DEFAULT_CI_TIMEOUT_MINUTES, scheduledMinutes, pullRequestMinutes),
     secret_environment: [...new Set([
       ...(config.ci?.secret_environment ?? []),
       ...Object.values(security.authentication?.credentials ?? {}).filter((value) => typeof value === "string"),

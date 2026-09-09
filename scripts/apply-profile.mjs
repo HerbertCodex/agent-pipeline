@@ -3,7 +3,7 @@ import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { isDeepStrictEqual } from "node:util";
-import { loadConfig, loadRules, pathAllowed, deferredGates, fail } from "./lib.mjs";
+import { loadConfig, loadRules, pathAllowed, deferredGates, fail, DEFAULT_CI_TIMEOUT_MINUTES } from "./lib.mjs";
 import { ARCHITECTURES, PROJECT_TYPES } from "./architectures.mjs";
 import { stripUndeclaredGates, orphanGates, perIssueGates, gatesForIssue, closureGates } from "./gates.mjs";
 import { adaptPrompt, promptAdapter, rendersClaudeEntry } from "./runtime-adapters.mjs";
@@ -1128,7 +1128,7 @@ function main() {
     "runtime.with": Object.entries(config.ci.runtime_setup.with)
       .map(([k, v]) => `          ${k}: ${v}`)
       .join("\n"),
-    timeout_minutes: config.ci.timeout_minutes ?? 25,
+    timeout_minutes: config.ci.timeout_minutes ?? DEFAULT_CI_TIMEOUT_MINUTES,
     deep_events: (() => {
       const events = new Set(Object.values(config.ci.gate_events ?? {}).flat());
       return [
