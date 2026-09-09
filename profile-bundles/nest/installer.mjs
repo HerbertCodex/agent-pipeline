@@ -108,7 +108,10 @@ export function plan(root, defaults) {
   files[`${profileDir}/pitfalls.md`] = "# Project pitfalls\n\nNo project-specific findings recorded during installation.\n";
   files[config.project_context] = `# Project context\n\n<!-- agent:summary -->\nExisting Nest project. Product scope is defined separately through Product.\n<!-- /agent -->\n\n<!-- agent:commands -->\nRead the command table in the compiled role brief. Installed package manager: ${manager}.\n<!-- /agent -->\n\n<!-- agent:context -->\nThe setup preset preserves the existing application. Design bounds are fixed preset policy, never automatically relaxed. The map and static security scan are heuristic. No dead-code, mutation, coverage threshold or documentation enforcement is claimed. Secrets scanning detects common token formats and private keys, not all secrets. CI is not configured. Filesystem policies detect scope violations unless the harness enforces them.\n<!-- /agent -->\n`;
   const remediation = remediate(root, pkg, compatibilityManifest, manager);
-  return { config, files, required, manager, compatibilityManifest, compatibility, remediation, ignored: ["node_modules/", "dist/", "coverage/"] };
+  // What the toolchain actually was when the gates were proven. Cleared
+  // calibration is a claim; this is what it claims about.
+  const detected = { node: installed.node, manager, test_runner: testRunner, linter, packages: installed.packages };
+  return { config, files, required, manager, compatibilityManifest, compatibility, remediation, detected, ignored: ["node_modules/", "dist/", "coverage/"] };
 }
 
 export function prerequisites(root, planned) {

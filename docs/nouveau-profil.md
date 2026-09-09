@@ -42,6 +42,10 @@ It seeds the profile directory and writes `pipeline.config.json` when there is n
 
 **The imported profile does not run yet.** `apply-profile` refuses while `calibration_required` is `true` in the profile's `profile.json`. That flag is not ceremony: the thresholds in those tool files were measured on another codebase. Too loose and the gate stops refusing anything; too tight and the first run gets it loosened, and a gate loosened once loosens again. Measure them here, adjust the files, then set the flag to `false` — which is a claim that you did.
 
+**And the claim has to say against what.** `apply-profile` also refuses a profile that clears `calibration_required` while recording nothing: an imported reference contract and a profile proven against your repository read the same the day after, and telling them apart is exactly what the flag exists for. Record the stack under `detected` — `materialize.mjs` writes that block, and a setup adapter carries its own observation — or state it in one sentence under `calibration_note` when the profile was written by hand.
+
+An installation made before this rule clears it in one line: run `materialize.mjs` and copy its `detected` block, or write the sentence.
+
 You still write the invariants and the pitfalls document yourself. `apply-profile` refuses a profile without `pitfalls.md`, empty or not: it is what `store-verify` requires an escaped defect to leave behind, and a file that does not exist cannot receive anything. A profile carries what a stack does; it does not know what this repository has already learned.
 
 ### Materializing a TypeScript frontend profile
