@@ -8,6 +8,21 @@ import { fileURLToPath } from 'node:url';
 import { withinRange } from '../runtime-bundles/codex/versions.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'runtime-bundles', 'codex');
+const contract = JSON.parse(readFileSync(join(root, 'compatibility.json'), 'utf8')).supported[0];
+
+/**
+ * Whether the Node running this suite is one the adapter agrees to start on.
+ *
+ * The adapter refuses any other Node before it looks at the task package, so
+ * the sandbox behaviour below can only be measured inside the manifest, and
+ * the refusal itself can only be measured outside it. Each of the two tests
+ * skips on the runtime where it cannot measure anything, and says why; a host
+ * on another Node no longer reads a red that describes its runtime, not the
+ * framework.
+ */
+const nodeInsideManifest = withinRange(process.version, contract.node);
+const nodeOutsideManifest = `Node ${process.version} is outside the Codex manifest; the adapter refuses to start`;
+const nodeInsideManifestReason = `Node ${process.version} is inside the Codex manifest; the adapter does not refuse it`;
 
 test('Codex runtime bundle is pinned to the locally validated contract', () => {
   const compatibility = JSON.parse(readFileSync(join(root, 'compatibility.json'), 'utf8'));
@@ -42,7 +57,7 @@ test('Codex runtime adapter preserves sandboxing and machine-enforces declared p
   assert.doesNotMatch(source, /danger-full-access/);
 });
 
-test('a failing Codex-sandbox prerequisite prevents the agent process from starting', () => {
+test('a failing Codex-sandbox prerequisite prevents the agent process from starting', { skip: !nodeInsideManifest && nodeOutsideManifest }, () => {
   const repository = mkdtempSync(join(tmpdir(), 'agent-pipeline-codex-'));
   try {
     const git = (...args) => execFileSync('git', args, { cwd: repository, encoding: 'utf8' }).trim();
@@ -97,6 +112,22 @@ test('a failing Codex-sandbox prerequisite prevents the agent process from start
     calls = readFileSync(log, 'utf8').trim().split('\n').map(JSON.parse);
     assert.ok(calls.some((args) => args[0] === 'sandbox'));
     assert.ok(calls.some((args) => args.includes('exec')));
+  } finally {
+    rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('the adapter refuses a Node outside its manifest before inspecting anything else', { skip: nodeInsideManifest && nodeInsideManifestReason }, () => {
+  const repository = mkdtempSync(join(tmpdir(), 'agent-pipeline-codex-node-'));
+  try {
+    const packagePath = join(repository, 'task.json');
+    writeFileSync(packagePath, JSON.stringify({ attempt_id: 'unused', role: 'implementer' }));
+    const refused = spawnSync(process.execPath, [join(root, 'adapter.mjs'), 'implementer', packagePath], {
+      cwd: repository, env: { ...process.env, PATH: '/nonexistent' }, encoding: 'utf8',
+    });
+    assert.equal(refused.status, 1);
+    assert.match(refused.stderr, /unsupported Node runtime: v\d+\.\d+\.\d+; use Node 22\.23\.2/);
+    assert.doesNotMatch(refused.stderr, /could not inspect Codex CLI/);
   } finally {
     rmSync(repository, { recursive: true, force: true });
   }
