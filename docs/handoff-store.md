@@ -7,7 +7,7 @@ Every sub-agent ends with a single JSON block between `AGENT_HANDOFF_START` and 
 
 It carries `produced_at`, an ISO 8601 date. That is for legibility, not for measurement: several handoffs sat side by side on a real run with no way to order them, and no way to tell a fresh one from a file left over from an earlier attempt. The durations come from the orchestrator's own stamps, because nothing here trusts an agent's account of its own clock.
 
-They are written under `handoffs_dir`, which git ignores. Dispatch archives validated output by content digest under `archive/`; store transitions reference that receipt. `handoffs.mjs --prune` only removes transient top-level files for closed issues, never archived receipts.
+They are written under `handoffs_dir`, which git ignores. Dispatch archives validated output by content digest under `archive/`; store transitions reference that receipt. `handoffs.mjs --prune` removes transient top-level files and integrated attempt worktrees for closed issues, never archived receipts or unmerged attempt branches.
 
 ```json
 {
@@ -107,6 +107,12 @@ Reading: `store-read <issue|spec> <id>` returns the record, its SHA-256 hash and
 5. `store-verify`.
 6. Read the full `git diff -- <store_dir>/ .sudocode/`: only the targeted control and Sudocode's own projection changed, no context block disappeared.
 7. If the handoff carried a `commit_sha`, push the spec branch so that SHA gets its CI run.
+
+When an issue reservation overlaps `human_review_paths`, the closing request also
+carries `human_review { approved_by: "operator", approved_at, evidence }`. `evidence`
+names the durable review receipt (for example the PR review URL or reviewed decision).
+The store records the protected reservations with it. A missing receipt, an agent as
+approver, an invalid date, or a blank evidence reference refuses closure.
 
 `store-read --for <role>` returns only the context blocks addressed to that role — headings of the form `## Context for <role>`. **Measurement blocks are addressed to nobody and therefore do not travel**: attach them by hand to the next role's package, or the role works without the measurements that were persisted for it.
 

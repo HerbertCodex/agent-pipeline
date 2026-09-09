@@ -52,6 +52,7 @@ function runRecord(config, runId, role, packagePath, startedAt) {
     attempt_id: task.attempt_id ?? runId,
     base_sha: task.base_sha ?? null,
     workspace: config.agent_runtime?.cwd ?? process.cwd(),
+    workspace_branch: task.workspace?.branch ?? null,
     schema_version: 1,
     run_id: runId,
     role,

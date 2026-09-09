@@ -1,7 +1,7 @@
 import { ciEvidence } from "./ci-evidence.mjs";
 import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { atomicWrite, loadConfig, loadRules, readJsonl, sha256, fail } from "./lib.mjs";
@@ -66,6 +66,7 @@ export function writeTaskPackage(issueId, role, config = loadConfig()) {
     schema_version: 1,
     generated_at: new Date().toISOString(),
     role,
+    runtime_prerequisites: config.agent_runtime?.prerequisite_commands ?? {},
     prompt,
     brief,
     record_hash: sha256(entry.raw),
@@ -89,4 +90,4 @@ function main() {
   }
 }
 
-if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) main();

@@ -10,6 +10,26 @@ export function coveredGates(run, sha, commands) {
   return Object.keys(commands).filter((key) => steps.has(key.replaceAll('_', '-')) || steps.has(key));
 }
 
+function durationMs(step) {
+  const started = Date.parse(step.startedAt ?? '');
+  const completed = Date.parse(step.completedAt ?? '');
+  return Number.isFinite(started) && Number.isFinite(completed) && completed >= started ? completed - started : null;
+}
+
+/** Imports provider timings only when both timestamps are present and coherent. */
+export function gateEvidence(run, sha, commands) {
+  const covered = new Set(coveredGates(run, sha, commands));
+  const result = {};
+  for (const key of covered) {
+    const names = new Set([key, key.replaceAll('_', '-')]);
+    const step = (run.jobs ?? []).flatMap((job) => job.steps ?? [])
+      .find((candidate) => candidate.conclusion === 'success' && names.has(candidate.name));
+    const measured = durationMs(step ?? {});
+    result[key] = measured == null ? { duration_status: 'not_imported' } : { duration_ms: measured };
+  }
+  return result;
+}
+
 /** Obtains fresh read-only CI evidence; missing access is an explicit local-replay fallback. */
 export function ciEvidence(sha, config) {
   if (config.ci?.provider !== 'github' || !sha) return { status: 'not_configured', covered_gates: [] };
@@ -27,6 +47,7 @@ export function ciEvidence(sha, config) {
       const run = gh(['run', 'view', String(candidate.databaseId), '--json', 'headSha,conclusion,url,jobs']);
       const covered = coveredGates(run, sha, config.commands);
       if (covered.length) return { status: 'verified', commit_sha: sha, workflow, url: run.url, checked_at: new Date().toISOString(), covered_gates: covered,
+        gate_evidence: gateEvidence(run, sha, config.commands),
         commands: Object.fromEntries(covered.map((key) => [key, config.commands[key]])) };
     }
     return { status: 'no_matching_run', covered_gates: [] };

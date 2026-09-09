@@ -31,6 +31,76 @@ import { createHash, randomUUID } from "node:crypto";
  */
 export const DEFAULT_CI_TIMEOUT_MINUTES = 25;
 
+function validateObjectKeys(value, allowed, label) {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    fail(`${label} must be an object`);
+  }
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) fail(`${label}: unsupported key "${key}"`);
+  }
+}
+
+/** Refuses operational controls the installed core cannot actually honour. */
+function validateOperationalControls(config, path) {
+  if (config.agent_runtime != null) {
+    validateObjectKeys(
+      config.agent_runtime,
+      new Set([
+        "prompt_adapter", "command", "args", "interactive_input", "runs_dir",
+        "progress_interval_seconds", "workspace_paths", "dependency_inputs",
+        "prerequisite_commands", "prerequisites_in_agent", "require_handoff", "cwd",
+      ]),
+      `${path}: agent_runtime`,
+    );
+  }
+  if (config.attempt_isolation != null) {
+    const isolation = config.attempt_isolation;
+    validateObjectKeys(
+      isolation,
+      new Set(["strategy", "root", "one_attempt_per_worktree", "restore_before_replay"]),
+      `${path}: attempt_isolation`,
+    );
+    if (isolation.strategy !== "git-worktree") {
+      fail(`${path}: attempt_isolation.strategy must be "git-worktree"`);
+    }
+    if (typeof isolation.root !== "string" || isolation.root.trim().length === 0) {
+      fail(`${path}: attempt_isolation.root must be a non-empty project-relative path`);
+    }
+    if (isolation.one_attempt_per_worktree !== true) {
+      fail(`${path}: attempt_isolation.one_attempt_per_worktree must be true`);
+    }
+    if (isolation.restore_before_replay !== true) {
+      fail(`${path}: attempt_isolation.restore_before_replay must be true`);
+    }
+  }
+
+  if (config.evidence_retention != null) {
+    const retention = config.evidence_retention;
+    validateObjectKeys(
+      retention,
+      new Set(["control_store", "run_records", "handoffs"]),
+      `${path}: evidence_retention`,
+    );
+    const expected = {
+      control_store: config.store_dir,
+      run_records: config.agent_runtime?.runs_dir ?? join(config.store_dir, "runs"),
+      handoffs: config.handoffs_dir,
+    };
+    for (const [key, destination] of Object.entries(expected)) {
+      if (retention[key] !== destination) {
+        fail(`${path}: evidence_retention.${key} must match the effective destination "${destination}"`);
+      }
+    }
+  }
+
+  if (config.human_review_paths != null && (
+    !Array.isArray(config.human_review_paths) ||
+    config.human_review_paths.some((item) => typeof item !== "string" || item.trim().length === 0)
+  )) {
+    fail(`${path}: human_review_paths must be a list of non-empty path patterns`);
+  }
+}
+
 export function loadConfig(path = "pipeline.config.json") {
   if (!existsSync(path)) fail(`not found: ${path} (run it from the project root)`);
   let config;
@@ -54,6 +124,7 @@ export function loadConfig(path = "pipeline.config.json") {
   for (const key of ["profile", "profiles_dir", "commands", "docs_dirs", "briefs_dir", "prompts_dir", "skills_dir", "rules_path", "project_context", "file_policy", "store_dir", "ci"]) {
     if (config[key] == null) fail(`${path}: missing key "${key}"`);
   }
+  validateOperationalControls(config, path);
   return config;
 }
 

@@ -48,6 +48,17 @@
     }
   },
   "handoffs_dir": "pipeline/handoffs",
+  "attempt_isolation": {
+    "strategy": "git-worktree",
+    "root": "pipeline/handoffs/worktrees",
+    "one_attempt_per_worktree": true,
+    "restore_before_replay": true
+  },
+  "evidence_retention": {
+    "control_store": "pipeline/store",
+    "run_records": "pipeline/runs",
+    "handoffs": "pipeline/handoffs"
+  },
   "agent_runtime": {
     "prompt_adapter": "portable",
     "interactive_input": false,

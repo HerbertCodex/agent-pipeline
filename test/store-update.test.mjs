@@ -162,6 +162,32 @@ describe("store-update: transitions confronted with rules.json", () => {
     assert.equal(record.discoveries_declared[0].assertion, "observed");
   });
 
+  test("requires durable operator review before closing a protected reservation", () => {
+    const { root, id, hash } = withIssue({
+      pipeline_state: state({ phase: "qa_in_progress", owner: "qa", version: 4, file_reservations: ["src/auth/**"] }),
+    });
+    const configPath = join(root, "pipeline.config.json");
+    const config = JSON.parse(readFileSync(configPath, "utf8"));
+    config.human_review_paths = ["src/**/auth/**"];
+    writeFileSync(configPath, JSON.stringify(config));
+    const base = {
+      target: { kind: "issue", id }, expected_record_hash: hash,
+      started_at: "2026-08-20T08:00:00.000Z", ended_at: "2026-08-20T08:30:00.000Z",
+      pipeline_state: state({ phase: "closed", owner: "none", version: 5, file_reservations: ["src/auth/**"] }),
+      discoveries_declared: [],
+    };
+    const refused = run(root, "store-update.mjs", [writeJson(root, "without-review.json", base)]);
+    assert.notEqual(refused.status, 0);
+    assert.match(refused.output, /human review required/);
+
+    const accepted = run(root, "store-update.mjs", [writeJson(root, "with-review.json", {
+      ...base,
+      human_review: { approved_by: "operator", approved_at: "2026-08-20T08:29:00.000Z", evidence: "PR review by alice" },
+    })]);
+    assert.equal(accepted.status, 0, accepted.output);
+    assert.equal(readRecord(root, "issues", id).human_reviews[0].approved_by, "operator");
+  });
+
   test("refuses an unproved discovery asserting an absence", () => {
     const { root, id, hash } = withIssue();
     const request = writeJson(root, "absence-without-proof.json", {

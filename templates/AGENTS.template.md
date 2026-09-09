@@ -72,7 +72,7 @@ Each bullet below is refused by a named gate in parentheses. A bullet whose gate
 
 ## 10. Mandatory human review
 
-A PR is reviewed by a human if it touches the profile's `human_review_paths`, or in every profile: prompts, briefs, `AGENTS.md`, `pipeline.config.json`, `rules_path`, `agent-pipeline/scripts/`, authentication configuration. QA validates one issue; it does not guarantee composition between issues.
+An issue whose reservations overlap the profile's `human_review_paths` cannot close until `store-update` receives a dated operator-review receipt with durable evidence. Protect, in every profile: prompts, briefs, `AGENTS.md`, `pipeline.config.json`, `rules_path`, `agent-pipeline/scripts/`, authentication configuration. QA validates one issue; it does not guarantee composition between issues.
 
 ## 11. Loops and stopping
 

@@ -333,9 +333,17 @@ node agent-pipeline/scripts/render-data-model.mjs docs/data-model.contract.json 
 
 Le guide contient aussi le prompt copiable pour mettre à jour un projet existant.
 
+L’exécution reste indépendante du fournisseur dans le cœur. Un
+[adaptateur d’exécution Codex](runtime-bundles/codex) borné et versionné est fourni
+pour les versions de CLI déclarées dans son manifeste de compatibilité ; les autres
+runtimes restent des adaptateurs du projet.
+
+Le [contrat SvelteKit](profile-bundles/sveltekit) vérifie de manière exécutable une
+plage bornée du scaffold officiel avant la calibration des contrôles propres au projet.
+
 ## Limites
 
-La pipeline rend décisions, preuves, transitions et exceptions contrôlables. Elle ne choisit pas le produit ou l’architecture, ne remplace pas la revue humaine, ne transforme pas un prompt en permission et ne rend pas interactive une CLI qui ne l’est pas.
+La pipeline rend décisions, preuves, transitions et exceptions contrôlables. La clôture d’une issue protégée exige désormais une preuve durable de validation par l’opérateur ; la pipeline ne juge toutefois pas la qualité de cette revue. Elle ne choisit pas le produit ou l’architecture, ne transforme pas un prompt en permission et ne rend pas interactive une CLI qui ne l’est pas.
 
 ## Documentation
 

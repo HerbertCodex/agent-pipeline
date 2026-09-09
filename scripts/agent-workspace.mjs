@@ -1,4 +1,4 @@
-import { mkdirSync, existsSync, cpSync, readdirSync, constants, lstatSync, realpathSync, readFileSync } from 'node:fs';
+import { mkdirSync, existsSync, cpSync, readdirSync, constants, lstatSync, realpathSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -22,8 +22,9 @@ export function prepareWorkspace(task, config, root = process.cwd()) {
       throw new Error(`Dependency input differs at target commit: ${file}; prepare matching dependencies before dispatch`);
     }
   }
-  const directory = resolve(root, config.handoffs_dir, 'worktrees');
-  if (!directory.startsWith(root + sep)) throw new Error('Worktrees must stay inside the configured host handoffs directory');
+  const configuredRoot = config.attempt_isolation?.root ?? join(config.handoffs_dir, 'worktrees');
+  const directory = resolve(root, configuredRoot);
+  if (!directory.startsWith(resolve(root) + sep)) throw new Error('Worktrees must stay inside the project root');
   for (let path = directory; path !== root; path = dirname(path)) {
     if (existsSync(path) && lstatSync(path).isSymbolicLink()) throw new Error('Workspace directory redirects through a symlink');
   }
@@ -63,4 +64,36 @@ export function prepareWorkspace(task, config, root = process.cwd()) {
   task.workspace = { path: workspace, branch, base_sha: sha };
   task.base_sha = sha;
   return { path: workspace, branch, base_sha: sha, packagePath };
+}
+
+/** Proves one attempt is inside an owned root and its branch is integrated. */
+export function inspectWorkspace(workspace, branch, config, root = process.cwd()) {
+  const directories = [
+    resolve(root, config.attempt_isolation?.root ?? join(config.handoffs_dir, 'worktrees')),
+    // Older releases ignored attempt_isolation.root and always wrote here.
+    // Accept only that project-owned legacy root when reclaiming recorded runs.
+    resolve(root, join(config.handoffs_dir, 'worktrees')),
+  ];
+  const target = resolve(workspace);
+  const directory = directories.find((candidate) => target.startsWith(candidate + sep) && target !== candidate);
+  if (!directory) throw new Error('Workspace cleanup target escapes the configured or legacy attempt root');
+  if (branch && !/^agent\/[A-Za-z0-9._-]+$/.test(branch)) throw new Error(`Refusing unexpected attempt branch name: ${branch}`);
+  let branchExists = false;
+  if (branch) {
+    try { git(root, 'show-ref', '--verify', `refs/heads/${branch}`); branchExists = true; } catch { /* already removed */ }
+    if (branchExists) {
+      try { git(root, 'merge-base', '--is-ancestor', `refs/heads/${branch}`, 'HEAD'); }
+      catch { throw new Error(`Branch ${branch} is not integrated; inspect it before cleanup`); }
+    }
+  }
+  const registered = git(root, 'worktree', 'list', '--porcelain').split('\n').some((line) => line === `worktree ${target}`);
+  return { target, branchExists, registered, present: registered || branchExists || existsSync(target) };
+}
+
+/** Removes one completed, integrated attempt without following arbitrary paths. */
+export function removeWorkspace(workspace, branch, config, root = process.cwd()) {
+  const { target, branchExists, registered } = inspectWorkspace(workspace, branch, config, root);
+  if (registered) git(root, 'worktree', 'remove', '--force', target);
+  else if (existsSync(target)) rmSync(target, { recursive: true, force: true });
+  if (branchExists) git(root, 'branch', '-d', branch);
 }
