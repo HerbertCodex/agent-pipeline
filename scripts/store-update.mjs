@@ -11,6 +11,7 @@ import {
   loadRules,
   readJsonl,
   sha256,
+  patternsMayOverlap,
   fail,
 } from "./lib.mjs";
 import {
@@ -43,6 +44,7 @@ const REQUEST_FIELDS = new Set([
   "transition_reason",
   "started_at",
   "ended_at",
+  "human_review",
 ]);
 
 /**
@@ -131,6 +133,30 @@ function validateRejectionBudget(previous, next, reason, rules) {
   if (after < maximum && to === "operator_escalation") {
     throw new Error(`code rejection ${after} has not reached the limit ${maximum}`);
   }
+}
+
+function humanReviewPaths(state, config) {
+  const protectedPaths = config.human_review_paths ?? [];
+  return (state?.file_reservations ?? []).filter((reservation) =>
+    protectedPaths.some((protectedPath) => patternsMayOverlap(reservation, protectedPath)));
+}
+
+function validatedHumanReview(review, paths) {
+  if (paths.length === 0 && review == null) return null;
+  if (review == null || typeof review !== "object" || Array.isArray(review)) {
+    throw new Error(`human review required for: ${paths.join(", ")}`);
+  }
+  for (const key of Object.keys(review)) {
+    if (!["approved_by", "approved_at", "evidence"].includes(key)) throw new Error(`human_review has unsupported key ${key}`);
+  }
+  if (review.approved_by !== "operator") throw new Error("human_review.approved_by must be operator; an agent cannot approve itself");
+  if (typeof review.approved_at !== "string" || Number.isNaN(Date.parse(review.approved_at))) {
+    throw new Error("human_review.approved_at must be a valid timestamp");
+  }
+  if (typeof review.evidence !== "string" || review.evidence.trim().length === 0) {
+    throw new Error("human_review.evidence must name the durable approval evidence");
+  }
+  return { approved_by: "operator", approved_at: review.approved_at, evidence: review.evidence, paths };
 }
 
 /**
@@ -366,6 +392,9 @@ function applyRequest(request, config, rules) {
     }
     const from = previous?.phase ?? null;
     const to = request.pipeline_state.phase;
+    if (request.human_review != null && (from === "closed" || to !== "closed")) {
+      fail("human_review is accepted only on the transition to closed. Nothing written.");
+    }
     if (from !== "closed" && to === "closed" && !Object.hasOwn(request, "discoveries_declared")) {
       fail(
         "closed requires discoveries_declared in the same write, even when it is empty. Nothing written.",
@@ -373,6 +402,10 @@ function applyRequest(request, config, rules) {
     }
     try {
       validateRejectionBudget(previous, request.pipeline_state, request.transition_reason, rules);
+      const review = from !== "closed" && to === "closed"
+        ? validatedHumanReview(request.human_review, humanReviewPaths(request.pipeline_state, config))
+        : null;
+      if (review != null) record.human_reviews = [...(record.human_reviews ?? []), review];
     } catch (error) {
       fail(`state refused: ${error.message}. Nothing written.`);
     }

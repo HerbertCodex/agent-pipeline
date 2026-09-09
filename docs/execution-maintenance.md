@@ -11,12 +11,30 @@ and clean. QA starts at the implementation commit. Builds, indexes and seeded
 (package manifest and lockfile) before seeding dependencies; their bytes must match
 the selected commit. No dependency installation happens implicitly.
 
+`attempt_isolation.strategy` is `git-worktree`; its `root` is the project-relative
+directory that actually receives the worktrees. One attempt owns one worktree, and
+proof replay always starts from a clean detached commit. Unsupported strategies or
+keys are refused rather than ignored.
+
 Worktrees and `agent/<attempt-id>` branches remain available for inspection. After
 validating the receipt and scope, the orchestrator explicitly integrates the selected
 branch with `git merge --no-ff <branch>` before applying its state transition. Resolve
 conflicts and rerun affected checks before continuing. Remove a retained worktree only
-after integration and evidence review. A crashed dispatch may leave its issue lock
+after integration and evidence review. `handoffs.mjs --prune` removes worktrees and
+branches only for closed issues whose branch is integrated into `HEAD`; it retains and
+reports an unmerged branch. A crashed dispatch may leave its issue lock
 under `handoffs_dir/dispatch-locks`; check that no process remains before removing it.
+
+`agent_runtime.prerequisite_commands` are copied into the task package. They are not
+run by the host preflight: that would prove the orchestrator's network and services,
+not the sandbox in which the agent works. An adapter using them declares
+`prerequisites_in_agent: true`, machine-executes them before task work in that sandbox, and
+routes a failure to infrastructure rather than continuing.
+
+The bundled Codex adapter keeps its network proxy enabled. A project's raw TCP
+client must support the supplied SOCKS proxy, use a project-owned loopback relay
+through it, or use a project-owned Unix socket; turning off the proxy currently
+broadens outbound access beyond localhost and is not an equivalent fix.
 
 Dispatch requires a complete handoff with the package's `attempt_id`. Its archive is
 immutable and addressed by SHA-256. Supply `handoff_path` to `store-update.mjs` so the
@@ -34,7 +52,10 @@ node agent-pipeline/scripts/run-gates.mjs <task-package.json> --closure
 
 Successful CI steps can replace local gates only for the same commit, with matching
 commands and workflow bytes. Missing access, skipped steps and policy drift fall back
-to local execution. Reports persist under `agent_runtime.runs_dir/gates` and appear
+to local execution. A QA package's already-verified exact-SHA proof is consumed before
+any new provider query. A provider duration is retained when exposed; otherwise the
+report says `duration_ms: null` and `duration_status: not_imported`. Reports persist
+under `agent_runtime.runs_dir/gates` and appear
 in the dashboard. This avoids replaying an already proven battery; it does not replace
 QA's criterion review, scope checks or negative proofs.
 

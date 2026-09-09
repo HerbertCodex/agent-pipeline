@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.4.0
+git -C agent-pipeline checkout v0.5.0
 git add .gitmodules agent-pipeline
 ```
 
@@ -22,6 +22,39 @@ application during a framework upgrade.
 Vendoring remains possible from a release archive, but the host must retain the version in a committed `agent-pipeline.version` file. Removing the nested `.git` without recording the source tag makes provenance and upgrades unverifiable, so it is no longer the recommended installation.
 
 A release is published only after the release commit is merged, `VERSION` matches the intended tag, and the complete core test suite passes on that exact SHA. The tag and GitHub release are external publication steps requiring the operator's approval.
+
+## Unreleased
+
+No unreleased changes.
+
+## v0.5.0
+
+Runtime controls now fail closed instead of accepting declarations the core does
+not honour. `attempt_isolation.root` selects the real worktree location, its
+supported keys are validated, and `handoffs.mjs --prune` also removes integrated
+worktrees and their `agent/<attempt>` branches for closed issues. Evidence-retention
+destinations must match the store, run and handoff paths the core actually writes;
+unsupported retention keys are refused.
+
+Cleanup preview applies the same ancestry proof as cleanup itself. An unintegrated
+branch is reported as retained before `--prune`, never advertised as removable.
+
+QA gate runs reuse a valid exact-SHA CI proof already carried by their task package.
+They query the provider only when that proof is absent or stale. Imported CI step
+durations are retained when available; missing timing is recorded as `null` with
+`duration_status: not_imported`, never as an invented zero.
+
+Runtime prerequisites travel in the bounded task package and are no longer run by
+the orchestrator as though host reachability proved reachability in an agent
+sandbox. The Codex adapter machine-executes them through `codex sandbox` before the
+agent starts. An adapter declaring prerequisites must explicitly state that it
+executes them inside the agent environment. Finally, closing an issue whose reservation
+overlaps `human_review_paths` requires a dated, durable operator-review receipt.
+
+A vendor-neutral runtime boundary now ships a bounded Codex CLI adapter, and the
+SvelteKit bundle ships an executable compatibility contract measured against the
+official `sv 0.17.0` minimal TypeScript scaffold on Node 22.23.2. Both refuse
+versions outside their manifests instead of treating a nearby major as compatible.
 
 ## v0.4.0
 

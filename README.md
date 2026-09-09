@@ -317,7 +317,11 @@ For a project already running an older Agent Pipeline release, give the agent th
 
 ## Stack-neutral quality
 
-Profiles bind stable gate names to real tools for the host stack: types, lint, tests, audit, secrets, architecture, duplication, design limits, and a generated project map. The [frontend TypeScript bundle](profile-bundles/frontend-typescript) is an example to recalibrate, not an imposed stack.
+Profiles bind stable gate names to real tools for the host stack: types, lint, tests, audit, secrets, architecture, duplication, design limits, and a generated project map. The [frontend TypeScript bundle](profile-bundles/frontend-typescript) is an example to recalibrate, not an imposed stack. The bounded [SvelteKit contract](profile-bundles/sveltekit) can verify a compatible official scaffold before that project-owned calibration.
+
+Agent execution stays vendor-neutral in the core. A released, bounded
+[Codex runtime adapter](runtime-bundles/codex) is available for the CLI versions
+declared in its compatibility manifest; other runtimes remain project adapters.
 
 Relational projects may activate [database governance v2](docs/database-governance.md): reviewed keys and dependencies, normalization, UTC timestamps, append-only audit, ownership, filters and indexes, measured query budgets, migration safety, database security and restoration proofs. It remains ORM-neutral and preserves legacy installations. Configure and render it with:
 
@@ -329,7 +333,7 @@ node agent-pipeline/scripts/render-data-model.mjs docs/data-model.contract.json 
 
 ## Guarantees and limits
 
-The pipeline makes decisions, evidence, transitions, and exceptions visible and testable. It does not choose the product, architecture, or dependencies; replace human review; turn prompts into permissions; or make a non-interactive CLI interactive.
+The pipeline makes decisions, evidence, transitions, and exceptions visible and testable. Protected issue closure requires a durable operator-review receipt; the pipeline still does not judge the quality of that review. It does not choose the product, architecture, or dependencies; turn prompts into permissions; or make a non-interactive CLI interactive.
 
 ## Documentation
 

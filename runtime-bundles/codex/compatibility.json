@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "adapter": "codex",
+  "adapter_version": "1.0.0",
+  "supported": [
+    {
+      "id": "codex-cli-0.153",
+      "codex_cli": { "min": "0.153.4", "max_exclusive": "0.154.0" },
+      "node": { "min": "22.23.2", "max_exclusive": "23.0.0" },
+      "platform": "linux",
+      "host_tools": ["git"],
+      "optional_capabilities": {
+        "proxy_aware_raw_tcp": ["OpenBSD netcat"]
+      },
+      "network": {
+        "mode": "codex-proxy",
+        "allowed_domains": ["localhost", "127.0.0.1"],
+        "raw_tcp_requires_proxy_aware_client": true
+      },
+      "evidence": "README.md"
+    }
+  ]
+}

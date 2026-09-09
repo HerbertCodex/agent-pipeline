@@ -200,6 +200,9 @@ Also adapt:
 
 - `file_policy` — the `deny` globs must cover the project's real paths; the `implementer` entry is mandatory;
 - `human_review_paths` — authentication, migrations, anything that must never be approved by a machine alone;
+- `attempt_isolation` — use `git-worktree`, name the project-relative `root`, keep one attempt per worktree and restore before proof replay; unsupported keys are refused;
+- `evidence_retention` — name the effective `control_store`, `run_records` and `handoffs` destinations exactly. CI artifacts belong under `ci.artifacts`; do not invent retention switches the core does not implement;
+- `agent_runtime.prerequisite_commands` — only with an adapter that executes them inside its sandbox and declares `prerequisites_in_agent: true`;
 - `project_map.roots` and `project_map.skip` — the roots to map and the test-file pattern;
 - `ci.provider` — `"none"` if you install no CI, and know then that QA will actually run every gate instead of reading a run.
 

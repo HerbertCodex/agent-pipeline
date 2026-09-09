@@ -18,7 +18,19 @@ export function reservationFaults(paths, policy) {
   });
 }
 
-/** Checks trust synchronization, executable prerequisites and unconsumed handoffs before spending an agent run. */
+/** Validates the adapter contract without running host-side connectivity probes. */
+export function runtimePrerequisites(config) {
+  const prerequisites = config.agent_runtime?.prerequisite_commands ?? {};
+  for (const [name, command] of Object.entries(prerequisites)) {
+    if (!Array.isArray(command) || !command.length || command.some((value) => typeof value !== 'string')) throw new Error(`Runtime prerequisite ${name} must be a nonempty argument array`);
+    if (config.agent_runtime?.prerequisites_in_agent !== true) {
+      throw new Error(`Runtime prerequisite ${name} is declared, but the adapter does not declare prerequisites_in_agent=true`);
+    }
+  }
+  return prerequisites;
+}
+
+/** Checks trust synchronization, prerequisite contracts and unconsumed handoffs before spending an agent run. */
 export function dispatchPreflight(issueId, role, config) {
   const rules = loadRules();
   if (!isDeepStrictEqual(config.file_policy, rules.file_policy)) throw new Error('File policy drift: run apply-profile before dispatch');
@@ -48,10 +60,6 @@ export function dispatchPreflight(issueId, role, config) {
       throw new Error(`Consume the previous handoff with store-update.handoff_path before redispatch: ${run.handoff.path}`);
     }
   }
-  for (const [name, command] of Object.entries(config.agent_runtime?.prerequisite_commands ?? {})) {
-    if (!Array.isArray(command) || !command.length || command.some((value) => typeof value !== 'string')) throw new Error(`Runtime prerequisite ${name} must be a nonempty argument array`);
-    try { execFileSync(command[0], command.slice(1), { encoding: 'utf8', timeout: 30000 }); }
-    catch (error) { throw new Error(`Runtime prerequisite ${name} failed: ${error.message}`); }
-  }
+  runtimePrerequisites(config);
   return record;
 }

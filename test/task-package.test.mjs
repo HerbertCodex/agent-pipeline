@@ -45,6 +45,22 @@ describe("portable task packages", () => {
     assert.ok(body.record_hash);
   });
 
+  test("carries runtime prerequisites for execution inside the agent sandbox", () => {
+    sandbox = createSandbox({ issues: [issue()] });
+    const configPath = `${sandbox}/pipeline.config.json`;
+    const config = JSON.parse(readFileSync(configPath, "utf8"));
+    config.handoffs_dir = "pipeline/handoffs";
+    config.agent_runtime = {
+      prerequisites_in_agent: true,
+      prerequisite_commands: { database: ["node", "probe.mjs"] },
+    };
+    writeFileSync(configPath, JSON.stringify(config));
+    const result = run(sandbox, "task-package.mjs", ["i-t1", "implementer"]);
+    assert.equal(result.status, 0, result.output);
+    const body = JSON.parse(readFileSync(join(sandbox, result.stdout.trim()), "utf8"));
+    assert.deepEqual(body.runtime_prerequisites, { database: ["node", "probe.mjs"] });
+  });
+
   test("carry the authoritative Sudocode record when the binding is current", () => {
     sandbox = createSandbox();
     enableIssueTracker(sandbox, { issues: [trackerIssue()] });
