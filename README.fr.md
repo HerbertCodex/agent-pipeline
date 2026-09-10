@@ -286,10 +286,18 @@ Pour une présentation avec Nest, préparez le projet, ses dépendances et Sudoc
 ```sh
 node agent-pipeline/scripts/next-step.mjs
 node agent-pipeline/scripts/next-issues.mjs
+node agent-pipeline/scripts/transition.mjs <issue-id> implementer
 node agent-pipeline/scripts/dispatch.mjs <issue-id> implementer
 node agent-pipeline/scripts/tracker-sync.mjs --apply
 node agent-pipeline/scripts/tracker-sync.mjs
 ```
+
+**Le mouvement vient d’abord, et il est commité avant le dispatch.** Une phase
+que l’orchestrateur tient — `planned` avant l’implémenteur, `ready_for_qa` avant
+QA — est une phase où rien n’a commencé. Dispatcher sans la déplacer laisse le
+paquet de tâche bâti sur cette fiche : l’agent y calcule son `basis`, et le
+mouvement dû ensuite l’invalide, l’issue est bloquée. `dispatch` refuse une
+telle phase et nomme la commande ; `next-step` imprime les deux, dans l’ordre.
 
 Le dashboard local démarre avec `node agent-pipeline/dashboard/server.mjs` et s’ouvre sur `http://127.0.0.1:4399`.
 

@@ -265,9 +265,12 @@ The core has no production npm dependency.
 ## Daily use
 
 ```sh
-# Inspect runnable work
+# Inspect runnable work: next-step prints the commands below, in order
 node agent-pipeline/scripts/next-step.mjs
 node agent-pipeline/scripts/next-issues.mjs
+
+# Move a phase the orchestrator holds, then commit the store
+node agent-pipeline/scripts/transition.mjs <issue-id> implementer
 
 # Dispatch a role
 node agent-pipeline/scripts/dispatch.mjs <issue-id> product
@@ -278,6 +281,16 @@ node agent-pipeline/scripts/dispatch.mjs <issue-id> qa
 node agent-pipeline/scripts/tracker-sync.mjs --apply
 node agent-pipeline/scripts/tracker-sync.mjs
 ```
+
+**The move comes first, and it is committed before the dispatch.** A phase the
+orchestrator holds — `planned` before the implementer, `ready_for_qa` before QA
+— is a phase where nothing has started. Dispatching without moving it leaves the
+task package built on that record, so the agent computes its handoff basis from
+it and the move owed afterwards invalidates it: the handoff is refused as stale
+and the issue is stranded. `dispatch` refuses such a phase and names the command;
+`next-step` prints both, in order. The move is a step of its own because a
+worktree starts from a reviewed commit, and a dispatch writing the store would
+dirty the tree it is about to require clean.
 
 Run the local dashboard with `node agent-pipeline/dashboard/server.mjs`, then open `http://127.0.0.1:4399`. It consumes the same scheduler state and does not create another source of truth. Docker and security details are in [dashboard/README.md](dashboard/README.md).
 
@@ -317,7 +330,7 @@ For a project already running an older Agent Pipeline release, give the agent th
 
 ## Stack-neutral quality
 
-Profiles bind stable gate names to real tools for the host stack: types, lint, tests, audit, secrets, architecture, duplication, design limits, and a generated project map. The [frontend TypeScript bundle](profile-bundles/frontend-typescript) is an example to recalibrate, not an imposed stack. The bounded [SvelteKit contract](profile-bundles/sveltekit) can verify a compatible official scaffold before that project-owned calibration.
+Profiles bind stable gate names to real tools for the host stack: types, lint, tests, audit, secrets, architecture, duplication, design limits, and a generated project map. The core ships a dependency-free floor for several of them — `secrets-scan.mjs`, `duplication.mjs`, `dead-code.mjs`, `doc-lint.mjs`, `sast.mjs`, and `css-ownership.mjs`, which refuses a class name two stylesheets claim unless the declared primitives sheet owns it — so a mandatory gate is never declared against nothing. Point any key at a real tool for your language whenever you have one; the rest of the framework does not notice the swap. The [frontend TypeScript bundle](profile-bundles/frontend-typescript) is an example to recalibrate, not an imposed stack. The bounded [SvelteKit contract](profile-bundles/sveltekit) can verify a compatible official scaffold before that project-owned calibration.
 
 Agent execution stays vendor-neutral in the core. A released, bounded
 [Codex runtime adapter](runtime-bundles/codex) is available for the CLI versions
@@ -348,6 +361,11 @@ The pipeline makes decisions, evidence, transitions, and exceptions visible and 
 | [Quality gates](docs/quality-gates.md) | executable rules |
 | [Security and load testing](docs/security-testing.md) | OWASP assurance, ZAP and isolated performance controls |
 | [Database governance](docs/database-governance.md) | Normalization, audit, filters, performance, authorization and database security |
+| [Testing policy](docs/testing-policy.md) | what each level asserts, and what none of them reaches |
+| [Security gates](docs/security-gates.md) | what the static and dynamic controls refuse |
+| [Git workflow](docs/git-workflow.md) | branches, attempts and integration |
+| [Skills](docs/skills.md) | what travels with the pipeline, and what belongs to the host stack |
+| [Benchmarking](docs/etalonnage.md) | measuring what a spec costs, rather than estimating it |
 | [Releases](docs/releases.md) | versioning and updates |
 
 ## Development
