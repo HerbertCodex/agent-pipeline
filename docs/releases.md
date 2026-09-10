@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.5.3
+git -C agent-pipeline checkout v0.6.0
 git add .gitmodules agent-pipeline
 ```
 
@@ -26,6 +26,49 @@ A release is published only after the release commit is merged, `VERSION` matche
 ## Unreleased
 
 No unreleased changes.
+
+## v0.6.0
+
+This minor release turns one measured SvelteKit installation (2026-09-10) into
+framework behavior, and repairs three gates found green for the wrong reason.
+
+The SvelteKit bundle is now an **executable adapter**: `setup.mjs` discovers its
+`installer.mjs` the way it always discovered Nest's, and a compatible official
+scaffold goes from clone to verified pipeline in one command — dependencies
+checked against the registry, gate tooling placed without ever overwriting a
+host file, formatter ignores written, real checks run, and seven negative
+proofs recorded in `setup-report.json` before `calibration_required` may fall.
+The core gains no stack logic: only four generic hooks (the adapter may declare
+its project types, a `prove` step, remediations beyond `package.json`, and
+reported `kept_files`). `import-profile` now descends tooling subdirectories
+file by file; a host that already had `e2e/` saw the whole directory kept and
+the accessibility spec never landed.
+
+A dependency-free **`secrets-scan.mjs`** ships in the core and is the template's
+default `secrets_scan`: `secrets_scan` was mandatory with no shipped floor, and
+a host gitleaks binary was measured with an inert built-in rule set — a scanner
+that finds nothing is indistinguishable from a green gate without a negative
+proof. It reads tight patterns, redacts what it reports, and says so.
+
+**`preflight` no longer runs deferred gates**: it executed every declared
+command, including `dast_active`, which installation policy forbids — the
+installer had to bypass the control entirely. Closure and `ci.gate_events`
+keys are reported `deferred`, off the exit code; `--include-deferred` replays
+them. **`tracker-sync` refuses a vanished provider**: a deleted Sudocode
+directory read as an empty, synchronized tracker.
+
+`skip` now accepts the list-of-globs form the frontend bundle ships — five
+scripts compiled it with a string-or-null guard and silently excluded nothing,
+staying green over trees the configuration had excluded. The project map learns
+`.svelte` and `.vue`. `security-scan.mjs probe` starts the disposable
+environment and proves container-to-target reachability with one GET from the
+pinned ZAP image before any scan traffic, with a diagnosis for dead or
+VM-namespaced bridge gateways (Docker Desktop, WSL2). Docs gain stack recipes
+(Rust, JVM, Go, Python — knowledge, not adapters), a timed demonstration
+runbook, the k6 flat summary format, and the generated-targets formatter rule.
+
+Deferred, and written in the bundle's VALIDATION.md: the end-to-end replay of
+the SvelteKit installer on a fresh official scaffold is not yet automated.
 
 ## v0.5.3
 
