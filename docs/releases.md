@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.5.2
+git -C agent-pipeline checkout v0.5.3
 git add .gitmodules agent-pipeline
 ```
 
@@ -26,6 +26,15 @@ A release is published only after the release commit is merged, `VERSION` matche
 ## Unreleased
 
 No unreleased changes.
+
+## v0.5.3
+
+This patch release completes v0.5.2. Dispatch now writes the transition a held
+phase owes, but it left the tracker on the old status, and `task-package`
+refuses a tracker whose status no longer matches the phase: the dispatch that
+had just created the drift then reported it and stopped. The write and its
+projection are now one step, in that order, before the package is built. A
+dispatch that owes no transition still projects nothing.
 
 ## v0.5.2
 
