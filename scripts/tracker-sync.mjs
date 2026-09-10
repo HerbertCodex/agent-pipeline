@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadConfig, readJsonl, fail } from "./lib.mjs";
 import {
@@ -7,6 +8,33 @@ import {
   trackerMatch,
   updateTrackerStatus,
 } from "./issue-tracker.mjs";
+
+/**
+ * Says what local tracker storage an enabled Sudocode provider is missing.
+ *
+ * A file-backed provider that vanished must be loud, never green: on
+ * 2026-09-10 the `.sudocode` directory was moved away and tracker-sync still
+ * answered "synchronized" with exit code 0, because an absent file reads
+ * exactly like an empty one. The GitHub provider has no local root, so it is
+ * asked for nothing; an initialised tracker with zero issues is fine, since
+ * both files exist.
+ *
+ * @param {object} config - Pipeline configuration.
+ * @param {string} [cwd] - Host project root.
+ * @returns {string|null} The refusal message, or null when nothing is missing.
+ */
+export function missingTrackerStore(config, cwd = ".") {
+  const tracker = config.issue_tracker;
+  if (tracker == null || tracker.enabled === false || tracker.provider !== "sudocode") return null;
+  if (typeof tracker.root !== "string" || tracker.root.length === 0) return null;
+  const issuesFile = tracker.issues_file ?? "issues.jsonl";
+  if (existsSync(resolve(cwd, tracker.root)) && existsSync(resolve(cwd, join(tracker.root, issuesFile)))) return null;
+  return (
+    `issue tracker storage not found: ${join(tracker.root, issuesFile)}. ` +
+    "The Sudocode provider directory vanished or was never initialised; an empty read would " +
+    "report green against nothing. Restore it, or disable issue_tracker."
+  );
+}
 
 function managedIssues(snapshot, config) {
   const tag = config.issue_tracker?.managed_tag;
@@ -87,6 +115,8 @@ function main() {
   const apply = args.includes("--apply");
   const json = args.includes("--json");
   const config = loadConfig();
+  const absent = missingTrackerStore(config);
+  if (absent != null) fail(absent);
   const snapshot = readIssueTracker(config);
   if (snapshot == null) fail("issue tracker is disabled");
   const records = readJsonl(join(config.store_dir, "issues.jsonl")).map((entry) => entry.record);

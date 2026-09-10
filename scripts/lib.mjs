@@ -253,6 +253,38 @@ function globToRegex(glob) {
 }
 
 /**
+ * Reads `project_map.skip`, which two shapes reach from real configurations.
+ *
+ * The documented shape is a regular expression string, kept as is. The
+ * frontend bundles ship a LIST of glob-ish patterns instead, and handing
+ * that list to `new RegExp` stringifies it — a double-star glob then fails
+ * to parse with "Nothing to repeat", crashing the walk on 2026-09-10. Each
+ * entry converts to a regex: metacharacters are escaped except the glob
+ * wildcards, `**` crosses segments, `*` and `?` stay within one. Like the
+ * string form, the result is tested unanchored against the path.
+ *
+ * @param skip - the configured value: regex string, list of patterns, or null
+ * @returns the rejection regular expression, or null when nothing is skipped
+ */
+export function skipPattern(skip) {
+  if (skip == null) return null;
+  if (typeof skip === "string") return new RegExp(skip);
+  if (Array.isArray(skip) && skip.every((entry) => typeof entry === "string")) {
+    if (skip.length === 0) return null;
+    const parts = skip.map((entry) =>
+      entry
+        .replaceAll(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replaceAll("**", "\u0001")
+        .replaceAll("*", "[^/]*")
+        .replaceAll("?", "[^/]")
+        .replaceAll("\u0001", ".*"),
+    );
+    return new RegExp(parts.join("|"));
+  }
+  fail("project_map.skip must be a regex string or a list of glob patterns");
+}
+
+/**
  * Tests whether a path matches at least one pattern in the list.
  *
  * @param path - file path relative to the repository

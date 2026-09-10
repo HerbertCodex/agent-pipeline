@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync } from "node:fs";
 import { join, dirname, relative, sep } from "node:path";
-import { loadConfig, fail } from "./lib.mjs";
+import { loadConfig, fail, skipPattern } from "./lib.mjs";
 import { DEFAULT_EXTENSIONS, walk, declarationsIn } from "./surface.mjs";
 
 /**
@@ -74,7 +74,7 @@ function main() {
   }
   const out = typeof settings.out === "string" ? settings.out : "docs/project-map.md";
   const extensions = Array.isArray(settings.extensions) ? settings.extensions : DEFAULT_EXTENSIONS;
-  const skip = typeof settings.skip === "string" ? new RegExp(settings.skip) : null;
+  const skip = skipPattern(settings.skip);
 
   const files = [];
   for (const root of settings.roots) {

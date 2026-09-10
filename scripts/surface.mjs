@@ -9,7 +9,7 @@ import { join } from "node:path";
  * file is, or each one measures a different tree and their verdicts stop
  * being comparable.
  */
-export const DEFAULT_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".py", ".go", ".rs", ".rb", ".java", ".kt", ".php", ".cs", ".swift"];
+export const DEFAULT_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".svelte", ".vue", ".py", ".go", ".rs", ".rb", ".java", ".kt", ".php", ".cs", ".swift"];
 
 /**
  * Patterns that recognise a public declaration without parsing anything.

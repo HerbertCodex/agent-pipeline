@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { loadConfig, fail } from "./lib.mjs";
+import { loadConfig, fail, skipPattern } from "./lib.mjs";
 
 /**
  * Returns all files under a root, recursively.
@@ -50,7 +50,7 @@ function main() {
   if (!existsSync(out)) fail(`carte not found: ${out}. Regenerate it before checking it.`);
 
   const roots = map.roots ?? ["src"];
-  const skip = map.skip == null ? null : new RegExp(map.skip);
+  const skip = skipPattern(map.skip);
   const rendered = readFileSync(out, "utf8");
 
   const sources = roots
