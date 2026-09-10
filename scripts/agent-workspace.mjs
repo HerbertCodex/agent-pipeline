@@ -18,7 +18,9 @@ export function prepareWorkspace(task, config, root = process.cwd()) {
     throw new Error('Declare dependency_inputs before seeding workspace dependencies');
   }
   for (const file of config.agent_runtime?.dependency_inputs ?? []) {
-    if (!execFileSync('git', ['show', `${sha}:${file}`], { cwd: root }).equals(readFileSync(resolve(root, file)))) {
+    const there = execFileSync('git', ['show', `${sha}:${file}`], { cwd: root });
+    const here = readFileSync(resolve(root, file));
+    if (dependencyFingerprint(there) !== dependencyFingerprint(here)) {
       throw new Error(`Dependency input differs at target commit: ${file}; prepare matching dependencies before dispatch`);
     }
   }
@@ -64,6 +66,33 @@ export function prepareWorkspace(task, config, root = process.cwd()) {
   task.workspace = { path: workspace, branch, base_sha: sha };
   task.base_sha = sha;
   return { path: workspace, branch, base_sha: sha, packagePath };
+}
+
+/**
+ * Reduces a dependency input to what actually decides an install.
+ *
+ * Comparing the whole file made a build script a dependency change: an issue
+ * that edits `scripts.build` could no longer replay its own red proof from its
+ * own head, because the manifest at the test commit differed by that one line
+ * while the lockfile and every dependency field were identical. Measured in a
+ * host project on 2026-09-10, and worked around by hand in a detached tree.
+ *
+ * A manifest this cannot parse is compared whole, as before: refusing to read
+ * a file is not a reason to stop checking it.
+ *
+ * @param contents - the file as committed or as it stands
+ * @returns a stable string equal for two inputs that install the same thing
+ */
+function dependencyFingerprint(contents) {
+  let manifest;
+  try {
+    manifest = JSON.parse(contents.toString('utf8'));
+  } catch {
+    return contents.toString('utf8');
+  }
+  if (manifest == null || typeof manifest !== 'object') return contents.toString('utf8');
+  const deciding = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies', 'packageManager', 'engines', 'overrides', 'resolutions', 'pnpm'];
+  return JSON.stringify(deciding.map((field) => [field, manifest[field] ?? null]));
 }
 
 /** Proves one attempt is inside an owned root and its branch is integrated. */

@@ -29,7 +29,11 @@ test('context delivery does not silently erase another author under the same hea
 });
 
 test('task packages preserve scope evidence and have immutable attempt identities', () => {
-  const root = createSandbox({ issues: [issue({ contexts: [{ heading: '## verify-scope i-t1 base..sha', body: 'scope verified' }] })] });
+  // The proof is read from `scope_proofs`, where `verify-scope --record`
+  // leaves it. It used to be filtered out of context blocks headed
+  // `## verify-scope `, which nothing writes: the field arrived empty three
+  // times running in a host project while the record said the check was green.
+  const root = createSandbox({ issues: [issue({ scope_proofs: [{ commit_sha: 'sha', said: 'scope verified' }] })] });
   try {
     const path = join(root, 'pipeline.config.json'); const config = JSON.parse(readFileSync(path));
     config.handoffs_dir = 'pipeline/handoffs'; writeFileSync(path, JSON.stringify(config));
@@ -38,7 +42,7 @@ test('task packages preserve scope evidence and have immutable attempt identitie
     const second = run(root, 'task-package.mjs', ['i-t1', 'qa']);
     assert.notEqual(first.stdout, second.stdout);
     const pkg = JSON.parse(readFileSync(join(root, first.stdout.trim())));
-    assert.equal(pkg.proofs.scope[0].body, 'scope verified');
+    assert.equal(pkg.proofs.scope[0].said, 'scope verified');
     assert.ok(pkg.attempt_id);
   } finally { destroySandbox(root); }
 });

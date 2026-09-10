@@ -1,5 +1,6 @@
 import { reservationFaults } from "./dispatch-preflight.mjs";
 import { readFileSync, existsSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { loadConfig, loadRules, readJsonl, pathAllowed, sha256, generatedPaths, fail } from "./lib.mjs";
 import { reviewDigest } from "./render-proposal.mjs";
@@ -16,7 +17,7 @@ import { gatesForIssue, laneOf } from "./gates.mjs";
  * grew by eleven for every issue finished. Making the debt opposable was
  * right; giving it a single exit is what made it diverge.
  */
-const DISCOVERY_ROUTES = [
+export const DISCOVERY_ROUTES = [
   "criterion",
   "regression",
   "delivery_blocker",
@@ -27,7 +28,7 @@ const DISCOVERY_ROUTES = [
   "pitfall",
 ];
 
-const BLOCKING_DISCOVERY_ROUTES = new Set(["criterion", "regression", "delivery_blocker", "spec"]);
+export const BLOCKING_DISCOVERY_ROUTES = new Set(["criterion", "regression", "delivery_blocker", "spec"]);
 
 /**
  * Refuses a criterion that designates something no one can point to.
@@ -1153,4 +1154,7 @@ function main() {
   console.log(`handoff valid (${agent}, ${handoff.mode}, outcome ${handoff.outcome})`);
 }
 
-main();
+// The route lists are exported so a test can confront them with the documents
+// that announce them: a route the validator blocks while no brief names it
+// refuses a closure by surprise. Importing must therefore no longer validate.
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) main();

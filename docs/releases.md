@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.6.2
+git -C agent-pipeline checkout v0.6.3
 git add .gitmodules agent-pipeline
 ```
 
@@ -26,6 +26,40 @@ A release is published only after the release commit is merged, `VERSION` matche
 ## Unreleased
 
 No unreleased changes.
+
+## v0.6.3
+
+Three defects a host project measured while running the pipeline, not while
+reading it.
+
+**A proof the prompts promised QA never arrived.** The QA task package filled
+`proofs.scope` from context blocks headed `## verify-scope `, and nothing
+writes such a block: the orchestrator runs the command. The field was empty
+three times running, on v0.5.2 and v0.5.3, while the record's transition said
+the check was green. QA re-ran the command by hand each time. `verify-scope`
+now takes `--record <path>` and hands its verdict back; `store-update` accepts
+`scope_proof`, refusing one that names neither the commit it verified nor what
+the command said; and the package reads `scope_proofs` from the record. A
+proof a package announces and cannot carry is worse than an absent one,
+because it reads as done.
+
+**A classification blocked closures while no document named it.** The QA
+prompt listed five values for `lands` and said three of them block; the
+validator accepted eight and blocked four, including `spec`, which appeared
+nowhere a role could read. An implementer declared exactly that value in a real
+run. The table now carries the eight, marks the four that block, and says why
+it grew. Two tests confront the validator's own lists with the prompt, so the
+two cannot drift apart again.
+
+**An issue that edits a build script could not replay its own red proof.**
+`prepareWorkspace` compared each `dependency_inputs` file byte for byte, so a
+changed `scripts.build` line read as a dependency change while the lockfile and
+every dependency field were identical. The comparison now reduces a manifest to
+the fields that decide an install; a manifest it cannot parse is still compared
+whole, because refusing to read a file is not a reason to stop checking it.
+
+Updating from v0.6.2 needs no project action beyond re-pinning. An orchestrator
+that wants the scope proof to reach QA passes `--record` and persists it.
 
 ## v0.6.2
 
