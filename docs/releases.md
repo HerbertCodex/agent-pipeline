@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.6.0
+git -C agent-pipeline checkout v0.6.1
 git add .gitmodules agent-pipeline
 ```
 
@@ -26,6 +26,31 @@ A release is published only after the release commit is merged, `VERSION` matche
 ## Unreleased
 
 No unreleased changes.
+
+## v0.6.1
+
+This patch release settles what v0.5.2 got wrong. That release made `dispatch`
+write the transition a held phase owes, which closed a real trap — a package
+built on a phase the orchestrator still holds carries that record's hash, the
+agent computes its handoff basis from it, and the move owed afterwards
+invalidates it, stranding the issue — but broke an invariant the framework
+rests on: the store is committed before a worktree starts from it. A dispatch
+that writes the store dirties the tree it is about to require clean, and
+refuses itself. v0.5.3 patched a first consequence, the tracker left on the
+old status; the second had no patch.
+
+The move is now a step of its own. `transition.mjs <issue> <role>` writes it
+and projects it, refusing a phase that owes nothing and a project with no
+tracker is not asked to project one. `dispatch` writes nothing and **refuses**
+a phase the orchestrator still holds, naming that command: the trap stays
+closed without the invariant being broken. `next-step` prints the move before
+the dispatch it must precede, which is the piece that was missing all along —
+its own reason said the orchestrator transitions then dispatches, and it
+printed only the dispatch.
+
+Eight tests, written first, all red; with either guard removed the tests that
+measure it fall again. Updating from v0.6.0 needs no project action beyond
+re-pinning: `transition.mjs` replaces a step dispatch used to take on its own.
 
 ## v0.6.0
 

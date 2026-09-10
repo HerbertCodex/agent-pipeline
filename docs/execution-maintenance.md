@@ -13,7 +13,11 @@ the selected commit. No dependency installation happens implicitly.
 
 The orchestrator writes the transition a held phase owes **before** dispatch
 packages the task: `planned` becomes `in_progress` for the implementer,
-`ready_for_qa` becomes `qa_in_progress` for QA. `dispatch.mjs` does this itself.
+`ready_for_qa` becomes `qa_in_progress` for QA. `transition.mjs <issue> <role>`
+writes it and projects it; `dispatch` refuses a phase that still owes one and
+names that command. The move is a step of its own because the store is
+versioned and a worktree starts from a reviewed commit: a dispatch writing the
+store would dirty the tree it is about to require clean. Move, commit, dispatch.
 The order is load-bearing rather than tidy — a package built on the held phase
 carries that record's hash, the agent's handoff basis is computed from it, and
 the transition owed afterwards invalidates it; the handoff is then refused as

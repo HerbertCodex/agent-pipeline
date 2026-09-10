@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { dispatchTransition } from "./dispatch-preflight.mjs";
 import { loadConfig, loadRules, readJsonl, fail } from "./lib.mjs";
 import { unclaimed } from "./unclaimed.mjs";
 import { computeWave } from "./next-issues.mjs";
@@ -154,6 +155,14 @@ function main() {
           ...actionFor(next, rules),
         };
 
+  if (step != null) {
+    // Named before the dispatch it must precede: a package built on a phase
+    // the orchestrator still holds carries that record's hash, the agent
+    // computes its handoff basis from it, and the move owed afterwards
+    // invalidates it. Printing only the dispatch is what stranded an issue.
+    step.transition = dispatchTransition(next, step.actor);
+  }
+
   if (step != null && step.actor !== "operator" && config.agent_runtime?.command) {
     step.interactive_command = `node agent-pipeline/scripts/dispatch.mjs ${step.issue} ${step.actor}`;
     step.progress_interval_seconds = Number(config.agent_runtime.progress_interval_seconds ?? 20);
@@ -187,6 +196,11 @@ function main() {
   console.log(`  action   ${step.verb} ${step.actor}`);
   console.log(`  reason   ${step.reason}`);
   console.log(`  version  ${step.version}`);
+  if (step.transition != null) {
+    console.log(`\nthis phase belongs to the orchestrator: move it, commit the store, then dispatch.`);
+    console.log(`  node agent-pipeline/scripts/transition.mjs ${step.issue} ${step.actor}`);
+    console.log(`  the worktree starts from a reviewed commit, so the move is committed before the dispatch`);
+  }
   if (step.interactive_command != null) {
     console.log(`\ninteractive dispatch (output streamed, Ctrl-C propagated):`);
     console.log(`  ${step.interactive_command}`);
