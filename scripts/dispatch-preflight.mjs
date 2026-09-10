@@ -30,6 +30,32 @@ export function runtimePrerequisites(config) {
   return prerequisites;
 }
 
+/**
+ * Returns the transition the orchestrator owes before an agent may work, or null.
+ *
+ * A phase the orchestrator holds is a phase where nothing is happening: the
+ * work starts when the agent does. Dispatching without moving it first leaves
+ * the task package built on the held phase, so the agent computes its basis on
+ * that record; the transition then changes the hash, and `store-update` refuses
+ * the handoff as stale while `dispatch-preflight` refuses every later dispatch
+ * for the unconsumed one. The issue is stranded, and the only visible cause is
+ * two rules that are each right. Moving first is what makes the chain close.
+ *
+ * A phase an agent already holds owes nothing: a redispatch after a crash or a
+ * block resumes the same phase, and inventing a transition there would record
+ * work that never changed hands.
+ *
+ * @param record - the issue record
+ * @param role - the role about to be dispatched
+ * @returns the phase and owner to write before dispatch, or null
+ */
+export function dispatchTransition(record, role) {
+  const phase = record?.pipeline_state?.phase;
+  if (phase === "planned" && role === "implementer") return { phase: "in_progress", owner: "implementer" };
+  if (phase === "ready_for_qa" && role === "qa") return { phase: "qa_in_progress", owner: "qa" };
+  return null;
+}
+
 /** Checks trust synchronization, prerequisite contracts and unconsumed handoffs before spending an agent run. */
 export function dispatchPreflight(issueId, role, config) {
   const rules = loadRules();
@@ -57,7 +83,7 @@ export function dispatchPreflight(issueId, role, config) {
   if (existsSync(directory)) for (const file of readdirSync(directory).filter((name) => name.endsWith('.json'))) {
     const run = JSON.parse(readFileSync(join(directory, file), 'utf8'));
     if (run.issue_id === issueId && run.handoff && !run.handoff_error && !(record.handoffs ?? []).some((entry) => entry.sha256 === run.handoff.sha256)) {
-      throw new Error(`Consume the previous handoff with store-update.handoff_path before redispatch: ${run.handoff.path}`);
+      throw new Error(`Consume the previous handoff with store-update.handoff_path before redispatch, or record it as abandoned with store-update.abandon_handoff and say why: ${run.handoff.path}`);
     }
   }
   runtimePrerequisites(config);

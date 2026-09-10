@@ -30,6 +30,7 @@ const REQUEST_FIELDS = new Set([
   "prevention",
   "untested_surface",
   "claims_to_replay",
+  "abandon_handoff",
   "claims_verdict",
   "criteria_ledger",
   "spec_state",
@@ -379,6 +380,24 @@ function applyRequest(request, config, rules) {
       request.discoveries_declared ??= handoff.discoveries ?? [];
     } catch (error) { fail(`Handoff persistence refused: ${error.stderr || error.message}`); }
   }
+  if (request.abandon_handoff != null) {
+    if (kind !== "issue") fail("abandon_handoff only applies to an issue. Nothing written.");
+    const { sha256: digest, reason } = request.abandon_handoff;
+    if (typeof digest !== "string" || !/^[0-9a-f]{64}$/.test(digest)) {
+      fail("abandon_handoff.sha256 must be the digest a run reported. Nothing written.");
+    }
+    if (typeof reason !== "string" || reason.trim().length === 0) {
+      fail(
+        "abandon_handoff.reason missing: abandoning an attempt is a decision, and a decision nobody " +
+          "wrote down reads later as a step that was skipped. Nothing written.",
+      );
+    }
+    if ((record.handoffs ?? []).some((item) => item.sha256 === digest)) {
+      fail(`handoff ${digest} is already recorded on ${id}. Nothing written.`);
+    }
+    record.handoffs = [...(record.handoffs ?? []), { sha256: digest, abandoned: true, reason: reason.trim(), at: new Date().toISOString() }];
+  }
+
   refreshTracker(record, kind, config, request);
   if (request.pipeline_state != null) {
     try {
