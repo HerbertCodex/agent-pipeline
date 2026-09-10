@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
-import { loadConfig, fail } from "./lib.mjs";
+import { loadConfig, fail, skipPattern } from "./lib.mjs";
 
 /**
  * A class name in selector position: the dot, then an identifier.
@@ -110,7 +110,7 @@ function settings(config) {
   if (!Array.isArray(roots) || roots.length === 0) {
     fail("project_map.roots missing: the gate reads every stylesheet under those roots and has nowhere to look.");
   }
-  const skip = typeof config.project_map?.skip === "string" ? new RegExp(config.project_map.skip) : null;
+  const skip = skipPattern(config.project_map?.skip);
   return { primitives, roots, skip };
 }
 

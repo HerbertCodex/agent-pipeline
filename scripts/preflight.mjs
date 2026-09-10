@@ -53,16 +53,43 @@ export function classify(key, command, { timeoutMs = 600000 } = {}) {
 /** Parses a per-command timeout without changing which gates are checked. */
 function options(args) {
   let json = false;
+  let includeDeferred = false;
   let timeoutMs = 600000;
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === "--json") json = true;
+    else if (args[index] === "--include-deferred") includeDeferred = true;
     else if (args[index] === "--timeout-seconds") {
       const seconds = Number(args[++index]);
       timeoutMs = seconds * 1000;
       if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) fail("timeout must be a positive number of seconds, with millisecond precision");
-    } else fail("usage: preflight.mjs [--json] [--timeout-seconds <seconds>]");
+    } else fail("usage: preflight.mjs [--json] [--timeout-seconds <seconds>] [--include-deferred]");
   }
-  return { json, timeoutMs };
+  return { json, includeDeferred, timeoutMs };
+}
+
+/**
+ * Gates the configuration defers past installation, with the reason for each.
+ *
+ * `closure_gates` names what project policy replays at final closure only —
+ * running `dast_active` during an installation is exactly what the policy
+ * forbids, and on 2026-09-10 preflight ran it anyway, forcing the installer
+ * to bypass preflight entirely. `ci.gate_events` binds a gate to events an
+ * installation never sees (a schedule, a pull request), so executability
+ * cannot be measured here either.
+ *
+ * @param config - the project configuration
+ * @returns a map of gate key to the reason it is deferred
+ */
+function deferredGates(config) {
+  const reasons = new Map();
+  for (const key of config.closure_gates ?? []) {
+    reasons.set(key, "deferred to final closure");
+  }
+  for (const [key, events] of Object.entries(config.ci?.gate_events ?? {})) {
+    const reason = `CI runs it on: ${events.join(", ")}`;
+    reasons.set(key, reasons.has(key) ? `${reasons.get(key)}; ${reason}` : reason);
+  }
+  return reasons;
 }
 
 /**
@@ -73,16 +100,22 @@ function options(args) {
  * nobody exercises. This control separates the two cases before they blur
  * together in a CI log.
  *
- * Usage: node preflight.mjs [--json] [--timeout-seconds <seconds>]
+ * Usage: node preflight.mjs [--json] [--timeout-seconds <seconds>] [--include-deferred]
  */
 function main() {
-  const { json, timeoutMs } = options(process.argv.slice(2));
+  const { json, includeDeferred, timeoutMs } = options(process.argv.slice(2));
   const config = loadConfig();
   const keys = Object.keys(config.commands ?? {});
   if (keys.length === 0) fail("no command declared in commands");
+  const deferred = deferredGates(config);
 
   const started = performance.now();
   const results = keys.map((key, index) => {
+    if (!includeDeferred && deferred.has(key)) {
+      const reason = deferred.get(key);
+      if (!json) console.log(`[${index + 1}/${keys.length}] deferred ${key} (${reason})`);
+      return { key, verdict: "deferred", status: null, duration_ms: 0, detail: reason };
+    }
     if (!json) console.log(`[${index + 1}/${keys.length}] running ${key}`);
     const item = classify(key, config.commands[key], { timeoutMs });
     if (!json) {
@@ -94,9 +127,10 @@ function main() {
   const duration_ms = Math.round(performance.now() - started);
   const missing = results.filter((item) => item.verdict === "indisponible");
   const timedOut = results.filter((item) => item.verdict === "trop-longue");
+  const skipped = results.filter((item) => item.verdict === "deferred");
 
   if (json) {
-    console.log(JSON.stringify({ results, missing: missing.map((item) => item.key), timed_out: timedOut.map((item) => item.key), duration_ms }, null, 2));
+    console.log(JSON.stringify({ results, missing: missing.map((item) => item.key), timed_out: timedOut.map((item) => item.key), deferred: skipped.map((item) => item.key), duration_ms }, null, 2));
   } else {
     console.log("");
     console.log(`Elapsed: ${duration_ms} ms`);
@@ -109,6 +143,9 @@ function main() {
       console.log("Install the tool, or drop the key from commands, but do not leave a gate permanently red.");
     }
     if (timedOut.length > 0) console.log(`Preflight incomplete: timed out: ${timedOut.map((item) => item.key).join(", ")}. Inspect these commands before retrying.`);
+    if (skipped.length > 0) {
+      console.log(`${skipped.length} gate(s) deferred, not run: ${skipped.map((item) => item.key).join(", ")}. Run them with --include-deferred.`);
+    }
   }
 
   if (missing.length > 0 || timedOut.length > 0) process.exit(1);

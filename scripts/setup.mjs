@@ -125,7 +125,8 @@ async function main() {
     if (bootstrap.format !== 1 || !isDeepStrictEqual(bootstrap.architecture, current.architecture)) throw new Error("Bootstrap architecture differs from the recorded decision.");
     config.bootstrap = current.bootstrap;
     config.architecture = current.architecture;
-    if (config.architecture.project_type !== "backend") throw new Error("The selected adapter requires a backend bootstrap.");
+    const projectTypes = planned.project_types ?? ["backend"];
+    if (!projectTypes.includes(config.architecture.project_type)) throw new Error(`The selected adapter requires a ${projectTypes.join(" or ")} bootstrap.`);
   }
   const runtime = opts.runtime ?? current?.agent_runtime?.prompt_adapter ?? "portable";
   config.agent_runtime.prompt_adapter = runtime;
@@ -248,10 +249,16 @@ async function main() {
   }) : [];
   try {
     if (opts.update) rollback = managedBackup([...Object.keys(files), ...removed, ...generated, baselinePath, profileManifest, snapshotPath, ".gitignore"]);
+    const kept = [];
     for (const [path, text] of Object.entries(files)) {
-      if (!opts.update && path.endsWith("/pitfalls.md") && existsSync(path)) continue;
+      if (!opts.update && path.endsWith("/pitfalls.md") && existsSync(path)) { kept.push(path); continue; }
+      // Identical content is kept, not rewritten: on a resumed installation the
+      // report must show which files were already the host's, and a differing
+      // file was already refused above rather than overwritten.
+      if (existsSync(path) && readFileSync(path, "utf8") === text) kept.push(path);
       write(path, text);
     }
+    if (kept.length) report.kept_files = kept;
     for (const path of removed) rmSync(safeTarget(path));
     write(profileManifest, serialize(manifest));
     const ignored = [...(planned.ignored ?? []), config.handoffs_dir, config.agent_runtime.runs_dir, config.pages_dir, config.setup.report, ".pipeline-setup.lock/"];
@@ -270,14 +277,22 @@ async function main() {
       // The official scaffold fails the audit gate as generated. The repair is
       // declared in the adapter manifest, applied here, and reported: an
       // override only reaches the audit through a regenerated lockfile, so the
-      // install is part of the repair rather than a convenience.
-      write("package.json", planned.remediation.package_json);
+      // install is part of the repair rather than a convenience. An adapter may
+      // also edit other files it can reproduce byte for byte on a rerun (an
+      // ignore list, a test match); each edit is computed from the current
+      // content at plan time and refuses unknown shapes there, before writes.
+      const edits = planned.remediation.files ?? { "package.json": planned.remediation.package_json };
+      for (const [path, content] of Object.entries(edits)) write(path, content);
       report.remediation = planned.remediation.applied;
+      if (planned.remediation.kept?.length) report.remediation_kept = planned.remediation.kept;
       for (const entry of planned.remediation.applied) console.log(`[setup] remediation ${entry.id}: ${entry.change}`);
-      await step("apply scaffold remediation", planned.remediation.install.command, planned.remediation.install.args);
+      if (planned.remediation.install) await step("apply scaffold remediation", planned.remediation.install.command, planned.remediation.install.args);
     }
     await step("generate project map", config.project_map.regenerate, [], true);
     for (const [name, command] of Object.entries(config.commands)) await step(name, command, [], true);
+    // An adapter that ships its own negative proofs runs them here: the claim
+    // that its gates refuse is replayed on this host, not trusted from another.
+    if (adapter.prove) report.proofs = await adapter.prove(root, planned);
     // Clearing the flag states that the gates were proven here; the adapter's
     // observation says against what. apply-profile refuses the claim without it.
     write(profileManifest, serialize({ ...manifest, calibration_required: false, ...(planned.detected ? { detected: planned.detected } : {}) }));

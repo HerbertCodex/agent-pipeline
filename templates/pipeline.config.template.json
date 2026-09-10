@@ -4,6 +4,7 @@
     "dead_code": "node agent-pipeline/scripts/dead-code.mjs",
     "doc_lint": "node agent-pipeline/scripts/doc-lint.mjs",
     "sast": "node agent-pipeline/scripts/sast.mjs",
+    "secrets_scan": "node agent-pipeline/scripts/secrets-scan.mjs",
     "duplication": "node agent-pipeline/scripts/duplication.mjs",
     "tracker_sync": "node agent-pipeline/scripts/tracker-sync.mjs",
     "project_map": "node agent-pipeline/scripts/project-map.mjs --check",

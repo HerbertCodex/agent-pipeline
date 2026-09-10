@@ -85,6 +85,91 @@ export async function waitForHealth(url, timeoutSeconds, fetchImpl = fetch) {
   throw new Error(`security environment health check timed out: ${detail}`);
 }
 
+const PROBE_CLIENTS = {
+  curl: (target) => ["curl", "-fsS", "-o", "/dev/null", "--max-time", "15", target],
+  wget: (target) => ["wget", "-q", "-O", "/dev/null", "-T", "15", target],
+};
+
+/** Reads which HTTP client the pinned scanner image ships, from `command -v` output. */
+export function probeClientFromOutput(output) {
+  const name = String(output).trim().split(/\r?\n/)[0]?.split("/").pop();
+  return name === "curl" || name === "wget" ? name : null;
+}
+
+function detectProbeClient(image) {
+  try {
+    const output = execFileSync("docker", ["run", "--rm", image, "sh", "-c", "command -v curl || command -v wget"], {
+      encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+    });
+    return probeClientFromOutput(output);
+  } catch { return null; }
+}
+
+/** Builds the one-shot container probe: a single GET, no mount, no forwarded secret. */
+export function probeInvocation(value, client) {
+  const security = validateSecurityTesting(value, "baseline", {}, { requireSecrets: false });
+  const build = PROBE_CLIENTS[client];
+  if (build == null) throw new Error(`unknown probe client: ${client}`);
+  const args = ["run", "--rm"];
+  if (security.environment.network) args.push("--network", security.environment.network);
+  args.push(security.zap.image, ...build(security.target));
+  return { command: "docker", args, options: { shell: false } };
+}
+
+/** Explains an unreachable target with the pattern that works where the bridge gateway does not. */
+export function probeDiagnosis(value, detail) {
+  const security = validateSecurityTesting(value, "baseline", {}, { requireSecrets: false });
+  return [
+    `security probe: the scanner container cannot reach ${security.target} (${detail})`,
+    "The scan runs inside a container, so an address that answers from this host proves nothing about the scan itself.",
+    "On Docker Desktop, rootless Docker, or WSL2 the default bridge gateway (for example 172.17.0.1) is dead or namespaced, and --network host selects a virtual machine namespace rather than this host.",
+    "Working pattern: run the application in a container on the user-defined network named by security_testing.environment.network, give it a network alias, publish its port on 127.0.0.1 for the health check, and set security_testing.target to http://<alias>:<port>.",
+  ].join("\n");
+}
+
+/** Validates the contract, then checks the target the way the scan will see it. */
+export async function runSecurityProbe(value, dependencies = {}) {
+  const cwd = resolve(dependencies.cwd ?? process.cwd());
+  const env = dependencies.env ?? process.env;
+  const security = validateSecurityTesting(value, "baseline", env, { requireSecrets: false });
+  validateSecurityFiles(cwd, security, new Date(), dependencies.commands ?? null);
+  const runStep = dependencies.runStep ?? defaultRunStep;
+  const health = dependencies.waitForHealth ?? waitForHealth;
+  const detectClient = dependencies.detectClient ?? (async (image) => detectProbeClient(image));
+  const record = { kind: "probe", target: security.target, network: security.environment.network ?? null, reachability: "unverified" };
+  let startedEnvironment = false;
+  let primaryError = null;
+  try {
+    const start = await runStep("start security environment", security.environment.start, [], { cwd, shell: true, timeoutMs: 120000, env });
+    if (failed(start)) throw new Error("security environment start failed");
+    startedEnvironment = true;
+    await health(security.environment.health_url, security.environment.health_timeout_seconds);
+    const client = await detectClient(security.zap.image);
+    if (client == null) {
+      record.reachability = "not_verified";
+      record.detail = `the pinned scanner image provides neither curl nor wget, or could not be inspected: container-to-target reachability was not verified. Only the environment lifecycle and the health check from this host were verified.`;
+    } else {
+      const invocation = probeInvocation(security, client);
+      const probe = await runStep("probe target reachability", invocation.command, invocation.args, { cwd, shell: false, timeoutMs: 60000, env });
+      if (failed(probe)) {
+        const detail = probe.error ?? (probe.timed_out ? "timed out" : probe.interrupted ? "interrupted" : `exit code ${probe.code}`);
+        throw new Error(probeDiagnosis(security, detail));
+      }
+      record.reachability = "verified";
+      record.client = client;
+    }
+  } catch (error) {
+    primaryError = error;
+  } finally {
+    if (startedEnvironment) {
+      const stop = await runStep("stop security environment", security.environment.stop, [], { cwd, shell: true, timeoutMs: 120000, env });
+      if (failed(stop) && primaryError == null) primaryError = new Error("security environment cleanup failed");
+    }
+  }
+  if (primaryError) throw primaryError;
+  return record;
+}
+
 function gitRevision(cwd) {
   try { return execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); }
   catch { return null; }
@@ -201,7 +286,13 @@ async function main() {
     console.log("security scope and assurance records are valid");
     return;
   }
-  if (!MODES_FOR_CLI.has(mode)) throw new Error("usage: security-scan.mjs <check|baseline|active|api>");
+  if (mode === "probe") {
+    const result = await runSecurityProbe(config.security_testing, { commands: config.commands });
+    if (result.reachability === "not_verified") console.log(`security probe: ${result.detail}`);
+    else console.log(`security probe: ${result.target} is reachable from the scanner container`);
+    return;
+  }
+  if (!MODES_FOR_CLI.has(mode)) throw new Error("usage: security-scan.mjs <check|probe|baseline|active|api>");
   const result = await runSecurityScan(config.security_testing, mode);
   console.log(`security evidence: ${join(result.evidence_dir, "run.json")}`);
 }

@@ -106,6 +106,28 @@ describe("duplication: what the reuse note cannot enforce on its own", () => {
     assert.equal(result.status, 0, result.output);
   });
 
+  test("accepts a skip list of glob patterns, the shape the frontend bundles ship", () => {
+    // A list was silently read as "skip nothing" on 2026-09-10: only the
+    // string shape reached the regular expression, so a generated copy of a
+    // block was reported as a clone.
+    sandbox = withSources(
+      {
+        "src/a.ts": `export function a() {\n${block(8)}\n}\n`,
+        "src/generated/b.ts": `export function b() {\n${block(8)}\n}\n`,
+      },
+      { skip: ["**/generated/**"] },
+    );
+    const result = run(sandbox, "duplication.mjs");
+    assert.equal(result.status, 0, `a skip list must skip, not crash or be ignored: ${result.output}`);
+  });
+
+  test("refuses a skip that is neither a regex string nor a list of patterns", () => {
+    sandbox = withSources({ "src/a.ts": `export function a() {\n${block(8)}\n}\n` }, { skip: 42 });
+    const result = run(sandbox, "duplication.mjs");
+    assert.notEqual(result.status, 0, "a skip read as nothing is a scan of everything, green for the wrong reason");
+    assert.match(result.output, /duplication\.skip/);
+  });
+
   test("catches a block repeated twice inside a single file", () => {
     const body = block(8);
     sandbox = withSources({ "src/a.ts": `function one() {\n${body}\n}\n\nfunction two() {\n${body}\n}\n` });

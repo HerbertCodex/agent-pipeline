@@ -15,13 +15,15 @@ afterEach(() => {
  * Writes a set of commands into the sandbox configuration.
  *
  * @param commands - gates to declare
+ * @param extra - extra configuration keys to merge (closure_gates, ci...)
  * @returns the sandbox path
  */
-function withCommands(commands) {
+function withCommands(commands, extra = {}) {
   sandbox = createSandbox();
   const path = join(sandbox, "pipeline.config.json");
   const config = JSON.parse(readFileSync(path, "utf8"));
   config.commands = commands;
+  Object.assign(config, extra);
   writeFileSync(path, JSON.stringify(config));
   return sandbox;
 }
@@ -125,6 +127,51 @@ describe("preflight: what it returns to the operator", () => {
     const result = run(root, "preflight.mjs");
     assert.notEqual(result.status, 0);
     assert.match(result.output, /no command declared/);
+  });
+});
+
+describe("preflight: gates deferred to closure are not run during installation", () => {
+  test("a closure gate is reported deferred, never executed, and does not fail the run", () => {
+    const root = withCommands({ check: "true", dast_active: "exit 1" }, { closure_gates: ["dast_active"] });
+    const result = run(root, "preflight.mjs", ["--json"]);
+    assert.equal(result.status, 0, "had dast_active run, its silent exit 1 would read as a missing tool");
+    const parsed = JSON.parse(result.stdout);
+    assert.deepEqual(parsed.deferred, ["dast_active"]);
+    assert.deepEqual(parsed.missing, []);
+    const item = parsed.results.find((entry) => entry.key === "dast_active");
+    assert.equal(item.verdict, "deferred");
+  });
+
+  test("a gate CI binds to specific events is deferred as well", () => {
+    const root = withCommands(
+      { check: "true", load: "exit 1" },
+      { ci: { provider: "none", gate_events: { load: ["schedule"] } } },
+    );
+    const result = run(root, "preflight.mjs", ["--json"]);
+    assert.equal(result.status, 0);
+    assert.deepEqual(JSON.parse(result.stdout).deferred, ["load"]);
+  });
+
+  test("--include-deferred runs the closure gates anyway", () => {
+    const root = withCommands(
+      { check: "true", dast_active: "echo 'two findings' && exit 1" },
+      { closure_gates: ["dast_active"] },
+    );
+    const result = run(root, "preflight.mjs", ["--include-deferred", "--json"]);
+    const parsed = JSON.parse(result.stdout);
+    assert.deepEqual(parsed.deferred, []);
+    const item = parsed.results.find((entry) => entry.key === "dast_active");
+    assert.equal(item.verdict, "refuse", "the flag must really execute the gate, not relabel it");
+    assert.equal(result.status, 0);
+  });
+
+  test("a missing tool behind a deferred gate stays out of the verdict", () => {
+    const root = withCommands({ check: "true", dast_active: "outil-absent-xyz" }, { closure_gates: ["dast_active"] });
+    const result = run(root, "preflight.mjs");
+    assert.equal(result.status, 0);
+    assert.match(result.output, /deferred/);
+    assert.match(result.output, /dast_active/);
+    assert.match(result.output, /--include-deferred/);
   });
 });
 

@@ -236,6 +236,37 @@ and an optional allowlisted `api.target_url`. Local definitions are copied into 
 isolated ZAP work directory. A remote definition must exactly match an entry in
 `api.allowed_definition_urls`; a project-local definition is preferred.
 
+### The application may need to run in a container too
+
+The scanner always runs in a container, so the target address must be reachable
+from a container, not only from the host. On a native Linux runner the default
+bridge gateway (for example `172.17.0.1`) usually works. On Docker Desktop,
+rootless Docker, or WSL2 it frequently does not: the gateway address is dead or
+belongs to a virtual machine, `--network host` selects that machine's network
+namespace rather than the host's, and NAT addresses such as `10.0.2.2` depend on
+the runtime. The failure is environment-specific: the health check passes from
+the host, every scan container then reports the target as down, and the contract
+alone cannot explain why.
+
+The pattern that works everywhere is to containerize the application under test
+on the same user-defined network the contract declares:
+
+1. `environment.start` runs the application container with
+   `--network <declared network>` and `--network-alias app`;
+2. the application container publishes its port on `127.0.0.1` so
+   `environment.health_url` keeps working from the host;
+3. `security_testing.target` and its `allowed_targets` entry become
+   `http://app:<port>`, an address any container on that network resolves.
+
+This pattern is stack-neutral: whatever builds the application's container image
+is the project's own toolchain, and the contract only records the network name,
+the alias and the port. Run `node agent-pipeline/scripts/security-scan.mjs probe`
+after configuring: it validates the contract, starts and health-checks the
+environment, then issues a single GET against the target from a container on the
+declared network using the pinned scanner image, and stops the environment even
+on failure. A probe failure names this pattern; a probe success means the scan
+will see the target exactly as the probe did.
+
 Load testing is a sibling object in the reviewed input:
 
 ```json
@@ -259,6 +290,15 @@ there. The normalized summary contains numeric `requests`, `error_rate`, `p95_ms
 `p99_ms`, and `throughput_per_second` metrics plus the thresholds applied. A
 successful process that omits a file or metric is a failed gate, so an old or empty
 report cannot stand in for a measurement.
+
+When the project tool is k6, read the exported summary against the current format:
+since k6 v0.49 `--summary-export` writes a flat JSON object, so a counter is
+`metrics.<name>.count` and a rate such as `http_req_failed` is exposed as
+`metrics.http_req_failed.value`; the pre-v0.49 `.values` nesting is gone. Trend
+metrics only carry the statistics requested on the command line, so a `p99_ms`
+reading requires
+`--summary-trend-stats=avg,min,med,max,p(90),p(95),p(99)`; without it the export
+silently lacks the percentile and the run cannot produce the normalized summary.
 
 <!-- brief:orchestrator,qa -->
 ## Execution cost and evidence

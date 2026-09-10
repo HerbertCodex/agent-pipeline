@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { createSandbox, destroySandbox, run } from "./harness.mjs";
+import { DEFAULT_EXTENSIONS } from "../scripts/surface.mjs";
 
 let sandbox = null;
 afterEach(() => {
@@ -124,6 +125,49 @@ describe("project-map: answering \"does this already exist?\" without knowing th
     );
     const { map } = generate(sandbox);
     assert.doesNotMatch(map, /bGenerated/);
+  });
+
+  test("collects Svelte and Vue components by default, with no extensions declared", () => {
+    // Counted as uncited by map-coverage on 2026-09-10: the default surface
+    // did not know single-file components, so the map never cited them.
+    sandbox = withSources({
+      "src/ui/Card.svelte": "<script>\n  export let title;\n</script>\n<h1>{title}</h1>\n",
+      "src/ui/BookList.vue": "<script>\nexport const bookList = [];\n</script>\n<ul></ul>\n",
+    });
+    const { status, map } = generate(sandbox);
+    assert.equal(status, 0);
+    assert.match(map, /Card\.svelte/);
+    assert.match(map, /BookList\.vue/);
+  });
+
+  test("the default source surface names the single-file component extensions", () => {
+    assert.ok(DEFAULT_EXTENSIONS.includes(".svelte"));
+    assert.ok(DEFAULT_EXTENSIONS.includes(".vue"));
+  });
+
+  test("accepts a list of glob patterns for skip, the shape the frontend bundles ship", () => {
+    // A list crashed the walk with "Nothing to repeat" on 2026-09-10: the
+    // array was stringified into a regular expression.
+    sandbox = withSources(
+      {
+        "src/a.ts": "export const a = 1;\n",
+        "src/generated/b.ts": "export const bGenerated = 2;\n",
+        "src/a.spec.ts": "export const specHelper = 3;\n",
+      },
+      { skip: ["**/generated/**", "**/*.spec.ts"] },
+    );
+    const { status, map, output } = generate(sandbox);
+    assert.equal(status, 0, `a skip list must not crash the walk: ${output}`);
+    assert.match(map, /`a`/);
+    assert.doesNotMatch(map, /bGenerated/);
+    assert.doesNotMatch(map, /specHelper/);
+  });
+
+  test("refuses a skip that is neither a regex string nor a list of patterns", () => {
+    sandbox = withSources({ "src/a.ts": "export const a = 1;\n" }, { skip: 42 });
+    const { status, output } = generate(sandbox);
+    assert.notEqual(status, 0);
+    assert.match(output, /project_map\.skip/);
   });
 });
 

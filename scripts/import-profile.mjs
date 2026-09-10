@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync, readdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { fail } from "./lib.mjs";
@@ -81,13 +81,22 @@ function main() {
 
   const toolingDir = join(bundle, "tooling");
   if (existsSync(toolingDir)) {
-    for (const file of readdirSync(toolingDir)) {
+    // File by file, not directory by directory: a bundle that ships
+    // `e2e/a11y.e2e.ts` into a project that already has `e2e/` must add its
+    // file, not skip the whole directory as "kept" — the gate template was
+    // never installed, and the command naming it now fails on nothing.
+    const walk = (dir) =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory() ? walk(join(dir, entry.name)) : [join(dir, entry.name)]);
+    for (const source of walk(toolingDir)) {
+      const file = relative(toolingDir, source);
       const destination = join(host, file);
       if (existsSync(destination)) {
         skipped.push(file);
         continue;
       }
-      cpSync(join(toolingDir, file), destination);
+      mkdirSync(dirname(destination), { recursive: true });
+      cpSync(source, destination);
       written.push(file);
     }
   }
