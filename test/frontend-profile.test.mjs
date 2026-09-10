@@ -156,7 +156,10 @@ describe("frontend TypeScript profile materialization", () => {
         "vitest",
         "typescript",
       ]);
-      assert.ok(profile.capabilities.missing_required.includes("secrets_scan"));
+      // The core template ships a secrets_scan floor since 2026-09-10, so the
+      // gate is available even when the host carries no scanner of its own —
+      // the same reason dead_code below is not "optional not detected".
+      assert.ok(!profile.capabilities.missing_required.includes("secrets_scan"));
       assert.ok(profile.capabilities.missing_required.includes("design_limits"));
       assert.ok(!profile.capabilities.missing_required.includes("accessibility"));
       assert.ok(!profile.capabilities.optional_not_detected.includes("dead_code"));
