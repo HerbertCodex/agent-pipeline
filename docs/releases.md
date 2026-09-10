@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.6.1
+git -C agent-pipeline checkout v0.6.2
 git add .gitmodules agent-pipeline
 ```
 
@@ -26,6 +26,25 @@ A release is published only after the release commit is merged, `VERSION` matche
 ## Unreleased
 
 No unreleased changes.
+
+## v0.6.2
+
+The README handed out a dispatch command that stops. Since v0.6.1 `dispatch`
+refuses a phase the orchestrator still holds and names `transition.mjs`; the
+README, in both languages, printed the dispatch alone — the same defect
+`next-step` carried until v0.6.1, where the prose said transition-then-dispatch
+and only the second half was printed. Both now print the move first and say why
+it is a step of its own.
+
+Three gates the core ships were absent from the list a reader consults to know
+what they need not write: `secrets-scan.mjs`, `css-ownership.mjs`, and the
+dependency-free floor for duplication, dead code, documentation contracts and
+static analysis. Five guides existed and nothing linked them.
+
+Nothing checked any of this. `test/readme-commands.test.mjs` now refuses a
+README naming a script the framework does not ship, one printing a dispatch
+before the move it requires, one omitting a shipped gate, and one leaving a
+guide unreachable. Documentation drifts because no command refuses it.
 
 ## v0.6.1
 
