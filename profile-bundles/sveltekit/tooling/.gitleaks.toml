@@ -1,0 +1,50 @@
+# Gitleaks configuration for the secrets_scan quality gate.
+# Loaded automatically by `gitleaks dir .` (precedence rule 4: <target>/.gitleaks.toml).
+
+# Keep the built-in rule set where available.
+[extend]
+useDefault = true
+
+# NOTE: the gitleaks 8.30.1 binary measured on 2026-09-10 ships an embedded
+# default rule set that matches nothing (verified against AKIA…, ghp_… and PEM
+# private-key samples). A scanner whose defaults are inert is indistinguishable
+# from a passing gate, so the explicit rules below carry the gate; they use the
+# same patterns as upstream gitleaks defaults. Re-verify after any gitleaks
+# upgrade instead of assuming the built-ins woke up.
+
+[[rules]]
+id = "aws-access-token"
+description = "AWS access key ID"
+regex = '''(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}'''
+keywords = ["akia", "asia", "abia", "acca", "a3t"]
+
+[[rules]]
+id = "private-key"
+description = "PEM private key block"
+regex = '''-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY( BLOCK)?-----'''
+keywords = ["private key"]
+
+[[rules]]
+id = "github-pat"
+description = "GitHub personal access token"
+regex = '''ghp_[0-9a-zA-Z]{36}'''
+keywords = ["ghp_"]
+
+[[rules]]
+id = "generic-api-key"
+description = "Quoted API key / secret / token assignment (16-64 chars)"
+regex = '''(?i)(?:api[_-]?key|apikey|secret|token|password)\s*[:=]\s*['"][0-9a-zA-Z\-_/+=]{16,64}['"]'''
+keywords = ["apikey", "api_key", "api-key", "secret", "token", "password"]
+
+[allowlist]
+description = "Exclude generated, vendored, or externally-owned content from the secrets scan."
+paths = [
+  '''^node_modules/''',       # vendored npm dependencies
+  '''^build/''',              # adapter-node build output (generated)
+  '''^\.svelte-kit/''',       # SvelteKit generated output
+  '''^\.git/''',              # VCS metadata
+  '''^test-results/''',       # Playwright test artifacts
+  '''^playwright-report/''',  # Playwright HTML report
+  '''^agent-pipeline/''',     # git submodule — content owned by the pipeline framework
+  '''^package-lock\.json$''', # npm lockfile — high false-positive rate, contains no secrets
+]

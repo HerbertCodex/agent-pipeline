@@ -213,6 +213,31 @@ describe("import-profile: installing a profile without silently overwriting", ()
     assert.match(readFileSync(join(host, "eslint.design.config.mjs"), "utf8"), /tuned here/);
   });
 
+  test("merges tooling subdirectories file by file and keeps the files the project already has", () => {
+    sandbox = createSandbox();
+    const bundle = join(sandbox, "bundle");
+    mkdirSync(join(bundle, "tooling", "scripts"), { recursive: true });
+    mkdirSync(join(bundle, "tooling", "e2e"), { recursive: true });
+    writeFileSync(join(bundle, "profile.json"), JSON.stringify({ name: "demo-stack", commands: { check: "true" } }));
+    writeFileSync(join(bundle, "invariants.md"), "- The clock is injected.\n");
+    writeFileSync(join(bundle, "tooling", "scripts", "smoke.mjs"), "// smoke from the bundle\n");
+    writeFileSync(join(bundle, "tooling", "e2e", "a11y.e2e.ts"), "// a11y from the bundle\n");
+    writeFileSync(join(bundle, "tooling", "knip.json"), "{}\n");
+    const host = join(sandbox, "host");
+    mkdirSync(join(host, "agent-pipeline"), { recursive: true });
+    mkdirSync(join(host, "e2e"), { recursive: true });
+    mkdirSync(join(host, "scripts"), { recursive: true });
+    writeFileSync(join(host, "e2e", "demo.test.ts"), "// the project's own test\n");
+    writeFileSync(join(host, "scripts", "smoke.mjs"), "// tuned here\n");
+    const result = run(sandbox, "import-profile.mjs", [bundle, host]);
+    assert.equal(result.status, 0, result.output);
+    assert.equal(readFileSync(join(host, "scripts", "smoke.mjs"), "utf8"), "// tuned here\n");
+    assert.equal(readFileSync(join(host, "e2e", "a11y.e2e.ts"), "utf8"), "// a11y from the bundle\n");
+    assert.equal(readFileSync(join(host, "e2e", "demo.test.ts"), "utf8"), "// the project's own test\n");
+    assert.equal(readFileSync(join(host, "knip.json"), "utf8"), "{}\n");
+    assert.match(result.output, /kept[\s\S]*smoke\.mjs/);
+  });
+
   test("says out loud that the thresholds are not calibrated for this project", () => {
     const { bundle, host } = exported();
     const result = run(sandbox, "import-profile.mjs", [bundle, host]);

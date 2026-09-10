@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "adapter": "sveltekit",
-  "adapter_version": "1.0.0",
+  "adapter_version": "1.1.0",
   "scaffold": {
     "generator": "sv",
     "version": "0.17.0",
@@ -25,7 +25,35 @@
         "svelte-check": { "min": "4.6.0", "max_exclusive": "5.0.0" },
         "@sveltejs/adapter-node": { "min": "5.5.4", "max_exclusive": "6.0.0" }
       },
+      "reference": {
+        "node": "22.23.2",
+        "cli": "0.17.0",
+        "manager_version": "11.19.1"
+      },
       "evidence": "VALIDATION.md"
     }
-  ]
+  ],
+  "setup": {
+    "dev_dependencies": [
+      {
+        "name": "knip",
+        "range": "^6.35.1",
+        "reason": "dead_code gate: unused files, exports and dependencies. The registry is checked (deprecation, engines) before installation; the exclusions in knip.json are scaffold calibration, not policy."
+      },
+      {
+        "name": "@axe-core/playwright",
+        "range": "^4.13.0",
+        "reason": "accessibility gate: axe analysis inside the Playwright suite. The registry is checked (deprecation, engines) before installation."
+      }
+    ],
+    "scripts": {
+      "check:dead-code": "knip",
+      "check:design-limits": "eslint --config eslint.design-limits.config.js .",
+      "test:a11y": "playwright test e2e/a11y.e2e.ts",
+      "test:smoke": "node scripts/smoke.mjs",
+      "scan:secrets": "gitleaks dir . --redact"
+    },
+    "secrets_binary": "gitleaks",
+    "notes": "scan:secrets requires a gitleaks binary on PATH; its built-in rule set was measured inert on 2026-09-10, so .gitleaks.toml carries explicit rules. playwright.config.ts gains a testMatch that covers both *.e2e.ts (the a11y spec) and the scaffold's own *.test.ts demo; the manual installation of 2026-09-10 matched only *.e2e.ts and silently dropped the demo test."
+  }
 }

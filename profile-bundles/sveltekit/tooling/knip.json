@@ -1,0 +1,20 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	// CALIBRATION REQUIRED: every exclusion below was measured against the official
+	// sv@0.17.0 scaffold on 2026-09-10. An exclusion that does not match your code
+	// hides a real dead-code finding; re-measure (unused file, unused export,
+	// unused dependency) before keeping, adding or removing one.
+	"ignore": [
+		// Git submodule: content is owned by the agent-pipeline framework, not this project.
+		"agent-pipeline/**"
+	],
+	"ignoreFiles": [
+		// Official SvelteKit template's $lib barrel placeholder: kept as the reserved public
+		// entry point of the library, intentionally empty until the library grows.
+		"src/lib/index.ts"
+	],
+	"ignoreBinaries": [
+		// secrets_scan gate: gitleaks is a system binary, intentionally not an npm dependency.
+		"gitleaks"
+	]
+}
