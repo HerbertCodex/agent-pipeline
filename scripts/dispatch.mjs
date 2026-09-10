@@ -45,6 +45,11 @@ function moveIntoPhase(record, issueId, role, config) {
   const requestPath = join(config.handoffs_dir, `dispatch-${issueId}-${owed.phase}.json`);
   writeFileSync(requestPath, JSON.stringify(request, null, 2) + "\n");
   execFileSync(process.execPath, [fileURLToPath(new URL("./store-update.mjs", import.meta.url)), requestPath], { encoding: "utf8" });
+  // The package refuses a tracker whose status no longer matches the phase,
+  // so the write and its projection are one step. Splitting them moves the
+  // refusal from the store, which explains it, to the package, which reports
+  // a drift the caller has just been told to create.
+  execFileSync(process.execPath, [fileURLToPath(new URL("./tracker-sync.mjs", import.meta.url)), "--apply"], { encoding: "utf8" });
 }
 
 let lock;
