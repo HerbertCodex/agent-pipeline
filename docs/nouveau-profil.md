@@ -317,6 +317,12 @@ node <your map script> --check
 
 All three must exit 0. These three `--check` are the generated targets: a repository where one of them drifts is working on a stale policy without knowing it.
 
+#### Keep the formatter away from the generated targets
+
+A host project arrives with its own formatter and linter, and their default scope is the whole repository. Left that way, the first formatting pass rewrites the generated targets — `AGENTS.md`, the harness entry point, the CI workflow, the project map, the `rules_path` file — and `apply-profile --check` then refuses every one of them: a reformatted generated target is drift, exactly as a hand-edited one is. A fresh SvelteKit installation hit precisely this on 2026-09-10: prettier reformatted the rendered files, and every `--check` went red on a project nobody had edited.
+
+Exclude the generated targets from the host's formatter and linter scope rather than reformatting them — in `.prettierignore`, in the linter's ignore file, wherever the tool reads its scope. Never the reverse: the generated target is written by its generator, and the generator does not know the host's style.
+
 ### 5. Prove that every gate really refuses something
 
 **Do not settle for running the gates and seeing them green.** A green gate on a healthy repository proves nothing: it may be green because it measures nothing.

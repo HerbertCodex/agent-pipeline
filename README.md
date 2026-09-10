@@ -340,6 +340,8 @@ The pipeline makes decisions, evidence, transitions, and exceptions visible and 
 | Guide | Purpose |
 | --- | --- |
 | [New project](docs/nouveau-profil.md) | installation and stack adaptation |
+| [Stack recipes](docs/stack-recipes/index.md) | gate-to-tool mappings for Rust, JVM, Go and Python |
+| [Live demonstration](docs/demo.md) | a timed runbook for a client presentation |
 | [Operator manual](docs/operateur.md) | operation and human decisions |
 | [State machine](docs/state-machine.md) | phases, roles, transitions |
 | [Handoffs and store](docs/handoff-store.md) | persistence and evidence protocol |
