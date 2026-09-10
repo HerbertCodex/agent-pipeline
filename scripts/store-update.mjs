@@ -30,6 +30,7 @@ const REQUEST_FIELDS = new Set([
   "prevention",
   "untested_surface",
   "claims_to_replay",
+  "scope_proof",
   "abandon_handoff",
   "claims_verdict",
   "criteria_ledger",
@@ -396,6 +397,15 @@ function applyRequest(request, config, rules) {
       fail(`handoff ${digest} is already recorded on ${id}. Nothing written.`);
     }
     record.handoffs = [...(record.handoffs ?? []), { sha256: digest, abandoned: true, reason: reason.trim(), at: new Date().toISOString() }];
+  }
+
+  if (request.scope_proof != null) {
+    if (kind !== "issue") fail("scope_proof only applies to an issue. Nothing written.");
+    const proof = request.scope_proof;
+    if (typeof proof?.commit_sha !== "string" || typeof proof?.said !== "string") {
+      fail("scope_proof needs the commit it verified and what verify-scope said. Nothing written.");
+    }
+    record.scope_proofs = [...(record.scope_proofs ?? []), proof];
   }
 
   refreshTracker(record, kind, config, request);

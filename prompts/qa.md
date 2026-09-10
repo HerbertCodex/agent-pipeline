@@ -110,8 +110,13 @@ Anything real you find that is out of this issue's scope goes in `discoveries`. 
 | `regression` | delivered behaviour is broken | `breaks` |
 | `delivery_blocker` | the requested delivery cannot finish | `blocked_because` |
 | `framework` | a defect in the pipeline itself | nothing more |
+| `issue` | work that deserves its own issue in a later spec | nothing more |
+| `spec` | the approved scope itself is wrong, not just this issue | `criterion` |
+| `pitfall` | a trap worth writing into the profile's pitfalls document | nothing more |
 
-Omit `lands` when unsure: it becomes `parking`. Only the three blocking classifications above can stop closure, and each requires its concrete field. A useful observation is not automatically another issue.
+Omit `lands` when unsure: it becomes `parking`. **These eight are the whole vocabulary**, and `validate-handoff` refuses any other value. Four of them stop a closure — `criterion`, `regression`, `delivery_blocker` and `spec` — and each requires its concrete field. A useful observation is not automatically another issue.
+
+This table listed five values while the validator accepted eight, and `spec` blocked a closure without appearing anywhere a role could read. An implementer declared exactly that value in a real run: a route named nowhere refuses by surprise, which is the opposite of what a documented contract is for.
 
 The Orchestrator persists every entry on the source issue. `findings.mjs` exposes the triage inbox without duplicating storage. Neither you nor the Orchestrator expands an active spec without an operator-approved `scope_change`.
 

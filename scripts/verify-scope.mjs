@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { loadConfig, loadRules, pathAllowed, isGenerated, matchAny, readJsonl, sha256, fail } from "./lib.mjs";
 
@@ -19,7 +19,10 @@ import { loadConfig, loadRules, pathAllowed, isGenerated, matchAny, readJsonl, s
  * Usage: node verify-scope.mjs <handoff.json> <base-ref>
  */
 function main() {
-  const [handoffPath, baseRef] = process.argv.slice(2).filter((arg) => arg !== "--json");
+  const args = process.argv.slice(2).filter((arg) => arg !== "--json");
+  const recordAt = args.indexOf("--record");
+  const recordTo = recordAt === -1 ? null : args[recordAt + 1];
+  const [handoffPath, baseRef] = recordAt === -1 ? args : args.filter((_, index) => index !== recordAt && index !== recordAt + 1);
   if (!handoffPath || !baseRef) fail("usage : verify-scope.mjs <handoff.json> <base-ref>");
   const handoff = JSON.parse(readFileSync(handoffPath, "utf8"));
   const rules = loadRules();
@@ -75,9 +78,18 @@ function main() {
       record_hash: entry ? sha256(entry.raw) : null, files: changed, reservations, checked_at: new Date().toISOString(), status: "passed" }));
     return;
   }
-  console.log(
-    `scope verified: ${changed.length} file(s), ${baseRef}..${sha}, role ${handoff.agent}, ${new Date().toISOString()}`
-  );
+  const verdict = `scope verified: ${changed.length} file(s), ${baseRef}..${sha}, role ${handoff.agent}, ${new Date().toISOString()}`;
+  // Records the verdict where QA's task package will look for it. Without
+  // this the field arrived empty three times running in a host project, while
+  // the QA prompt promised the timestamped output was there: QA re-ran the
+  // command by hand, or believed it. A proof the package announces and cannot
+  // carry is worse than an absent one, because it reads as done.
+  if (recordTo != null) {
+    writeFileSync(recordTo, JSON.stringify({ issue_id: issueId ?? null, agent: handoff.agent, base_ref: baseRef,
+      commit_sha: sha, files: changed, reservations, checked_at: new Date().toISOString(), status: "passed",
+      said: verdict }, null, 2) + "\n");
+  }
+  console.log(verdict);
 }
 
 main();

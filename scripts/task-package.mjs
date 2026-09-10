@@ -60,7 +60,11 @@ export function writeTaskPackage(issueId, role, config = loadConfig()) {
     handoff_path: join(config.handoffs_dir, `${issueId}-${role}-${attemptId}.json`),
     proofs: {
       ci: role === "qa" ? ciEvidence(entry.record.pipeline_state?.last_commit_sha, config) : { status: "not_requested", covered_gates: [] },
-      scope: role === "qa" ? (entry.record.contexts ?? []).filter((block) => /^## verify-scope /.test(block.heading ?? "")) : [],
+      // Read from the record, where `verify-scope --record` leaves them. They
+      // were filtered out of context blocks headed `## verify-scope `, which
+      // nobody writes — the orchestrator runs the command — so the field was
+      // always empty, measured three times in a host project.
+      scope: role === "qa" ? (entry.record.scope_proofs ?? []) : [],
       handoffs: entry.record.handoffs ?? [],
     },
     schema_version: 1,
