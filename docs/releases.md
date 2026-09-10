@@ -6,7 +6,7 @@ Prefer a pinned submodule for an updatable installation:
 
 ```sh
 git submodule add https://github.com/HerbertCodex/agent-pipeline.git agent-pipeline
-git -C agent-pipeline checkout v0.5.1
+git -C agent-pipeline checkout v0.5.2
 git add .gitmodules agent-pipeline
 ```
 
@@ -26,6 +26,28 @@ A release is published only after the release commit is merged, `VERSION` matche
 ## Unreleased
 
 No unreleased changes.
+
+## v0.5.2
+
+This patch release closes a trap that stranded an issue in a real run. A phase
+the orchestrator holds is a phase where nothing has started, and `next-step`
+prints the dispatch command for it while saying, correctly, that the
+orchestrator transitions *then* dispatches. Nothing performed that transition.
+Dispatching anyway built the task package on the held phase, so the agent
+computed its handoff basis on that record; the transition owed afterwards
+changed the hash, `store-update` refused the handoff as stale, and
+`dispatch-preflight` then refused every later dispatch for the issue because
+that handoff was never consumed. Two rules, each right, and an issue nobody
+could move. `dispatch.mjs` now writes the owed transition before it packages
+the task, so the basis matches when the handoff comes back.
+
+An attempt whose handoff can no longer be consumed is now recorded rather than
+hidden: `store-update` accepts `abandon_handoff { sha256, reason }`, refuses a
+blank reason and a digest it cannot read as one, refuses a digest already on
+the record, and writes the abandonment on the issue with its date. The
+preflight message names that route alongside consumption. Updating from v0.5.1
+needs no project action beyond re-pinning; an issue stranded by the old order
+is unblocked by one `abandon_handoff` naming why.
 
 ## v0.5.1
 

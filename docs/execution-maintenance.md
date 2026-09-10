@@ -11,6 +11,17 @@ and clean. QA starts at the implementation commit. Builds, indexes and seeded
 (package manifest and lockfile) before seeding dependencies; their bytes must match
 the selected commit. No dependency installation happens implicitly.
 
+The orchestrator writes the transition a held phase owes **before** dispatch
+packages the task: `planned` becomes `in_progress` for the implementer,
+`ready_for_qa` becomes `qa_in_progress` for QA. `dispatch.mjs` does this itself.
+The order is load-bearing rather than tidy — a package built on the held phase
+carries that record's hash, the agent's handoff basis is computed from it, and
+the transition owed afterwards invalidates it; the handoff is then refused as
+stale and the unconsumed one blocks every later dispatch for that issue. An
+attempt already stranded that way is discharged with
+`store-update.abandon_handoff { sha256, reason }`, which records the
+abandonment and its reason on the issue instead of leaving a gap.
+
 `attempt_isolation.strategy` is `git-worktree`; its `root` is the project-relative
 directory that actually receives the worktrees. One attempt owns one worktree, and
 proof replay always starts from a clean detached commit. Unsupported strategies or
