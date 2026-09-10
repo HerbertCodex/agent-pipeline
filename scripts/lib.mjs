@@ -253,7 +253,7 @@ function globToRegex(glob) {
 }
 
 /**
- * Reads `project_map.skip`, which two shapes reach from real configurations.
+ * Reads a `skip` setting, which two shapes reach from real configurations.
  *
  * The documented shape is a regular expression string, kept as is. The
  * frontend bundles ship a LIST of glob-ish patterns instead, and handing
@@ -264,9 +264,10 @@ function globToRegex(glob) {
  * string form, the result is tested unanchored against the path.
  *
  * @param skip - the configured value: regex string, list of patterns, or null
+ * @param key - the configuration key the refusal names
  * @returns the rejection regular expression, or null when nothing is skipped
  */
-export function skipPattern(skip) {
+export function skipPattern(skip, key = "project_map.skip") {
   if (skip == null) return null;
   if (typeof skip === "string") return new RegExp(skip);
   if (Array.isArray(skip) && skip.every((entry) => typeof entry === "string")) {
@@ -281,7 +282,7 @@ export function skipPattern(skip) {
     );
     return new RegExp(parts.join("|"));
   }
-  fail("project_map.skip must be a regex string or a list of glob patterns");
+  fail(`${key} must be a regex string or a list of glob patterns`);
 }
 
 /**

@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { loadConfig, sha256, fail } from "./lib.mjs";
+import { loadConfig, sha256, fail, skipPattern } from "./lib.mjs";
 
 /**
  * Default length of a block judged duplicated.
@@ -140,7 +140,7 @@ function main() {
   }
 
   const size = Number.isInteger(settings.min_lines) ? settings.min_lines : DEFAULT_MIN_LINES;
-  const skip = typeof settings.skip === "string" ? new RegExp(settings.skip) : null;
+  const skip = skipPattern(settings.skip, "duplication.skip");
   const documents = [];
   for (const root of settings.roots) {
     for (const path of walk(root, skip)) {

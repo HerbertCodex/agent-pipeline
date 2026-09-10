@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { relative, sep } from "node:path";
-import { loadConfig, fail } from "./lib.mjs";
+import { loadConfig, fail, skipPattern } from "./lib.mjs";
 import { DEFAULT_EXTENSIONS, walk, declarationsIn } from "./surface.mjs";
 
 /**
@@ -31,8 +31,7 @@ function main() {
   const extensions = Array.isArray(settings.extensions)
     ? settings.extensions
     : (config.project_map?.extensions ?? DEFAULT_EXTENSIONS);
-  const skipPattern = settings.skip ?? config.project_map?.skip;
-  const skip = typeof skipPattern === "string" ? new RegExp(skipPattern) : null;
+  const skip = skipPattern(settings.skip ?? config.project_map?.skip, "dead_code.skip");
   const entry = new Set(Array.isArray(settings.entry) ? settings.entry : []);
 
   const files = [];

@@ -15,12 +15,13 @@ afterEach(() => {
  *
  * @param files - pairs of relative path and content
  * @param settings - `design_system` fields to write, or null to write none
+ * @param projectMap - extra `project_map` fields, for example `skip`
  * @returns the sandbox root
  */
-function withSheets(files, settings = {}) {
+function withSheets(files, settings = {}, projectMap = {}) {
   const root = createSandbox();
   const config = JSON.parse(readFileSync(join(root, "pipeline.config.json"), "utf8"));
-  config.project_map = { roots: ["src"] };
+  config.project_map = { roots: ["src"], ...projectMap };
   if (settings != null) config.design_system = { primitives_sheet: "src/app.css", ...settings };
   writeFileSync(join(root, "pipeline.config.json"), JSON.stringify(config, null, 2));
   for (const [path, body] of Object.entries(files)) {
@@ -111,5 +112,49 @@ describe("css ownership: one class name has one owner", () => {
     const result = run(sandbox, "css-ownership.mjs");
     assert.equal(result.status, 1);
     assert.match(result.output, /does not name a readable file: src\/nowhere\.css/);
+  });
+
+  test("honours the skip pattern given as a regex string", () => {
+    sandbox = withSheets(
+      {
+        "src/app.css": "body { margin: 0; }\n",
+        "src/kept.css": ".kept { color: red; }\n",
+        "src/generated/a.css": ".mark { color: red; }\n",
+        "src/generated/b.css": ".mark { color: blue; }\n",
+      },
+      {},
+      { skip: "generated" },
+    );
+    const result = run(sandbox, "css-ownership.mjs");
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("accepts a skip list of glob patterns, the shape the frontend bundles ship", () => {
+    // A list was silently read as "skip nothing" on 2026-09-10: only the
+    // string shape reached the regular expression, and the two generated
+    // sheets below were reported as claiming the same class.
+    sandbox = withSheets(
+      {
+        "src/app.css": "body { margin: 0; }\n",
+        "src/kept.css": ".kept { color: red; }\n",
+        "src/generated/a.css": ".mark { color: red; }\n",
+        "src/generated/b.css": ".mark { color: blue; }\n",
+      },
+      {},
+      { skip: ["**/generated/**"] },
+    );
+    const result = run(sandbox, "css-ownership.mjs");
+    assert.equal(result.status, 0, `a skip list must skip, not crash or be ignored: ${result.output}`);
+  });
+
+  test("refuses a skip that is neither a regex string nor a list of patterns", () => {
+    sandbox = withSheets(
+      { "src/app.css": "body { margin: 0; }\n", "src/kept.css": ".kept { color: red; }\n" },
+      {},
+      { skip: 42 },
+    );
+    const result = run(sandbox, "css-ownership.mjs");
+    assert.equal(result.status, 1, "a skip read as nothing is a scan of everything, green for the wrong reason");
+    assert.match(result.output, /project_map\.skip/);
   });
 });
