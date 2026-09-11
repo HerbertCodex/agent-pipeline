@@ -34,6 +34,16 @@ export function prepareWorkspace(task, config, root = process.cwd()) {
   const workspace = join(directory, task.attempt_id);
   const branch = `agent/${task.attempt_id}`;
   git(root, 'worktree', 'add', '-b', branch, workspace, sha);
+  // A fresh worktree leaves submodule directories empty: initialise them so
+  // the framework checkout is the recorded SHA. Without this the seeding copy
+  // below writes plain files over the submodule path, `git submodule update`
+  // can never recover ("failed to clone a second time"), and the workspace
+  // runs whatever the host happens to carry rather than what the SHA pins.
+  try {
+    git(root, '-C', workspace, 'submodule', 'update', '--init');
+  } catch {
+    // No network or no registered submodule: the copy below still seeds the framework.
+  }
   const copy = (path) => {
     if (!path) return;
     const source = resolve(root, path);
@@ -42,6 +52,8 @@ export function prepareWorkspace(task, config, root = process.cwd()) {
     if (lstatSync(source).isSymbolicLink() || !realpathSync(source).startsWith(root + sep)) throw new Error(`Workspace seed redirects outside host: ${path}`);
     const target = resolve(workspace, path);
     if (!target.startsWith(workspace + sep)) throw new Error(`Workspace target escapes: ${path}`);
+    // Never clobber a checkout the SHA pins (an initialised submodule) with a seed copy.
+    if (existsSync(join(target, '.git'))) return;
     cpSync(source, target, { recursive: true, force: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE,
       filter: (from) => from !== directory && !from.startsWith(directory + sep) && !from.endsWith(sep + '.git') });
   };
@@ -83,7 +95,7 @@ export function prepareWorkspace(task, config, root = process.cwd()) {
  * @param contents - the file as committed or as it stands
  * @returns a stable string equal for two inputs that install the same thing
  */
-function dependencyFingerprint(contents) {
+export function dependencyFingerprint(contents) {
   let manifest;
   try {
     manifest = JSON.parse(contents.toString('utf8'));

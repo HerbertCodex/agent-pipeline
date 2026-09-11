@@ -47,6 +47,23 @@ test('archiving retries preserves the first handoff and rejects outside pointers
   } finally { destroySandbox(root); }
 });
 
+test('extraction ignores markdown fences and dispatch heartbeats around the handoff', () => {
+  const fenced = [
+    'AGENT_HANDOFF_START',
+    '```json',
+    '{',
+    '  "outcome": "ready_for_qa",',
+    '  "note": "a value mentioning [agent] stays intact"',
+    '}',
+    '[agent] implementer still working — 1013s elapsed',
+    '```',
+    'AGENT_HANDOFF_END',
+  ].join('\n');
+  const value = extractHandoff(fenced, 'handoffs', process.cwd());
+  assert.equal(value.outcome, 'ready_for_qa');
+  assert.equal(value.note, 'a value mentioning [agent] stays intact', 'only whole progress lines are stripped');
+});
+
 test('pre-dispatch feasibility refuses forbidden reservations and admits covered ones', () => {
   const policy = { allow: ['src/**', 'tests/**'], deny: ['src/secrets/**'] };
   assert.deepEqual(reservationFaults(['src/feature/**', 'tests/unit.ts'], policy), []);

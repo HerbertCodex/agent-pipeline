@@ -37,6 +37,14 @@ export function extractHandoff(output, directory, root = process.cwd()) {
   const start = output.lastIndexOf('AGENT_HANDOFF_START');
   const end = output.indexOf('AGENT_HANDOFF_END', start);
   if (start < 0 || end < 0) return null;
-  const value = JSON.parse(output.slice(start + 'AGENT_HANDOFF_START'.length, end).trim());
+  // Agents wrap the JSON in markdown fences, and dispatch heartbeats land
+  // inside the envelope while it streams. Neither is part of the document:
+  // strip fence lines and `[agent]` progress lines before parsing.
+  const envelope = output
+    .slice(start + 'AGENT_HANDOFF_START'.length, end)
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('```') && !line.startsWith('[agent]'))
+    .join('\n');
+  const value = JSON.parse(envelope.trim());
   return value.handoff_file?.path ? readHandoff(value.handoff_file.path, directory, root) : value;
 }

@@ -72,4 +72,28 @@ describe('a dependency input is compared on what it declares, not on the whole f
       );
     } finally { destroySandbox(root); }
   });
+
+  test('replay-proof applies the same comparison as the workspace seeding', () => {
+    // Measured in a host project on 2026-09-11: replay-proof compared dependency
+    // inputs byte for byte while agent-workspace already used the fingerprint —
+    // a red proof authored under a manifest whose scripts had since changed
+    // could never be replayed, and the orchestrator went back to hand replays.
+    const source = readFileSync(join(FRAMEWORK, 'scripts/replay-proof.mjs'), 'utf8');
+    assert.match(source, /dependencyFingerprint/, 'the replay compares what decides an install');
+    assert.doesNotMatch(source, /\.equals\(readFileSync/, 'the whole file is no longer compared byte for byte');
+  });
+});
+
+describe('an attempt workspace carries the framework the SHA pins, not a copy of the host', () => {
+  test('prepareWorkspace initialises submodules before falling back to a file copy', () => {
+    // Measured in a host project on 2026-09-11: the workspace held plain files
+    // over the submodule path, `git submodule update` could never recover
+    // ("failed to clone a second time"), and the attempt ran whatever the host
+    // had checked out rather than the recorded SHA.
+    const source = readFileSync(join(FRAMEWORK, 'scripts/agent-workspace.mjs'), 'utf8');
+    const added = source.indexOf("'worktree', 'add'");
+    const copied = source.indexOf("join(destination, 'scripts', 'dispatch.mjs')");
+    assert.match(source, /submodule', 'update', '--init'/, 'the worktree initialises its submodules');
+    assert.ok(added >= 0 && copied > added, 'the submodule is initialised before the copy fallback is considered');
+  });
 });

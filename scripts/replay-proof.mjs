@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { loadConfig } from './lib.mjs';
+import { dependencyFingerprint } from './agent-workspace.mjs';
 
 /** Replays a command on a named commit in a disposable detached tree; mismatched dependency inputs refuse reuse. */
 function main() {
@@ -16,14 +17,19 @@ function main() {
   const inputs = config.agent_runtime?.dependency_inputs ?? [];
   if (seeds.length && !inputs.length) throw new Error('Declare dependency_inputs before reusing workspace dependencies in a replay');
   for (const file of inputs) {
-    if (!execFileSync('git', ['show', `${sha}:${file}`]).equals(readFileSync(file))) throw new Error(`Dependency input differs at ${sha}: ${file}`);
+    const there = execFileSync('git', ['show', `${sha}:${file}`]);
+    if (dependencyFingerprint(there) !== dependencyFingerprint(readFileSync(file))) throw new Error(`Dependency input differs at ${sha}: ${file}`);
   }
   const temporary = mkdtempSync(join(tmpdir(), 'pipeline-replay-')); const tree = join(temporary, 'tree');
   try {
     git('worktree', 'add', '--detach', tree, sha);
+    // A detached tree leaves submodule directories empty; initialise them so
+    // the replay runs the framework the SHA pins. Offline, the seeds below apply.
+    try { git('-C', tree, 'submodule', 'update', '--init'); } catch { /* seeds below still apply */ }
     for (const path of seeds) {
       const from = resolve(root, path); const to = resolve(tree, path);
       if (!from.startsWith(root + sep) || !to.startsWith(tree + sep)) throw new Error('Replay seed escapes repository');
+      if (existsSync(join(to, '.git'))) continue;
       if (existsSync(from)) cpSync(from, to, { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
     }
     const result = spawnSync(executable, args, { cwd: tree, stdio: 'inherit', timeout: 600000 });
