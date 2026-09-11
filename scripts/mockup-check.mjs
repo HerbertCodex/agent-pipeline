@@ -1,4 +1,5 @@
 import { readFileSync, existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { loadConfig, fail } from "./lib.mjs";
 
 /**
@@ -82,9 +83,48 @@ function nearestToken(value, declared) {
 }
 
 /**
+ * Collects the CSS a mockup actually states: its <style> blocks, its style
+ * attributes and the local stylesheets it links, one level deep. The text of
+ * the page is not styling — « Vente #1241 » is data, not a colour — so it is
+ * never scanned. A shared linked sheet is as much an assembly of tokens as an
+ * inline block; the tokens file itself is skipped, because the source of
+ * truth declares values, it does not spend them.
+ *
+ * Media-query conditions are stripped before scanning: a breakpoint cannot
+ * reference a variable in CSS, so a length there is a rendering detail, not a
+ * step on the spacing scale.
+ *
+ * @param mockupPath - path of the mockup file, to resolve linked sheets
+ * @param body - content of the mockup file
+ * @param tokensPath - configured tokens file, excluded from the corpus
+ * @returns the CSS text to check
+ */
+function cssCorpus(mockupPath, body, tokensPath) {
+  const chunks = [];
+  for (const match of body.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)) chunks.push(match[1]);
+  for (const match of body.matchAll(/style\s*=\s*"([^"]*)"/gi)) chunks.push(match[1]);
+  for (const match of body.matchAll(/<link\b[^>]*>/gi)) {
+    const tag = match[0];
+    if (!/rel\s*=\s*"stylesheet"/i.test(tag)) continue;
+    const href = tag.match(/href\s*=\s*"([^"]+)"/i)?.[1];
+    if (href == null || /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("//")) continue;
+    const resolved = resolve(dirname(mockupPath), href);
+    if (resolved === resolve(tokensPath)) continue;
+    if (existsSync(resolved)) chunks.push(readFileSync(resolved, "utf8"));
+  }
+  return (
+    chunks
+      .join("\n")
+      // Comments are prose about the design, not values the design states.
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/@media[^{]*\{/gi, "@media{")
+  );
+}
+
+/**
  * Collects the literal values a mockup states instead of referring to a token.
  *
- * @param body - content of the mockup file
+ * @param body - CSS corpus of the mockup (see cssCorpus)
  * @param declared - the declared tokens
  * @returns the offending values, and how many were examined
  */
@@ -148,7 +188,7 @@ function main() {
   const declared = tokensIn(readFileSync(tokensPath, "utf8"));
   if (declared.size === 0) fail(`${tokensPath} declares no token: a mockup checked against nothing passes for free.`);
 
-  const { found, checked } = offenders(readFileSync(target, "utf8"), declared);
+  const { found, checked } = offenders(cssCorpus(target, readFileSync(target, "utf8"), tokensPath), declared);
 
   if (checked === 0) {
     fail(
