@@ -136,6 +136,45 @@ describe("mockup-check: a mockup assembles what exists, it does not invent a sca
   });
 });
 
+describe("mockup-check: linked stylesheets and page text", () => {
+  test("accepts a mockup whose styling lives in a linked local stylesheet", () => {
+    sandbox = withMockup(`<link rel="stylesheet" href="shared.css"><h1>Hello</h1>`);
+    writeFileSync(
+      join(sandbox, "mockup/shared.css"),
+      `.hero { color: var(--ink); background: var(--paper); padding: var(--space-4); }`,
+    );
+    const result = run(sandbox, "mockup-check.mjs", ["mockup/home.html"]);
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("refuses a literal the linked stylesheet invents", () => {
+    sandbox = withMockup(`<link rel="stylesheet" href="shared.css"><h1>Hello</h1>`);
+    writeFileSync(
+      join(sandbox, "mockup/shared.css"),
+      `.hero { color: var(--ink); border-color: #3b82f6; }`,
+    );
+    const result = run(sandbox, "mockup-check.mjs", ["mockup/home.html"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /#3b82f6/i);
+  });
+
+  test("ignores a hex-looking datum in the page text", () => {
+    sandbox = withMockup(
+      `<style>.hero { color: var(--ink); }</style><p>Vente #1241 du 10/09</p>`,
+    );
+    const result = run(sandbox, "mockup-check.mjs", ["mockup/home.html"]);
+    assert.equal(result.status, 0, result.output);
+  });
+
+  test("exempts lengths in media-query conditions, which cannot reference a variable", () => {
+    sandbox = withMockup(
+      `<style>@media (min-width: 48rem) { .hero { color: var(--ink); } }</style>`,
+    );
+    const result = run(sandbox, "mockup-check.mjs", ["mockup/home.html"]);
+    assert.equal(result.status, 0, result.output);
+  });
+});
+
 describe("validate-handoff: a screen is coded against a mockup, not from memory", () => {
   const BASE = {
     schema_version: 1,
